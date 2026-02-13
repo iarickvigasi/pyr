@@ -1,0 +1,7 @@
+api.puppyyogaretreat.com {
+	reverse_proxy backend:3001
+}
+
+app.puppyyogaretreat.com {
+	reverse_proxy frontend:3000
+}

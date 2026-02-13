@@ -1,0 +1,28 @@
+{
+  "name": "pyr",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Puppy Yoga Retreat — Business Automation Platform",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test": "turbo test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter backend db:migrate",
+    "db:push": "pnpm --filter backend db:push",
+    "db:studio": "pnpm --filter backend db:studio",
+    "db:generate": "pnpm --filter backend db:generate"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Lint, Type-check, Test, Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pyr
+          POSTGRES_PASSWORD: pyr_test_password
+          POSTGRES_DB: pyr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pyr"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://pyr:pyr_test_password@localhost:5432/pyr_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-jwt-secret-for-ci-only
+      API_KEY: test-api-key-for-ci
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @pyr/backend db:generate
+
+      - name: Lint
+        run: pnpm turbo lint
+
+      - name: Type-check
+        run: pnpm turbo type-check
+
+      - name: Run database migrations
+        run: pnpm --filter @pyr/backend exec prisma migrate deploy
+
+      - name: Test
+        run: pnpm turbo test
+
+      - name: Build
+        run: pnpm turbo build

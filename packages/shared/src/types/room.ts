@@ -1,8 +1,10 @@
+import type { RoomStatus } from '../constants/room-status.js';
+
 export interface Room {
   id: string;
   roomTypeId: string;
   name: string;
-  status: 'available' | 'occupied' | 'maintenance';
+  status: RoomStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,7 +24,7 @@ export interface Season {
   name: string;
   startDate: Date;
   endDate: Date;
-  priceMultiplier: number;
+  priceMultiplier: number; // Prisma Decimal → serialized as number
   createdAt: Date;
   updatedAt: Date;
 }

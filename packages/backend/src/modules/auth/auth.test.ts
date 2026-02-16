@@ -126,9 +126,9 @@ describe('Auth API', () => {
 
   describe('API Key auth', () => {
     it('should authenticate with valid API key', async () => {
-      const token = await getAuthToken(app);
+      await getAuthToken(app);
 
-      // Create a guest to verify API key works for a protected route
+      // Verify API key works for a protected route
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/guests',

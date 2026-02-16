@@ -2,7 +2,7 @@ import type { PrismaClient, BookingStatus } from '@prisma/client';
 import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted, computeChanges } from '../../lib/prisma-helpers.js';
-import { writeAuditLog } from '../../lib/audit.js';
+import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../../lib/errors.js';
 import type { CreateBookingBody, UpdateBookingBody, ListBookingsQuery } from './booking.schema.js';
 
@@ -13,10 +13,6 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   checked_out: [],
   cancelled: [],
 };
-
-function getActor(userId?: string): string {
-  return userId ? `admin:${userId}` : 'system';
-}
 
 async function checkOverlap(
   prisma: PrismaClient | Parameters<Parameters<PrismaClient['$transaction']>[0]>[0],
@@ -51,8 +47,8 @@ export async function listBookings(
 
   if (query.status) where.status = query.status;
   if (query.guestId) where.guestId = query.guestId;
-  if (query.from) where.checkIn = { ...(where.checkIn as any || {}), gte: new Date(query.from) };
-  if (query.to) where.checkOut = { ...(where.checkOut as any || {}), lte: new Date(query.to) };
+  if (query.from) where.checkOut = { ...(where.checkOut as any || {}), gt: new Date(query.from) };
+  if (query.to) where.checkIn = { ...(where.checkIn as any || {}), lt: new Date(query.to) };
 
   const bookings = await prisma.booking.findMany({
     where: where as any,
@@ -209,24 +205,26 @@ export async function cancelBooking(
   id: string,
   actorId?: string,
 ): Promise<void> {
-  const existing = await prisma.booking.findFirst({ where: { id, ...notDeleted } });
-  if (!existing) throw new NotFoundError('Booking', id);
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.booking.findFirst({ where: { id, ...notDeleted } });
+    if (!existing) throw new NotFoundError('Booking', id);
 
-  const allowed = VALID_TRANSITIONS[existing.status];
-  if (!allowed?.includes('cancelled')) {
-    throw new BadRequestError(`Cannot cancel a booking with status '${existing.status}'`);
-  }
+    const allowed = VALID_TRANSITIONS[existing.status];
+    if (!allowed?.includes('cancelled')) {
+      throw new BadRequestError(`Cannot cancel a booking with status '${existing.status}'`);
+    }
 
-  await prisma.booking.update({
-    where: { id },
-    data: { status: 'cancelled', deletedAt: new Date() },
-  });
+    await tx.booking.update({
+      where: { id },
+      data: { status: 'cancelled', deletedAt: new Date() },
+    });
 
-  await writeAuditLog(prisma, {
-    entityType: 'booking',
-    entityId: id,
-    action: 'delete',
-    changes: { previousStatus: existing.status },
-    actor: getActor(actorId),
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'booking',
+      entityId: id,
+      action: 'delete',
+      changes: { previousStatus: existing.status },
+      actor: getActor(actorId),
+    });
   });
 }

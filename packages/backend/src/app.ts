@@ -67,9 +67,30 @@ export async function buildApp() {
   await app.register(redisPlugin);
   await app.register(authPlugin);
 
-  // Health check
+  // Health check — verifies DB and Redis connectivity
   app.get('/health', async () => {
-    return { status: 'ok', timestamp: new Date().toISOString() };
+    const checks: Record<string, string> = {};
+
+    try {
+      await app.prisma.$queryRaw`SELECT 1`;
+      checks.database = 'ok';
+    } catch {
+      checks.database = 'error';
+    }
+
+    try {
+      await app.redis.ping();
+      checks.redis = 'ok';
+    } catch {
+      checks.redis = 'error';
+    }
+
+    const healthy = Object.values(checks).every((v) => v === 'ok');
+    return {
+      status: healthy ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      checks,
+    };
   });
 
   // API routes

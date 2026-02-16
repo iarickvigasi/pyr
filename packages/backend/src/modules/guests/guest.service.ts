@@ -2,13 +2,9 @@ import type { PrismaClient } from '@prisma/client';
 import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted, computeChanges } from '../../lib/prisma-helpers.js';
-import { writeAuditLog } from '../../lib/audit.js';
+import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../../lib/errors.js';
 import type { CreateGuestBody, UpdateGuestBody, ListGuestsQuery } from './guest.schema.js';
-
-function getActor(userId?: string): string {
-  return userId ? `admin:${userId}` : 'system';
-}
 
 export async function listGuests(
   prisma: PrismaClient,
@@ -76,26 +72,28 @@ export async function createGuest(
   data: CreateGuestBody,
   actorId?: string,
 ): Promise<Record<string, unknown>> {
-  if (data.email) {
-    const existing = await prisma.guest.findFirst({
-      where: { email: data.email, ...notDeleted },
-    });
-    if (existing) {
-      throw new ConflictError(`Guest with email '${data.email}' already exists`);
+  return prisma.$transaction(async (tx) => {
+    if (data.email) {
+      const existing = await tx.guest.findFirst({
+        where: { email: data.email, ...notDeleted },
+      });
+      if (existing) {
+        throw new ConflictError(`Guest with email '${data.email}' already exists`);
+      }
     }
-  }
 
-  const guest = await prisma.guest.create({ data });
+    const guest = await tx.guest.create({ data });
 
-  await writeAuditLog(prisma, {
-    entityType: 'guest',
-    entityId: guest.id,
-    action: 'create',
-    changes: data as unknown as Record<string, unknown>,
-    actor: getActor(actorId),
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'guest',
+      entityId: guest.id,
+      action: 'create',
+      changes: data as unknown as Record<string, unknown>,
+      actor: getActor(actorId),
+    });
+
+    return guest as unknown as Record<string, unknown>;
   });
-
-  return guest as unknown as Record<string, unknown>;
 }
 
 export async function updateGuest(
@@ -104,42 +102,44 @@ export async function updateGuest(
   data: UpdateGuestBody,
   actorId?: string,
 ): Promise<Record<string, unknown>> {
-  const existing = await prisma.guest.findFirst({
-    where: { id, ...notDeleted },
-  });
-  if (!existing) {
-    throw new NotFoundError('Guest', id);
-  }
-
-  if (data.email && data.email !== existing.email) {
-    const duplicate = await prisma.guest.findFirst({
-      where: { email: data.email, ...notDeleted, id: { not: id } },
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.guest.findFirst({
+      where: { id, ...notDeleted },
     });
-    if (duplicate) {
-      throw new ConflictError(`Guest with email '${data.email}' already exists`);
+    if (!existing) {
+      throw new NotFoundError('Guest', id);
     }
-  }
 
-  const guest = await prisma.guest.update({
-    where: { id },
-    data,
-  });
+    if (data.email && data.email !== existing.email) {
+      const duplicate = await tx.guest.findFirst({
+        where: { email: data.email, ...notDeleted, id: { not: id } },
+      });
+      if (duplicate) {
+        throw new ConflictError(`Guest with email '${data.email}' already exists`);
+      }
+    }
 
-  const changes = computeChanges(
-    existing as unknown as Record<string, unknown>,
-    guest as unknown as Record<string, unknown>,
-  );
-  if (changes) {
-    await writeAuditLog(prisma, {
-      entityType: 'guest',
-      entityId: guest.id,
-      action: 'update',
-      changes,
-      actor: getActor(actorId),
+    const guest = await tx.guest.update({
+      where: { id },
+      data,
     });
-  }
 
-  return guest as unknown as Record<string, unknown>;
+    const changes = computeChanges(
+      existing as unknown as Record<string, unknown>,
+      guest as unknown as Record<string, unknown>,
+    );
+    if (changes) {
+      await writeAuditLog(tx as unknown as PrismaClient, {
+        entityType: 'guest',
+        entityId: guest.id,
+        action: 'update',
+        changes,
+        actor: getActor(actorId),
+      });
+    }
+
+    return guest as unknown as Record<string, unknown>;
+  });
 }
 
 export async function deleteGuest(
@@ -147,23 +147,25 @@ export async function deleteGuest(
   id: string,
   actorId?: string,
 ): Promise<void> {
-  const existing = await prisma.guest.findFirst({
-    where: { id, ...notDeleted },
-  });
-  if (!existing) {
-    throw new NotFoundError('Guest', id);
-  }
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.guest.findFirst({
+      where: { id, ...notDeleted },
+    });
+    if (!existing) {
+      throw new NotFoundError('Guest', id);
+    }
 
-  await prisma.guest.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
+    await tx.guest.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
 
-  await writeAuditLog(prisma, {
-    entityType: 'guest',
-    entityId: id,
-    action: 'delete',
-    actor: getActor(actorId),
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'guest',
+      entityId: id,
+      action: 'delete',
+      actor: getActor(actorId),
+    });
   });
 }
 
@@ -216,11 +218,20 @@ export async function mergeGuests(
       data: { deletedAt: new Date() },
     });
 
-    // Merge tags (union)
+    // Merge tags (union) and fill in null fields from secondary
     const mergedTags = [...new Set([...primary.tags, ...secondary.tags])];
     const updated = await tx.guest.update({
       where: { id: primaryId },
-      data: { tags: mergedTags },
+      data: {
+        tags: mergedTags,
+        phone: primary.phone ?? secondary.phone,
+        dietaryNeeds: primary.dietaryNeeds ?? secondary.dietaryNeeds,
+        notes: primary.notes
+          ? secondary.notes
+            ? `${primary.notes}\n---\n${secondary.notes}`
+            : primary.notes
+          : secondary.notes,
+      },
     });
 
     await writeAuditLog(tx as unknown as PrismaClient, {

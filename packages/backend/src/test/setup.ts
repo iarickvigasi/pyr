@@ -1,10 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
+import { afterAll } from 'vitest';
 import { buildApp } from '../app.js';
 import { hashPassword } from '../lib/password.js';
 
 let app: FastifyInstance | null = null;
 const prisma = new PrismaClient();
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
 export async function getTestApp(): Promise<FastifyInstance> {
   if (!app) {
@@ -14,28 +19,14 @@ export async function getTestApp(): Promise<FastifyInstance> {
   return app;
 }
 
-export async function cleanDatabase(): Promise<void> {
-  const tablenames = [
-    'ai_drafts',
-    'messages',
-    'conversations',
-    'event_bookings',
-    'calendar_events',
-    'payments',
-    'invoices',
-    'bookings',
-    'events',
-    'rooms',
-    'room_types',
-    'seasons',
-    'guests',
-    'admin_users',
-    'audit_log',
-  ];
+const TABLES = [
+  'ai_drafts', 'messages', 'conversations', 'event_bookings',
+  'calendar_events', 'payments', 'invoices', 'bookings', 'events',
+  'rooms', 'room_types', 'seasons', 'guests', 'admin_users', 'audit_log',
+].join(', ');
 
-  for (const table of tablenames) {
-    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE`);
-  }
+export async function cleanDatabase(): Promise<void> {
+  await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${TABLES} CASCADE`);
 }
 
 export async function seedAdmin(): Promise<{ id: string; email: string }> {

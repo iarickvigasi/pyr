@@ -2,13 +2,9 @@ import type { PrismaClient, EventType, EventBookingStatus } from '@prisma/client
 import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted, computeChanges } from '../../lib/prisma-helpers.js';
-import { writeAuditLog } from '../../lib/audit.js';
+import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../../lib/errors.js';
 import type { CreateEventBody, UpdateEventBody, ListEventsQuery } from './event.schema.js';
-
-function getActor(userId?: string): string {
-  return userId ? `admin:${userId}` : 'system';
-}
 
 export async function listEvents(
   prisma: PrismaClient,
@@ -70,27 +66,29 @@ export async function createEvent(
   data: CreateEventBody,
   actorId?: string,
 ): Promise<Record<string, unknown>> {
-  const event = await prisma.event.create({
-    data: {
-      type: data.type as EventType,
-      title: data.title,
-      date: new Date(data.date),
-      time: data.time,
-      capacity: data.capacity,
-      location: data.location ?? null,
-      description: data.description ?? null,
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    const event = await tx.event.create({
+      data: {
+        type: data.type as EventType,
+        title: data.title,
+        date: new Date(data.date),
+        time: data.time,
+        capacity: data.capacity,
+        location: data.location ?? null,
+        description: data.description ?? null,
+      },
+    });
 
-  await writeAuditLog(prisma, {
-    entityType: 'event',
-    entityId: event.id,
-    action: 'create',
-    changes: data as unknown as Record<string, unknown>,
-    actor: getActor(actorId),
-  });
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'event',
+      entityId: event.id,
+      action: 'create',
+      changes: data as unknown as Record<string, unknown>,
+      actor: getActor(actorId),
+    });
 
-  return event as unknown as Record<string, unknown>;
+    return event as unknown as Record<string, unknown>;
+  });
 }
 
 export async function updateEvent(
@@ -99,37 +97,39 @@ export async function updateEvent(
   data: UpdateEventBody,
   actorId?: string,
 ): Promise<Record<string, unknown>> {
-  const existing = await prisma.event.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Event', id);
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.event.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Event', id);
 
-  const event = await prisma.event.update({
-    where: { id },
-    data: {
-      ...(data.type !== undefined ? { type: data.type as EventType } : {}),
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.date !== undefined ? { date: new Date(data.date) } : {}),
-      ...(data.time !== undefined ? { time: data.time } : {}),
-      ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
-      ...(data.location !== undefined ? { location: data.location ?? null } : {}),
-      ...(data.description !== undefined ? { description: data.description ?? null } : {}),
-    },
-  });
-
-  const changes = computeChanges(
-    existing as unknown as Record<string, unknown>,
-    event as unknown as Record<string, unknown>,
-  );
-  if (changes) {
-    await writeAuditLog(prisma, {
-      entityType: 'event',
-      entityId: id,
-      action: 'update',
-      changes,
-      actor: getActor(actorId),
+    const event = await tx.event.update({
+      where: { id },
+      data: {
+        ...(data.type !== undefined ? { type: data.type as EventType } : {}),
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.date !== undefined ? { date: new Date(data.date) } : {}),
+        ...(data.time !== undefined ? { time: data.time } : {}),
+        ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
+        ...(data.location !== undefined ? { location: data.location ?? null } : {}),
+        ...(data.description !== undefined ? { description: data.description ?? null } : {}),
+      },
     });
-  }
 
-  return event as unknown as Record<string, unknown>;
+    const changes = computeChanges(
+      existing as unknown as Record<string, unknown>,
+      event as unknown as Record<string, unknown>,
+    );
+    if (changes) {
+      await writeAuditLog(tx as unknown as PrismaClient, {
+        entityType: 'event',
+        entityId: id,
+        action: 'update',
+        changes,
+        actor: getActor(actorId),
+      });
+    }
+
+    return event as unknown as Record<string, unknown>;
+  });
 }
 
 export async function deleteEvent(
@@ -140,16 +140,17 @@ export async function deleteEvent(
   const existing = await prisma.event.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Event', id);
 
-  await prisma.$transaction([
-    prisma.eventBooking.deleteMany({ where: { eventId: id } }),
-    prisma.event.delete({ where: { id } }),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.eventBooking.deleteMany({ where: { eventId: id } });
+    await tx.calendarEvent.deleteMany({ where: { eventId: id } });
+    await tx.event.delete({ where: { id } });
 
-  await writeAuditLog(prisma, {
-    entityType: 'event',
-    entityId: id,
-    action: 'delete',
-    actor: getActor(actorId),
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'event',
+      entityId: id,
+      action: 'delete',
+      actor: getActor(actorId),
+    });
   });
 }
 

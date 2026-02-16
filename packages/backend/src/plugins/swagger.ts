@@ -11,12 +11,14 @@ export default fp(async function swaggerPlugin(fastify: FastifyInstance) {
         description: 'REST API for the PYR business automation platform',
         version: '1.0.0',
       },
-      servers: [
-        {
-          url: `http://localhost:${fastify.config.PORT}`,
-          description: 'Development server',
-        },
-      ],
+      servers: fastify.config.NODE_ENV === 'production'
+        ? []
+        : [
+            {
+              url: `http://localhost:${fastify.config.PORT}`,
+              description: 'Development server',
+            },
+          ],
       components: {
         securitySchemes: {
           bearerAuth: {

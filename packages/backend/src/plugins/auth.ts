@@ -24,6 +24,7 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
     // Check API key first (for AI assistant)
     const apiKey = request.headers['x-api-key'];
     if (apiKey === fastify.config.API_KEY) {
+      request.user = { sub: 'api-key', role: 'assistant' };
       return;
     }
 

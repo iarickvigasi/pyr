@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { paginationQuerySchema } from '@pyr/shared';
 
 // Room Types
 export const createRoomTypeSchema = z.object({
@@ -63,5 +62,3 @@ export const availabilityQuerySchema = z.object({
 });
 
 export type AvailabilityQuery = z.infer<typeof availabilityQuerySchema>;
-
-export const listRoomsQuerySchema = paginationQuerySchema;

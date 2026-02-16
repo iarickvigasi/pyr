@@ -63,7 +63,7 @@ PYR/
 │   │   │   │       └── <module>.test.ts
 │   │   │   ├── services/      # Shared services (email, caldav, ai-engine, queue)
 │   │   │   ├── plugins/       # Fastify plugins (auth, cors, rate-limit)
-│   │   │   ├── utils/         # Shared utilities
+│   │   │   ├── lib/           # Shared utilities (errors, pagination, audit)
 │   │   │   └── app.ts         # Fastify app setup
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma  # Database schema
@@ -307,7 +307,7 @@ TELEGRAM_ALLOWED_USER_ID=<ines-telegram-id>
 # App
 NODE_ENV=development|production
 PORT=3001
-FRONTEND_URL=http://localhost:3000
+CORS_ORIGIN=http://localhost:3000
 LOG_LEVEL=info
 ```
 

@@ -12,7 +12,7 @@ export default fp(async function prismaPlugin(fastify: FastifyInstance) {
   const prisma = new PrismaClient({
     log:
       fastify.config.NODE_ENV === 'development'
-        ? [{ emit: 'event', level: 'query' }]
+        ? [{ emit: 'stdout', level: 'warn' }]
         : [],
   });
 

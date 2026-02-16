@@ -1,7 +1,7 @@
-import type { PrismaClient, Prisma } from '@prisma/client';
-import { writeAuditLog } from '../../lib/audit.js';
+import type { PrismaClient } from '@prisma/client';
+import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { computeChanges } from '../../lib/prisma-helpers.js';
-import { NotFoundError, BadRequestError } from '../../lib/errors.js';
+import { NotFoundError, BadRequestError, ConflictError } from '../../lib/errors.js';
 import type {
   CreateRoomTypeBody,
   UpdateRoomTypeBody,
@@ -12,8 +12,15 @@ import type {
   AvailabilityQuery,
 } from './room.schema.js';
 
-function getActor(userId?: string): string {
-  return userId ? `admin:${userId}` : 'system';
+function handleUniqueViolation(err: unknown, entity: string): never {
+  if (
+    err instanceof Error &&
+    'code' in err &&
+    (err as { code: string }).code === 'P2002'
+  ) {
+    throw new ConflictError(`${entity} with that name already exists`);
+  }
+  throw err;
 }
 
 // ─── Room Types ──────────────────────────────────────────
@@ -30,17 +37,24 @@ export async function createRoomType(
   data: CreateRoomTypeBody,
   actorId?: string,
 ): Promise<unknown> {
-  const roomType = await prisma.roomType.create({ data });
+  return prisma.$transaction(async (tx) => {
+    let roomType;
+    try {
+      roomType = await tx.roomType.create({ data });
+    } catch (err) {
+      handleUniqueViolation(err, 'RoomType');
+    }
 
-  await writeAuditLog(prisma, {
-    entityType: 'room_type',
-    entityId: roomType.id,
-    action: 'create',
-    changes: data as unknown as Record<string, unknown>,
-    actor: getActor(actorId),
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'room_type',
+      entityId: roomType.id,
+      action: 'create',
+      changes: data as unknown as Record<string, unknown>,
+      actor: getActor(actorId),
+    });
+
+    return roomType;
   });
-
-  return roomType;
 }
 
 export async function updateRoomType(
@@ -49,26 +63,33 @@ export async function updateRoomType(
   data: UpdateRoomTypeBody,
   actorId?: string,
 ): Promise<unknown> {
-  const existing = await prisma.roomType.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('RoomType', id);
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.roomType.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('RoomType', id);
 
-  const updated = await prisma.roomType.update({ where: { id }, data });
+    let updated;
+    try {
+      updated = await tx.roomType.update({ where: { id }, data });
+    } catch (err) {
+      handleUniqueViolation(err, 'RoomType');
+    }
 
-  const changes = computeChanges(
-    existing as unknown as Record<string, unknown>,
-    updated as unknown as Record<string, unknown>,
-  );
-  if (changes) {
-    await writeAuditLog(prisma, {
-      entityType: 'room_type',
-      entityId: id,
-      action: 'update',
-      changes,
-      actor: getActor(actorId),
-    });
-  }
+    const changes = computeChanges(
+      existing as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
+    );
+    if (changes) {
+      await writeAuditLog(tx as unknown as PrismaClient, {
+        entityType: 'room_type',
+        entityId: id,
+        action: 'update',
+        changes,
+        actor: getActor(actorId),
+      });
+    }
 
-  return updated;
+    return updated;
+  });
 }
 
 // ─── Rooms ───────────────────────────────────────────────
@@ -85,20 +106,27 @@ export async function createRoom(
   data: CreateRoomBody,
   actorId?: string,
 ): Promise<unknown> {
-  const roomType = await prisma.roomType.findUnique({ where: { id: data.roomTypeId } });
-  if (!roomType) throw new NotFoundError('RoomType', data.roomTypeId);
+  return prisma.$transaction(async (tx) => {
+    const roomType = await tx.roomType.findUnique({ where: { id: data.roomTypeId } });
+    if (!roomType) throw new NotFoundError('RoomType', data.roomTypeId);
 
-  const room = await prisma.room.create({ data });
+    let room;
+    try {
+      room = await tx.room.create({ data });
+    } catch (err) {
+      handleUniqueViolation(err, 'Room');
+    }
 
-  await writeAuditLog(prisma, {
-    entityType: 'room',
-    entityId: room.id,
-    action: 'create',
-    changes: data as unknown as Record<string, unknown>,
-    actor: getActor(actorId),
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'room',
+      entityId: room.id,
+      action: 'create',
+      changes: data as unknown as Record<string, unknown>,
+      actor: getActor(actorId),
+    });
+
+    return room;
   });
-
-  return room;
 }
 
 export async function updateRoom(
@@ -107,32 +135,58 @@ export async function updateRoom(
   data: UpdateRoomBody,
   actorId?: string,
 ): Promise<unknown> {
-  const existing = await prisma.room.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Room', id);
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.room.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Room', id);
 
-  const updated = await prisma.room.update({ where: { id }, data });
+    let updated;
+    try {
+      updated = await tx.room.update({ where: { id }, data });
+    } catch (err) {
+      handleUniqueViolation(err, 'Room');
+    }
 
-  const changes = computeChanges(
-    existing as unknown as Record<string, unknown>,
-    updated as unknown as Record<string, unknown>,
-  );
-  if (changes) {
-    await writeAuditLog(prisma, {
-      entityType: 'room',
-      entityId: id,
-      action: 'update',
-      changes,
-      actor: getActor(actorId),
-    });
-  }
+    const changes = computeChanges(
+      existing as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
+    );
+    if (changes) {
+      await writeAuditLog(tx as unknown as PrismaClient, {
+        entityType: 'room',
+        entityId: id,
+        action: 'update',
+        changes,
+        actor: getActor(actorId),
+      });
+    }
 
-  return updated;
+    return updated;
+  });
 }
 
 // ─── Seasons ─────────────────────────────────────────────
 
 export async function listSeasons(prisma: PrismaClient): Promise<unknown[]> {
   return prisma.season.findMany({ orderBy: { startDate: 'asc' } });
+}
+
+async function checkSeasonOverlap(
+  prisma: PrismaClient | Parameters<Parameters<PrismaClient['$transaction']>[0]>[0],
+  startDate: Date,
+  endDate: Date,
+  excludeId?: string,
+): Promise<void> {
+  const where: Record<string, unknown> = {
+    startDate: { lt: endDate },
+    endDate: { gt: startDate },
+  };
+  if (excludeId) {
+    where.id = { not: excludeId };
+  }
+  const overlap = await (prisma as PrismaClient).season.findFirst({ where: where as any });
+  if (overlap) {
+    throw new ConflictError(`Season overlaps with existing season '${overlap.name}'`);
+  }
 }
 
 export async function createSeason(
@@ -144,24 +198,28 @@ export async function createSeason(
     throw new BadRequestError('End date must be after start date');
   }
 
-  const season = await prisma.season.create({
-    data: {
-      name: data.name,
-      startDate: new Date(data.startDate),
-      endDate: new Date(data.endDate),
-      priceMultiplier: data.priceMultiplier,
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    await checkSeasonOverlap(tx, new Date(data.startDate), new Date(data.endDate));
 
-  await writeAuditLog(prisma, {
-    entityType: 'season',
-    entityId: season.id,
-    action: 'create',
-    changes: data as unknown as Record<string, unknown>,
-    actor: getActor(actorId),
-  });
+    const season = await tx.season.create({
+      data: {
+        name: data.name,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        priceMultiplier: data.priceMultiplier,
+      },
+    });
 
-  return season;
+    await writeAuditLog(tx as unknown as PrismaClient, {
+      entityType: 'season',
+      entityId: season.id,
+      action: 'create',
+      changes: data as unknown as Record<string, unknown>,
+      actor: getActor(actorId),
+    });
+
+    return season;
+  });
 }
 
 export async function updateSeason(
@@ -170,37 +228,49 @@ export async function updateSeason(
   data: UpdateSeasonBody,
   actorId?: string,
 ): Promise<unknown> {
-  const existing = await prisma.season.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Season', id);
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.season.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Season', id);
 
-  const startDate = data.startDate ? new Date(data.startDate) : undefined;
-  const endDate = data.endDate ? new Date(data.endDate) : undefined;
+    const startDate = data.startDate ? new Date(data.startDate) : undefined;
+    const endDate = data.endDate ? new Date(data.endDate) : undefined;
 
-  const updated = await prisma.season.update({
-    where: { id },
-    data: {
-      ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(startDate ? { startDate } : {}),
-      ...(endDate ? { endDate } : {}),
-      ...(data.priceMultiplier !== undefined ? { priceMultiplier: data.priceMultiplier } : {}),
-    },
-  });
+    // Validate the resulting date range
+    const effectiveStart = startDate ?? existing.startDate;
+    const effectiveEnd = endDate ?? existing.endDate;
+    if (effectiveEnd <= effectiveStart) {
+      throw new BadRequestError('End date must be after start date');
+    }
 
-  const changes = computeChanges(
-    existing as unknown as Record<string, unknown>,
-    updated as unknown as Record<string, unknown>,
-  );
-  if (changes) {
-    await writeAuditLog(prisma, {
-      entityType: 'season',
-      entityId: id,
-      action: 'update',
-      changes,
-      actor: getActor(actorId),
+    // Check for overlapping seasons (excluding self)
+    await checkSeasonOverlap(tx, effectiveStart, effectiveEnd, id);
+
+    const updated = await tx.season.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+        ...(data.priceMultiplier !== undefined ? { priceMultiplier: data.priceMultiplier } : {}),
+      },
     });
-  }
 
-  return updated;
+    const changes = computeChanges(
+      existing as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
+    );
+    if (changes) {
+      await writeAuditLog(tx as unknown as PrismaClient, {
+        entityType: 'season',
+        entityId: id,
+        action: 'update',
+        changes,
+        actor: getActor(actorId),
+      });
+    }
+
+    return updated;
+  });
 }
 
 // ─── Availability ────────────────────────────────────────
@@ -247,21 +317,39 @@ export async function checkAvailability(
     include: { roomType: true },
   });
 
-  // Find applicable season
-  const season = await prisma.season.findFirst({
+  // Find all applicable seasons for the date range
+  const seasons = await prisma.season.findMany({
     where: {
-      startDate: { lte: checkIn },
-      endDate: { gte: checkIn },
+      startDate: { lt: checkOut },
+      endDate: { gt: checkIn },
     },
+    orderBy: { startDate: 'asc' },
   });
 
-  const multiplier = season ? Number(season.priceMultiplier) : 1.0;
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
 
   return rooms
     .filter((room) => !bookedRoomIds.has(room.id))
     .map((room) => {
-      const pricePerNight = Math.round(room.roomType.basePrice * multiplier);
+      // Calculate per-night pricing based on which season each night falls in
+      let totalPrice = 0;
+      for (let i = 0; i < nights; i++) {
+        const nightDate = new Date(checkIn);
+        nightDate.setDate(nightDate.getDate() + i);
+        const season = seasons.find(
+          (s) => nightDate >= s.startDate && nightDate < s.endDate,
+        );
+        const multiplier = season ? Number(season.priceMultiplier) : 1.0;
+        totalPrice += Math.round(room.roomType.basePrice * multiplier);
+      }
+      const pricePerNight = Math.round(totalPrice / nights);
+
+      // Use first night's season multiplier as the representative
+      const firstSeason = seasons.find(
+        (s) => checkIn >= s.startDate && checkIn < s.endDate,
+      );
+      const seasonMultiplier = firstSeason ? Number(firstSeason.priceMultiplier) : 1.0;
+
       return {
         room: { id: room.id, name: room.name, status: room.status },
         roomType: {
@@ -272,8 +360,8 @@ export async function checkAvailability(
         },
         nights,
         pricePerNight,
-        totalPrice: pricePerNight * nights,
-        seasonMultiplier: multiplier,
+        totalPrice,
+        seasonMultiplier,
       };
     });
 }

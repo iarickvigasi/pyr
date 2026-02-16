@@ -10,6 +10,11 @@ export interface AuditEntry {
   actor: string;
 }
 
+/** Derive the actor string for audit logs from the authenticated user ID. */
+export function getActor(userId?: string): string {
+  return userId ? `admin:${userId}` : 'system';
+}
+
 /**
  * Write an entry to the audit_log table. Works with both PrismaClient and
  * transaction clients, so it can be called inside `prisma.$transaction()`.

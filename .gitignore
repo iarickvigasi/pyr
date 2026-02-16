@@ -15,7 +15,6 @@ out/
 .env.production
 
 # Database
-packages/backend/prisma/migrations/**/migration_lock.toml
 
 # Testing
 coverage/

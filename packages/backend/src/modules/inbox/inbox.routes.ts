@@ -56,7 +56,7 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
   server.post('/:id/messages', {
     schema: { tags: ['Inbox'], summary: 'Add a message to a conversation', params: idParamSchema, body: addMessageSchema },
   }, async (request, reply) => {
-    const message = await addMessage(app.prisma, request.params.id, request.body);
+    const message = await addMessage(app.prisma, request.params.id, request.body, request.user?.sub);
     return reply.status(201).send({ data: message });
   });
 

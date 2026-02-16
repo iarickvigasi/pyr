@@ -6,7 +6,7 @@ export const createBookingSchema = z.object({
   roomId: z.string().min(1),
   checkIn: z.string().date(),
   checkOut: z.string().date(),
-  status: z.enum(['inquiry', 'confirmed', 'checked_in', 'checked_out', 'cancelled']).default('inquiry'),
+  status: z.enum(['inquiry', 'confirmed']).default('inquiry'),
   totalPrice: z.number().int().min(0),
   source: z.string().max(100).nullish(),
   notes: z.string().max(5000).nullish(),

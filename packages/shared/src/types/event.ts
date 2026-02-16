@@ -1,4 +1,5 @@
 import type { EventType } from '../constants/event-types.js';
+import type { EventBookingStatus } from '../constants/event-booking-status.js';
 
 export interface Event {
   id: string;
@@ -17,7 +18,7 @@ export interface EventBooking {
   id: string;
   eventId: string;
   guestId: string;
-  status: 'confirmed' | 'waitlisted' | 'cancelled';
+  status: EventBookingStatus;
   createdAt: Date;
   updatedAt: Date;
 }

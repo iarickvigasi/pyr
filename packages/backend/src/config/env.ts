@@ -7,10 +7,10 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
+  DATABASE_URL: z.string().url().startsWith('postgresql://'),
+  REDIS_URL: z.string().url().startsWith('redis://'),
 
-  JWT_SECRET: z.string().min(16),
+  JWT_SECRET: z.string().min(32),
   API_KEY: z.string().min(8),
 
   IMAP_HOST: z.string().default('imap.gmx.net'),

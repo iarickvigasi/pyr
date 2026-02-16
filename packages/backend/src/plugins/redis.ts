@@ -11,16 +11,16 @@ declare module 'fastify' {
 export default fp(async function redisPlugin(fastify: FastifyInstance) {
   const redis = new Redis(fastify.config.REDIS_URL, {
     maxRetriesPerRequest: null, // Required for BullMQ
-    enableReadyCheck: false,
+    enableReadyCheck: true,
   });
 
   redis.on('error', (err: Error) => {
     fastify.log.error({ err }, 'Redis connection error');
   });
 
-  redis.on('connect', () => {
-    fastify.log.info('Redis connected');
-  });
+  // Wait for Redis to be ready before decorating
+  await redis.ping();
+  fastify.log.info('Redis connected');
 
   fastify.decorate('redis', redis);
 

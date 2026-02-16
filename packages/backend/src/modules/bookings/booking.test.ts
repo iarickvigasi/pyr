@@ -179,7 +179,7 @@ describe('Bookings API', () => {
         method: 'POST', url: '/api/v1/bookings', headers: headers(),
         payload: { guestId, roomId, checkIn: '2026-06-01', checkOut: '2026-06-05', totalPrice: 40000 },
       });
-      let id = JSON.parse(createRes.body).data.id;
+      const id = JSON.parse(createRes.body).data.id;
       let lastRes = createRes;
 
       for (const status of transitions) {

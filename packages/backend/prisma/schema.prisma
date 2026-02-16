@@ -7,4 +7,363 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Models will be added in E2 (Database Design & Backend API)
+// ─── Enums ───────────────────────────────────────────────
+
+enum BookingStatus {
+  inquiry
+  confirmed
+  checked_in
+  checked_out
+  cancelled
+
+  @@map("booking_status")
+}
+
+enum EventType {
+  puppy_yoga
+  beach_walk
+  coffee_cake_cuddles
+  retreat
+
+  @@map("event_type")
+}
+
+enum Channel {
+  email
+  whatsapp
+  instagram
+  telegram
+  gyg
+  viator
+  bookretreats
+  tripaneer
+
+  @@map("channel")
+}
+
+enum RoomStatus {
+  available
+  occupied
+  maintenance
+
+  @@map("room_status")
+}
+
+enum ConversationStatus {
+  open
+  closed
+
+  @@map("conversation_status")
+}
+
+enum MessageDirection {
+  in
+  out
+
+  @@map("message_direction")
+}
+
+enum AiDraftStatus {
+  pending
+  approved
+  edited
+  rejected
+
+  @@map("ai_draft_status")
+}
+
+enum EventBookingStatus {
+  confirmed
+  waitlisted
+  cancelled
+
+  @@map("event_booking_status")
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  cancelled
+
+  @@map("invoice_status")
+}
+
+enum PaymentMethod {
+  paypal
+  bank_transfer
+  cash
+
+  @@map("payment_method")
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+
+  @@map("audit_action")
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
+model Guest {
+  id           String    @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  language     String    @default("en") @db.VarChar(2)
+  dietaryNeeds String?   @map("dietary_needs")
+  source       String?
+  tags         String[]  @default([])
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  bookings      Booking[]
+  eventBookings EventBooking[]
+  conversations Conversation[]
+  invoices      Invoice[]
+
+  @@index([email])
+  @@index([name])
+  @@index([deletedAt])
+  @@map("guests")
+}
+
+model RoomType {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  basePrice    Int      @map("base_price") // cents
+  maxOccupancy Int      @map("max_occupancy")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  rooms Room[]
+
+  @@map("room_types")
+}
+
+model Season {
+  id              String   @id @default(cuid())
+  name            String
+  startDate       DateTime @map("start_date") @db.Date
+  endDate         DateTime @map("end_date") @db.Date
+  priceMultiplier Decimal  @map("price_multiplier") @db.Decimal(4, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("seasons")
+}
+
+model Room {
+  id         String     @id @default(cuid())
+  roomTypeId String     @map("room_type_id")
+  name       String     @unique
+  status     RoomStatus @default(available)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  roomType RoomType  @relation(fields: [roomTypeId], references: [id])
+  bookings Booking[]
+
+  @@index([roomTypeId])
+  @@map("rooms")
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  guestId    String        @map("guest_id")
+  roomId     String        @map("room_id")
+  checkIn    DateTime      @map("check_in") @db.Date
+  checkOut   DateTime      @map("check_out") @db.Date
+  status     BookingStatus @default(inquiry)
+  totalPrice Int           @map("total_price") // cents
+  source     String?
+  notes      String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at")
+
+  guest          Guest           @relation(fields: [guestId], references: [id])
+  room           Room            @relation(fields: [roomId], references: [id])
+  calendarEvents CalendarEvent[]
+  invoices       Invoice[]
+
+  @@index([guestId])
+  @@index([roomId])
+  @@index([status])
+  @@index([checkIn, checkOut])
+  @@index([deletedAt])
+  @@map("bookings")
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  type        EventType
+  title       String
+  date        DateTime  @db.Date
+  time        String    @db.VarChar(5) // HH:MM
+  capacity    Int
+  location    String?
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  eventBookings  EventBooking[]
+  calendarEvents CalendarEvent[]
+
+  @@index([date])
+  @@index([type])
+  @@map("events")
+}
+
+model EventBooking {
+  id        String             @id @default(cuid())
+  eventId   String             @map("event_id")
+  guestId   String             @map("guest_id")
+  status    EventBookingStatus @default(confirmed)
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [eventId], references: [id])
+  guest Guest @relation(fields: [guestId], references: [id])
+
+  @@unique([eventId, guestId])
+  @@map("event_bookings")
+}
+
+model Conversation {
+  id            String             @id @default(cuid())
+  guestId       String             @map("guest_id")
+  channel       Channel
+  subject       String?
+  status        ConversationStatus @default(open)
+  lastMessageAt DateTime?          @map("last_message_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  guest    Guest     @relation(fields: [guestId], references: [id])
+  messages Message[]
+
+  @@index([guestId])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String           @map("conversation_id")
+  direction      MessageDirection
+  content        String
+  channel        Channel
+  messageId      String?          @map("message_id") // email Message-ID header
+  inReplyTo      String?          @map("in_reply_to") // email In-Reply-To header
+  references     String?          // email References header
+  sentAt         DateTime         @map("sent_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  aiDrafts     AiDraft[]
+
+  @@index([conversationId])
+  @@index([sentAt])
+  @@map("messages")
+}
+
+model AiDraft {
+  id             String        @id @default(cuid())
+  conversationId String        @map("conversation_id")
+  messageId      String?       @map("message_id") // optional: linked to triggering message
+  content        String
+  status         AiDraftStatus @default(pending)
+  model          String
+  tokensUsed     Int           @map("tokens_used")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  message Message? @relation(fields: [messageId], references: [id])
+
+  @@index([conversationId])
+  @@index([status])
+  @@map("ai_drafts")
+}
+
+model CalendarEvent {
+  id         String    @id @default(cuid())
+  bookingId  String?   @map("booking_id")
+  eventId    String?   @map("event_id")
+  caldavUid  String?   @map("caldav_uid")
+  lastSynced DateTime? @map("last_synced")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  event   Event?   @relation(fields: [eventId], references: [id])
+
+  @@index([bookingId])
+  @@index([eventId])
+  @@map("calendar_events")
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  bookingId       String        @map("booking_id")
+  guestId         String        @map("guest_id")
+  invoiceNumber   String        @unique @map("invoice_number")
+  amount          Int           // cents
+  status          InvoiceStatus @default(draft)
+  paypalInvoiceId String?       @map("paypal_invoice_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  booking  Booking   @relation(fields: [bookingId], references: [id])
+  guest    Guest     @relation(fields: [guestId], references: [id])
+  payments Payment[]
+
+  @@index([bookingId])
+  @@index([guestId])
+  @@map("invoices")
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  invoiceId  String        @map("invoice_id")
+  amount     Int           // cents
+  method     PaymentMethod
+  receivedAt DateTime      @map("received_at")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  action     AuditAction
+  changes    Json?
+  actor      String      // "admin:<id>" or "system" or "api-key"
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_log")
+}

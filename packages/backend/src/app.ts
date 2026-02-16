@@ -11,6 +11,12 @@ import prismaPlugin from './plugins/prisma.js';
 import authPlugin from './plugins/auth.js';
 import redisPlugin from './plugins/redis.js';
 import swaggerPlugin from './plugins/swagger.js';
+import authRoutes from './modules/auth/auth.routes.js';
+import guestRoutes from './modules/guests/guest.routes.js';
+import roomRoutes from './modules/rooms/room.routes.js';
+import bookingRoutes from './modules/bookings/booking.routes.js';
+import eventRoutes from './modules/events/event.routes.js';
+import inboxRoutes from './modules/inbox/inbox.routes.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -47,11 +53,13 @@ export async function buildApp() {
     credentials: true,
   });
 
-  // Rate limiting
-  await app.register(rateLimit, {
-    max: 100,
-    timeWindow: '1 minute',
-  });
+  // Rate limiting (disabled in test to avoid cross-test interference)
+  if (env.NODE_ENV !== 'test') {
+    await app.register(rateLimit, {
+      max: 100,
+      timeWindow: '1 minute',
+    });
+  }
 
   // Infrastructure plugins
   await app.register(swaggerPlugin);
@@ -64,8 +72,13 @@ export async function buildApp() {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
 
-  // API routes will be registered here in later epics
-  // await app.register(guestRoutes, { prefix: '/api/v1/guests' });
+  // API routes
+  await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(guestRoutes, { prefix: '/api/v1/guests' });
+  await app.register(roomRoutes, { prefix: '/api/v1' });
+  await app.register(bookingRoutes, { prefix: '/api/v1/bookings' });
+  await app.register(eventRoutes, { prefix: '/api/v1/events' });
+  await app.register(inboxRoutes, { prefix: '/api/v1/conversations' });
 
   return app;
 }

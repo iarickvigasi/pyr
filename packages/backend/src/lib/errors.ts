@@ -1,3 +1,10 @@
+/**
+ * Base error class for all application errors. The error handler in
+ * `error-handler.ts` maps these to JSON `{ error: { code, message, details? } }`.
+ *
+ * Subclasses: NotFoundError (404), ConflictError (409), BadRequestError (400),
+ * UnauthorizedError (401), UnprocessableError (422).
+ */
 export class AppError extends Error {
   constructor(
     public readonly statusCode: number,

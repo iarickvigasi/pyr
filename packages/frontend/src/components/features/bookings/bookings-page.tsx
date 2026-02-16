@@ -1,0 +1,97 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BookingFilters } from './booking-filters';
+import { BookingTable } from './booking-table';
+import { BookingFormDialog } from './booking-form-dialog';
+import { useBookings, useUpdateBooking } from '@/lib/hooks/use-bookings';
+import { useDebounce } from '@/lib/hooks/use-debounce';
+import { toast } from 'sonner';
+
+export function BookingsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [status, setStatus] = useState(searchParams.get('status') ?? 'all');
+  const [from, setFrom] = useState(searchParams.get('from') ?? '');
+  const [to, setTo] = useState(searchParams.get('to') ?? '');
+  const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const [showCreate, setShowCreate] = useState(searchParams.get('new') === '1');
+
+  const debouncedSearch = useDebounce(search);
+
+  const params: Record<string, string | undefined> = {
+    status: status === 'all' ? undefined : status,
+    from: from || undefined,
+    to: to || undefined,
+    search: debouncedSearch || undefined,
+    limit: '20',
+  };
+
+  const { data, isLoading } = useBookings(params);
+  const updateBooking = useUpdateBooking();
+
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (status !== 'all') p.set('status', status);
+    if (from) p.set('from', from);
+    if (to) p.set('to', to);
+    if (search) p.set('search', search);
+    const qs = p.toString();
+    router.replace(`/bookings${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [status, from, to, search, router]);
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await updateBooking.mutateAsync({ id, status: newStatus });
+      toast.success(`Booking ${newStatus.replace('_', ' ')}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Bookings</h1>
+        <Button onClick={() => setShowCreate(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Booking
+        </Button>
+      </div>
+
+      <BookingFilters
+        status={status}
+        from={from}
+        to={to}
+        search={search}
+        onStatusChange={setStatus}
+        onFromChange={setFrom}
+        onToChange={setTo}
+        onSearchChange={setSearch}
+      />
+
+      <BookingTable
+        bookings={data?.data ?? []}
+        isLoading={isLoading}
+        onStatusChange={handleStatusChange}
+      />
+
+      {data?.hasMore && (
+        <div className="text-center">
+          <Button variant="outline" disabled>
+            Load More (pagination coming soon)
+          </Button>
+        </div>
+      )}
+
+      <BookingFormDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+      />
+    </div>
+  );
+}

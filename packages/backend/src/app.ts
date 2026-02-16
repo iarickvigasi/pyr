@@ -17,6 +17,8 @@ import roomRoutes from './modules/rooms/room.routes.js';
 import bookingRoutes from './modules/bookings/booking.routes.js';
 import eventRoutes from './modules/events/event.routes.js';
 import inboxRoutes from './modules/inbox/inbox.routes.js';
+import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
+import settingsRoutes from './modules/settings/settings.routes.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -100,6 +102,8 @@ export async function buildApp() {
   await app.register(bookingRoutes, { prefix: '/api/v1/bookings' });
   await app.register(eventRoutes, { prefix: '/api/v1/events' });
   await app.register(inboxRoutes, { prefix: '/api/v1/conversations' });
+  await app.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
+  await app.register(settingsRoutes, { prefix: '/api/v1/settings' });
 
   return app;
 }

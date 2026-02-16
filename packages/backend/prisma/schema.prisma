@@ -356,6 +356,15 @@ model Payment {
   @@map("payments")
 }
 
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("settings")
+}
+
 model AuditLog {
   id         String      @id @default(cuid())
   entityType String      @map("entity_type")

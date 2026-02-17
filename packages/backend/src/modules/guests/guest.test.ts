@@ -63,8 +63,8 @@ describe('Guests API', () => {
 
   describe('GET /api/v1/guests', () => {
     it('should return paginated list', async () => {
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Alice' } });
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Bob' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Alice', email: 'alice@test.com' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Bob', email: 'bob@test.com' } });
 
       const res = await app.inject({
         method: 'GET',
@@ -79,8 +79,8 @@ describe('Guests API', () => {
     });
 
     it('should search by name', async () => {
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Alice Smith' } });
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Bob Jones' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Alice Smith', email: 'alice@test.com' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Bob Jones', email: 'bob@test.com' } });
 
       const res = await app.inject({
         method: 'GET',
@@ -96,7 +96,7 @@ describe('Guests API', () => {
     it('should not return soft-deleted guests', async () => {
       const createRes = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'ToDelete' },
+        payload: { name: 'ToDelete', email: 'todelete@test.com' },
       });
       const id = JSON.parse(createRes.body).data.id;
 
@@ -142,7 +142,7 @@ describe('Guests API', () => {
     it('should update guest and create audit log', async () => {
       const createRes = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'John Doe' },
+        payload: { name: 'John Doe', email: 'john@test.com' },
       });
       const id = JSON.parse(createRes.body).data.id;
 
@@ -170,7 +170,7 @@ describe('Guests API', () => {
     it('should soft-delete guest', async () => {
       const createRes = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'John Doe' },
+        payload: { name: 'John Doe', email: 'john@test.com' },
       });
       const id = JSON.parse(createRes.body).data.id;
 
@@ -192,11 +192,11 @@ describe('Guests API', () => {
     it('should merge two guests', async () => {
       const res1 = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'Primary Guest', tags: ['tag1'] },
+        payload: { name: 'Primary Guest', email: 'primary@test.com', tags: ['tag1'] },
       });
       const res2 = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'Secondary Guest', tags: ['tag2'] },
+        payload: { name: 'Secondary Guest', email: 'secondary@test.com', tags: ['tag2'] },
       });
       const primaryId = JSON.parse(res1.body).data.id;
       const secondaryId = JSON.parse(res2.body).data.id;
@@ -222,11 +222,11 @@ describe('Guests API', () => {
       // Create two guests
       const res1 = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'Primary' },
+        payload: { name: 'Primary', email: 'primary@test.com' },
       });
       const res2 = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'Secondary' },
+        payload: { name: 'Secondary', email: 'secondary@test.com' },
       });
       const primaryId = JSON.parse(res1.body).data.id;
       const secondaryId = JSON.parse(res2.body).data.id;
@@ -252,9 +252,9 @@ describe('Guests API', () => {
   describe('Edge cases', () => {
     it('should support cursor pagination', async () => {
       // Create 3 guests
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'A' } });
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'B' } });
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'C' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'A', email: 'a@test.com' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'B', email: 'b@test.com' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'C', email: 'c@test.com' } });
 
       // Get first page with limit=2
       const page1 = await app.inject({
@@ -275,8 +275,8 @@ describe('Guests API', () => {
     });
 
     it('should filter by tag', async () => {
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'VIP', tags: ['vip'] } });
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Regular' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'VIP', email: 'vip@test.com', tags: ['vip'] } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Regular', email: 'regular@test.com' } });
 
       const res = await app.inject({
         method: 'GET', url: '/api/v1/guests?tag=vip', headers: headers(),
@@ -287,8 +287,8 @@ describe('Guests API', () => {
     });
 
     it('should filter by source', async () => {
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Web Guest', source: 'website' } });
-      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'IG Guest', source: 'instagram' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'Web Guest', email: 'web@test.com', source: 'website' } });
+      await app.inject({ method: 'POST', url: '/api/v1/guests', headers: headers(), payload: { name: 'IG Guest', email: 'ig@test.com', source: 'instagram' } });
 
       const res = await app.inject({
         method: 'GET', url: '/api/v1/guests?source=website', headers: headers(),
@@ -328,7 +328,7 @@ describe('Guests API', () => {
     it('should create audit log on guest creation', async () => {
       const createRes = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'Audited Guest' },
+        payload: { name: 'Audited Guest', email: 'audited@test.com' },
       });
       const id = JSON.parse(createRes.body).data.id;
 
@@ -341,7 +341,7 @@ describe('Guests API', () => {
     it('should reject merging a guest with itself', async () => {
       const createRes = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'Solo' },
+        payload: { name: 'Solo', email: 'solo@test.com' },
       });
       const id = JSON.parse(createRes.body).data.id;
 

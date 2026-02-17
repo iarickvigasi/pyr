@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   settingKeyParamSchema,
   upsertSettingBodySchema,
+  upsertSettingByKeyBodySchema,
   settingResponseSchema,
   settingsListResponseSchema,
 } from './settings.schema.js';
@@ -34,6 +35,19 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
   }, async (request) => {
     const { key } = request.params as { key: string };
     const setting = await getSetting(app.prisma, key);
+    return { data: setting };
+  });
+
+  server.post('/', {
+    schema: {
+      tags: ['Settings'],
+      summary: 'Create or update a setting (key in body)',
+      body: upsertSettingByKeyBodySchema,
+      response: { 200: settingResponseSchema },
+    },
+  }, async (request) => {
+    const { key, value } = request.body as { key: string; value: unknown };
+    const setting = await upsertSetting(app.prisma, key, value, request.user.sub);
     return { data: setting };
   });
 

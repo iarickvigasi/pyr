@@ -21,7 +21,7 @@ export async function createTestGuest(
     method: 'POST',
     url: '/api/v1/guests',
     headers: authHeaders(token),
-    payload: { name: 'Test Guest', ...overrides },
+    payload: { name: 'Test Guest', email: `guest-${Date.now()}-${Math.random().toString(36).slice(2)}@test.com`, ...overrides },
   });
   const body = parseBody(res);
   const data = body.data as Record<string, unknown>;

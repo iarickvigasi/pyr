@@ -10,8 +10,8 @@ CREATE INDEX IF NOT EXISTS idx_guests_created_at ON guests(created_at DESC) WHER
 -- Index for active bookings (most common query)
 CREATE INDEX IF NOT EXISTS idx_bookings_active ON bookings(status, check_in, check_out) WHERE deleted_at IS NULL AND status IN ('inquiry', 'confirmed', 'checked_in');
 
--- Index for upcoming events (most common query)
-CREATE INDEX IF NOT EXISTS idx_events_upcoming ON events(date, time) WHERE date >= CURRENT_DATE;
+-- Index for events ordered by date/time (most common query)
+CREATE INDEX IF NOT EXISTS idx_events_upcoming ON events(date, time);
 
 -- Index for open conversations (most common query in inbox)
 CREATE INDEX IF NOT EXISTS idx_conversations_open ON conversations(status, last_message_at DESC) WHERE status = 'open';

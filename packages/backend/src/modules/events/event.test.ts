@@ -20,7 +20,7 @@ describe('Events API', () => {
   async function createGuest(name: string): Promise<string> {
     const res = await app.inject({
       method: 'POST', url: '/api/v1/guests', headers: headers(),
-      payload: { name },
+      payload: { name, email: `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}@test.com` },
     });
     return JSON.parse(res.body).data.id;
   }

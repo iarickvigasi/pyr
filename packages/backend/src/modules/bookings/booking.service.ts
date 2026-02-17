@@ -27,8 +27,8 @@ async function checkOverlap(
     roomId,
     deletedAt: null,
     status: { in: ['inquiry', 'confirmed', 'checked_in'] },
-    checkIn: { lte: checkOut },
-    checkOut: { gte: checkIn },
+    checkIn: { lt: checkOut },
+    checkOut: { gt: checkIn },
   };
   if (excludeBookingId) {
     where.id = { not: excludeBookingId };

@@ -8,6 +8,11 @@ export const upsertSettingBodySchema = z.object({
   value: z.unknown(),
 });
 
+export const upsertSettingByKeyBodySchema = z.object({
+  key: z.string().min(1),
+  value: z.unknown(),
+});
+
 export const settingResponseSchema = z.object({
   data: z.object({
     key: z.string(),

@@ -119,7 +119,7 @@ describe('Rooms API', () => {
       // Create a guest and book Room A
       const guestRes = await app.inject({
         method: 'POST', url: '/api/v1/guests', headers: headers(),
-        payload: { name: 'Alice' },
+        payload: { name: 'Alice', email: 'alice@test.com' },
       });
       const guestId = JSON.parse(guestRes.body).data.id;
 

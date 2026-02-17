@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getTestApp, cleanDatabase, getAuthToken, prisma } from '../../test/setup.js';
+import { createTestGuest, createTestBooking, createTestEvent } from '../../test/factories.js';
 
 describe('Guests API', () => {
   let app: FastifyInstance;
@@ -135,6 +136,54 @@ describe('Guests API', () => {
         headers: headers(),
       });
       expect(res.statusCode).toBe(404);
+    });
+
+    it('should return guest with bookings and eventBookings', async () => {
+      const { id: guestId } = await createTestGuest(app, token);
+      await createTestBooking(app, token, { guestId });
+      const { id: eventId } = await createTestEvent(app, token);
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/events/${eventId}/book`,
+        headers: headers(),
+        payload: { guestId },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/guests/${guestId}`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.bookings).toHaveLength(1);
+      expect(body.data.bookings[0].room).toBeDefined();
+      expect(body.data.bookings[0].room.roomType.name).toBeDefined();
+      expect(body.data.eventBookings).toHaveLength(1);
+      expect(body.data.eventBookings[0].event.title).toBe('Test Yoga');
+      expect(body.data._count.bookings).toBe(1);
+      expect(body.data._count.eventBookings).toBe(1);
+    });
+
+    it('should not include soft-deleted bookings in detail', async () => {
+      const { id: guestId } = await createTestGuest(app, token);
+      const { id: bookingId } = await createTestBooking(app, token, { guestId });
+      await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/bookings/${bookingId}`,
+        headers: headers(),
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/guests/${guestId}`,
+        headers: headers(),
+      });
+
+      const body = JSON.parse(res.body);
+      expect(body.data.bookings).toHaveLength(0);
+      expect(body.data._count.bookings).toBe(0);
     });
   });
 
@@ -336,6 +385,24 @@ describe('Guests API', () => {
         where: { entityType: 'guest', entityId: id, action: 'create' },
       });
       expect(logs).toHaveLength(1);
+    });
+
+    it('should filter by language', async () => {
+      await app.inject({
+        method: 'POST', url: '/api/v1/guests', headers: headers(),
+        payload: { name: 'German Guest', email: 'de@test.com', language: 'de' },
+      });
+      await app.inject({
+        method: 'POST', url: '/api/v1/guests', headers: headers(),
+        payload: { name: 'English Guest', email: 'en@test.com', language: 'en' },
+      });
+
+      const res = await app.inject({
+        method: 'GET', url: '/api/v1/guests?language=de', headers: headers(),
+      });
+      const body = JSON.parse(res.body);
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0].name).toBe('German Guest');
     });
 
     it('should reject merging a guest with itself', async () => {

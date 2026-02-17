@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Phone, Tag, MoreVertical, Trash2 } from 'lucide-react';
+import { Mail, Phone, Tag, MoreVertical, Trash2, Eye, Edit } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -16,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -24,9 +26,10 @@ import { toast } from 'sonner';
 
 interface GuestsTableProps {
   guests: Guest[];
+  onEdit: (guest: Guest) => void;
 }
 
-export function GuestsTable({ guests }: GuestsTableProps) {
+export function GuestsTable({ guests, onEdit }: GuestsTableProps) {
   const router = useRouter();
   const deleteGuest = useDeleteGuest();
   const { confirmDialog, confirm } = useConfirmDialog();
@@ -43,7 +46,7 @@ export function GuestsTable({ guests }: GuestsTableProps) {
       try {
         await deleteGuest.mutateAsync(guest.id);
         toast.success('Guest deleted successfully');
-      } catch (error) {
+      } catch {
         toast.error('Failed to delete guest');
       }
     }
@@ -131,6 +134,22 @@ export function GuestsTable({ guests }: GuestsTableProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/guests/${guest.id}`} onClick={(e) => e.stopPropagation()}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(guest);
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={(e) => {

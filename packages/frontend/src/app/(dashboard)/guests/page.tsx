@@ -1,10 +1,11 @@
-export default function GuestsPage() {
+import { Suspense } from 'react';
+import { GuestsPage } from '@/components/features/guests/guests-page';
+import { Skeleton } from '@/components/ui/skeleton';
+
+export default function Page() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Guests</h1>
-      <p className="mt-2 text-muted-foreground">
-        Guest list with search, filters, and tags — implemented in E3/E5.
-      </p>
-    </div>
+    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+      <GuestsPage />
+    </Suspense>
   );
 }

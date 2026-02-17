@@ -1,10 +1,9 @@
-export default function GuestDetailPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold">Guest Profile</h1>
-      <p className="mt-2 text-muted-foreground">
-        Guest detail with timeline — implemented in E3/E5.
-      </p>
-    </div>
-  );
+'use client';
+
+import { use } from 'react';
+import { GuestDetail } from '@/components/features/guests/guest-detail';
+
+export default function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  return <GuestDetail id={id} />;
 }

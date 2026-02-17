@@ -26,27 +26,37 @@ export interface Guest {
 }
 
 export interface GuestWithHistory extends Guest {
+  _count: { bookings: number; conversations: number; eventBookings: number };
   bookings?: Array<{
     id: string;
     checkIn: string;
     checkOut: string;
     status: string;
     totalPrice: number;
+    createdAt: string;
+    room: { name: string; roomType: { name: string } };
   }>;
   eventBookings?: Array<{
     id: string;
-    event: {
-      id: string;
-      title: string;
-      date: string;
-    };
+    status: string;
+    createdAt: string;
+    event: { id: string; title: string; date: string; type: string; time: string };
+  }>;
+  conversations?: Array<{
+    id: string;
+    channel: string;
+    subject: string | null;
+    status: string;
+    lastMessageAt: string | null;
+    createdAt: string;
   }>;
 }
 
 export interface GuestFilters {
   search?: string;
   source?: string;
-  tags?: string[];
+  tag?: string;
+  language?: string;
   cursor?: string;
   limit?: number;
 }
@@ -64,16 +74,28 @@ export interface CreateGuestData {
 
 export interface UpdateGuestData extends Partial<CreateGuestData> {}
 
+export interface MergeGuestsInput {
+  primaryId: string;
+  secondaryId: string;
+}
+
+export interface GuestListResponse {
+  data: Guest[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
 // Hooks
 export function useGuests(filters?: GuestFilters) {
   return useQuery({
     queryKey: guestKeys.list(filters),
     queryFn: async () => {
-      const response = await api.get<{ data: Guest[]; nextCursor: string | null; hasMore: boolean }>(
+      const response = await api.get<GuestListResponse>(
         '/api/v1/guests',
         { params: filters as Record<string, string | number | boolean | undefined> }
       );
-      return response.data;
+      // Return the full response including nextCursor and hasMore
+      return response;
     },
   });
 }
@@ -135,15 +157,16 @@ export function useMergeGuests() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
+    mutationFn: async ({ primaryId, secondaryId }: MergeGuestsInput) => {
       const response = await api.post<{ data: Guest }>('/api/v1/guests/merge', {
-        sourceId,
-        targetId,
+        primaryId,
+        secondaryId,
       });
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: guestKeys.details() });
     },
   });
 }

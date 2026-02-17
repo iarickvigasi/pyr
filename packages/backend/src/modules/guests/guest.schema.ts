@@ -31,6 +31,7 @@ export const listGuestsQuerySchema = paginationQuerySchema.extend({
   search: z.string().optional(),
   tag: z.string().optional(),
   source: z.string().optional(),
+  language: z.enum(['en', 'de']).optional(),
 });
 
 export type ListGuestsQuery = z.infer<typeof listGuestsQuerySchema>;

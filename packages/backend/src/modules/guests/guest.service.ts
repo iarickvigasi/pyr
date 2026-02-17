@@ -5,7 +5,7 @@ import { notDeleted, computeChanges } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../../lib/errors.js';
 import type { CreateGuestBody, UpdateGuestBody, ListGuestsQuery } from './guest.schema.js';
-import type { Guest, GuestWithRelations } from '../../types/entities.js';
+import type { Guest, GuestDetailWithRelations } from '../../types/entities.js';
 
 export async function listGuests(
   prisma: PrismaClient,
@@ -25,6 +25,9 @@ export async function listGuests(
   }
   if (query.source) {
     where.source = query.source;
+  }
+  if (query.language) {
+    where.language = query.language;
   }
 
   const guests = await prisma.guest.findMany({
@@ -47,10 +50,36 @@ export async function listGuests(
 export async function getGuest(
   prisma: PrismaClient,
   id: string,
-): Promise<GuestWithRelations & { _count: { bookings: number; conversations: number; eventBookings: number } }> {
+): Promise<GuestDetailWithRelations> {
   const guest = await prisma.guest.findFirst({
     where: { id, ...notDeleted },
     include: {
+      bookings: {
+        where: notDeleted,
+        include: {
+          room: { include: { roomType: { select: { name: true } } } },
+        },
+        orderBy: { checkIn: 'desc' },
+      },
+      eventBookings: {
+        include: {
+          event: {
+            select: { id: true, title: true, date: true, type: true, time: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+      conversations: {
+        select: {
+          id: true,
+          channel: true,
+          subject: true,
+          status: true,
+          lastMessageAt: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      },
       _count: {
         select: {
           bookings: { where: notDeleted },
@@ -65,7 +94,7 @@ export async function getGuest(
     throw new NotFoundError('Guest', id);
   }
 
-  return guest as GuestWithRelations & { _count: { bookings: number; conversations: number; eventBookings: number } };
+  return guest as unknown as GuestDetailWithRelations;
 }
 
 export async function createGuest(

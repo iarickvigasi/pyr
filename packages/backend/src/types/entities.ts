@@ -31,6 +31,34 @@ export type GuestWithRelations = Guest & {
   invoices?: Invoice[];
 };
 
+// Booking with room data (used in guest detail)
+export type GuestBookingWithRoom = Booking & {
+  room: Room & { roomType: Pick<RoomType, 'name'> };
+};
+
+// EventBooking with event data (used in guest detail)
+export type GuestEventBookingWithEvent = EventBooking & {
+  event: Pick<Event, 'id' | 'title' | 'date' | 'type' | 'time'>;
+};
+
+// Conversation summary (used in guest detail)
+export type GuestConversationSummary = Pick<
+  Conversation,
+  'id' | 'channel' | 'subject' | 'status' | 'lastMessageAt' | 'createdAt'
+>;
+
+// Full guest detail with rich relations
+export type GuestDetailWithRelations = Guest & {
+  bookings: GuestBookingWithRoom[];
+  eventBookings: GuestEventBookingWithEvent[];
+  conversations: GuestConversationSummary[];
+  _count: {
+    bookings: number;
+    conversations: number;
+    eventBookings: number;
+  };
+};
+
 // ──────────────────────────────────────────────────────────────
 // Room Types
 // ──────────────────────────────────────────────────────────────

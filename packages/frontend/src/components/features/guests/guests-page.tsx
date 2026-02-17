@@ -1,32 +1,84 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { GuestsTable } from './guests-table';
 import { GuestFormDialog } from './guest-form-dialog';
-import { useGuests } from '@/lib/hooks/use-guests';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { GuestFilters } from './guest-filters';
+import { useGuests, type Guest } from '@/lib/hooks/use-guests';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 
 export function GuestsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Debounce search
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    const timer = setTimeout(() => {
-      setDebouncedSearch(value);
-    }, 300);
-    return () => clearTimeout(timer);
+  // Initialize filter state from URL params
+  const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const [source, setSource] = useState(searchParams.get('source') ?? '');
+  const [tag, setTag] = useState(searchParams.get('tag') ?? '');
+  const [language, setLanguage] = useState(searchParams.get('language') ?? '');
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allGuests, setAllGuests] = useState<Guest[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editGuest, setEditGuest] = useState<Guest | undefined>(undefined);
+
+  const debouncedSearch = useDebounce(search, 300);
+
+  const filters = {
+    search: debouncedSearch || undefined,
+    source: source || undefined,
+    tag: tag || undefined,
+    language: language || undefined,
+    cursor,
+    limit: 20,
   };
 
-  const { data, isLoading, error } = useGuests({
-    search: debouncedSearch || undefined,
-  });
+  const { data, isLoading, error } = useGuests(filters);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCursor(undefined);
+    setAllGuests([]);
+  }, [debouncedSearch, source, tag, language]);
+
+  // Accumulate pages
+  useEffect(() => {
+    if (data?.data) {
+      if (!cursor) {
+        setAllGuests(data.data);
+      } else {
+        setAllGuests((prev) => [...prev, ...data.data]);
+      }
+    }
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync filters to URL
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (search) p.set('search', search);
+    if (source) p.set('source', source);
+    if (tag) p.set('tag', tag);
+    if (language) p.set('language', language);
+    const qs = p.toString();
+    router.replace(`/guests${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [search, source, tag, language, router]);
+
+  const handleLoadMore = () => {
+    if (data?.nextCursor) {
+      setCursor(data.nextCursor);
+    }
+  };
+
+  const handleClear = () => {
+    setSearch('');
+    setSource('');
+    setTag('');
+    setLanguage('');
+  };
 
   if (error) {
     return (
@@ -48,6 +100,9 @@ export function GuestsPage() {
     );
   }
 
+  const isEmpty = !isLoading && allGuests.length === 0;
+  const hasActiveFilters = debouncedSearch || source || tag || language;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -56,7 +111,7 @@ export function GuestsPage() {
           <h1 className="text-3xl font-bold">Guests</h1>
           <p className="text-muted-foreground">Manage your guest database</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={() => { setEditGuest(undefined); setShowCreate(true); }}>
           <Plus className="mr-2 h-4 w-4" />
           Add Guest
         </Button>
@@ -70,55 +125,83 @@ export function GuestsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? <Skeleton className="h-8 w-16" /> : data?.length ?? 0}
+              {isLoading && allGuests.length === 0 ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                allGuests.length
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and Filters */}
+      {/* Filters + Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search guests by name, email, or phone..."
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
-          </div>
+          <GuestFilters
+            search={search}
+            source={source}
+            tag={tag}
+            language={language}
+            onSearchChange={setSearch}
+            onSourceChange={setSource}
+            onTagChange={setTag}
+            onLanguageChange={setLanguage}
+            onClear={handleClear}
+          />
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading && allGuests.length === 0 ? (
             <div className="space-y-3">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
-          ) : data?.length === 0 ? (
+          ) : isEmpty ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                {debouncedSearch ? 'No guests found matching your search.' : 'No guests yet.'}
+                {hasActiveFilters
+                  ? 'No guests found matching your filters.'
+                  : 'No guests yet.'}
               </p>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Your First Guest
-              </Button>
+              {!hasActiveFilters && (
+                <Button onClick={() => { setEditGuest(undefined); setShowCreate(true); }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Your First Guest
+                </Button>
+              )}
             </div>
           ) : (
-            <GuestsTable guests={data ?? []} />
+            <>
+              <GuestsTable
+                guests={allGuests}
+                onEdit={(guest) => { setEditGuest(guest); setShowCreate(true); }}
+              />
+              {data?.hasMore && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMore}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Loading...' : 'Load More'}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
 
-      {/* Create Dialog */}
-      <GuestFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
+      {/* Create / Edit Dialog */}
+      <GuestFormDialog
+        open={showCreate}
+        onOpenChange={(open) => {
+          setShowCreate(open);
+          if (!open) setEditGuest(undefined);
+        }}
+        guest={editGuest}
+      />
     </div>
   );
 }

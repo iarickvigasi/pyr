@@ -95,6 +95,15 @@ export default async function roomRoutes(app: FastifyInstance): Promise<void> {
   server.get('/availability', {
     schema: { tags: ['Availability'], summary: 'Check room availability for date range', querystring: availabilityQuerySchema },
   }, async (request) => {
-    return { data: await checkAvailability(app.prisma, request.query) };
+    const rooms = await checkAvailability(app.prisma, request.query);
+    return {
+      data: rooms.map((r) => ({
+        roomId: r.room.id,
+        roomName: r.room.name,
+        roomTypeName: r.roomType.name,
+        totalPrice: r.totalPrice,
+        nightlyBreakdown: [] as { date: string; price: number }[],
+      })),
+    };
   });
 }

@@ -264,8 +264,9 @@ export function BookingFormDialog({
                       <SelectContent>
                         {availabilityQuery.data.data.map((r) => (
                           <SelectItem key={r.roomId} value={r.roomId}>
-                            {r.roomName} ({r.roomTypeName}) &mdash;{' '}
-                            {formatCurrency(r.totalPrice)}
+                            <span>
+                              {r.roomName} ({r.roomTypeName}) — {formatCurrency(r.totalPrice)}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>

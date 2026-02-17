@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file ../../.env src/server.ts",
     "build": "tsc && copyfiles -u 1 'prisma/**/*' dist/",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",

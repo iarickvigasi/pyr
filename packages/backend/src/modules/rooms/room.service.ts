@@ -1,7 +1,8 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, Prisma } from '@prisma/client';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { computeChanges } from '../../lib/prisma-helpers.js';
 import { NotFoundError, BadRequestError, ConflictError } from '../../lib/errors.js';
+import type { PrismaClientOrTx } from '../../types/prisma.js';
 import type {
   CreateRoomTypeBody,
   UpdateRoomTypeBody,
@@ -11,6 +12,7 @@ import type {
   UpdateSeasonBody,
   AvailabilityQuery,
 } from './room.schema.js';
+import type { RoomType, RoomWithType, Season } from '../../types/entities.js';
 
 function handleUniqueViolation(err: unknown, entity: string): never {
   if (
@@ -25,35 +27,36 @@ function handleUniqueViolation(err: unknown, entity: string): never {
 
 // ─── Room Types ──────────────────────────────────────────
 
-export async function listRoomTypes(prisma: PrismaClient): Promise<unknown[]> {
-  return prisma.roomType.findMany({
+export async function listRoomTypes(prisma: PrismaClient): Promise<(RoomType & { rooms: { id: string; name: string; status: string }[] })[]> {
+  const result = await prisma.roomType.findMany({
     include: { rooms: true },
     orderBy: { name: 'asc' },
   });
+  return result as (RoomType & { rooms: { id: string; name: string; status: string }[] })[];
 }
 
 export async function createRoomType(
   prisma: PrismaClient,
   data: CreateRoomTypeBody,
   actorId?: string,
-): Promise<unknown> {
+): Promise<RoomType> {
   return prisma.$transaction(async (tx) => {
-    let roomType;
+    let roomType: Awaited<ReturnType<typeof tx.roomType.create>> | undefined;
     try {
       roomType = await tx.roomType.create({ data });
     } catch (err) {
       handleUniqueViolation(err, 'RoomType');
     }
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'room_type',
-      entityId: roomType.id,
+      entityId: roomType!.id,
       action: 'create',
       changes: data as unknown as Record<string, unknown>,
       actor: getActor(actorId),
     });
 
-    return roomType;
+    return roomType! as RoomType;
   });
 }
 
@@ -62,12 +65,12 @@ export async function updateRoomType(
   id: string,
   data: UpdateRoomTypeBody,
   actorId?: string,
-): Promise<unknown> {
+): Promise<RoomType> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.roomType.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('RoomType', id);
 
-    let updated;
+    let updated: Awaited<ReturnType<typeof tx.roomType.update>> | undefined;
     try {
       updated = await tx.roomType.update({ where: { id }, data });
     } catch (err) {
@@ -76,10 +79,10 @@ export async function updateRoomType(
 
     const changes = computeChanges(
       existing as unknown as Record<string, unknown>,
-      updated as unknown as Record<string, unknown>,
+      updated! as unknown as Record<string, unknown>,
     );
     if (changes) {
-      await writeAuditLog(tx as unknown as PrismaClient, {
+      await writeAuditLog(tx, {
         entityType: 'room_type',
         entityId: id,
         action: 'update',
@@ -88,44 +91,45 @@ export async function updateRoomType(
       });
     }
 
-    return updated;
+    return updated! as RoomType;
   });
 }
 
 // ─── Rooms ───────────────────────────────────────────────
 
-export async function listRooms(prisma: PrismaClient): Promise<unknown[]> {
-  return prisma.room.findMany({
+export async function listRooms(prisma: PrismaClient): Promise<RoomWithType[]> {
+  const result = await prisma.room.findMany({
     include: { roomType: true },
     orderBy: { name: 'asc' },
   });
+  return result as RoomWithType[];
 }
 
 export async function createRoom(
   prisma: PrismaClient,
   data: CreateRoomBody,
   actorId?: string,
-): Promise<unknown> {
+): Promise<RoomWithType> {
   return prisma.$transaction(async (tx) => {
     const roomType = await tx.roomType.findUnique({ where: { id: data.roomTypeId } });
     if (!roomType) throw new NotFoundError('RoomType', data.roomTypeId);
 
-    let room;
+    let room: Awaited<ReturnType<typeof tx.room.create>> | undefined;
     try {
       room = await tx.room.create({ data });
     } catch (err) {
       handleUniqueViolation(err, 'Room');
     }
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'room',
-      entityId: room.id,
+      entityId: room!.id,
       action: 'create',
       changes: data as unknown as Record<string, unknown>,
       actor: getActor(actorId),
     });
 
-    return room;
+    return room! as RoomWithType;
   });
 }
 
@@ -134,12 +138,12 @@ export async function updateRoom(
   id: string,
   data: UpdateRoomBody,
   actorId?: string,
-): Promise<unknown> {
+): Promise<RoomWithType> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.room.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Room', id);
 
-    let updated;
+    let updated: Awaited<ReturnType<typeof tx.room.update>> | undefined;
     try {
       updated = await tx.room.update({ where: { id }, data });
     } catch (err) {
@@ -148,10 +152,10 @@ export async function updateRoom(
 
     const changes = computeChanges(
       existing as unknown as Record<string, unknown>,
-      updated as unknown as Record<string, unknown>,
+      updated! as unknown as Record<string, unknown>,
     );
     if (changes) {
-      await writeAuditLog(tx as unknown as PrismaClient, {
+      await writeAuditLog(tx, {
         entityType: 'room',
         entityId: id,
         action: 'update',
@@ -160,30 +164,31 @@ export async function updateRoom(
       });
     }
 
-    return updated;
+    return updated! as RoomWithType;
   });
 }
 
 // ─── Seasons ─────────────────────────────────────────────
 
-export async function listSeasons(prisma: PrismaClient): Promise<unknown[]> {
-  return prisma.season.findMany({ orderBy: { startDate: 'asc' } });
+export async function listSeasons(prisma: PrismaClient): Promise<Season[]> {
+  const result = await prisma.season.findMany({ orderBy: { startDate: 'asc' } });
+  return result as Season[];
 }
 
 async function checkSeasonOverlap(
-  prisma: PrismaClient | Parameters<Parameters<PrismaClient['$transaction']>[0]>[0],
+  prisma: PrismaClientOrTx,
   startDate: Date,
   endDate: Date,
   excludeId?: string,
 ): Promise<void> {
-  const where: Record<string, unknown> = {
+  const where: Prisma.SeasonWhereInput = {
     startDate: { lt: endDate },
     endDate: { gt: startDate },
   };
   if (excludeId) {
     where.id = { not: excludeId };
   }
-  const overlap = await (prisma as PrismaClient).season.findFirst({ where: where as any });
+  const overlap = await prisma.season.findFirst({ where });
   if (overlap) {
     throw new ConflictError(`Season overlaps with existing season '${overlap.name}'`);
   }
@@ -193,7 +198,7 @@ export async function createSeason(
   prisma: PrismaClient,
   data: CreateSeasonBody,
   actorId?: string,
-): Promise<unknown> {
+): Promise<Season> {
   if (data.endDate <= data.startDate) {
     throw new BadRequestError('End date must be after start date');
   }
@@ -210,7 +215,7 @@ export async function createSeason(
       },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'season',
       entityId: season.id,
       action: 'create',
@@ -218,7 +223,7 @@ export async function createSeason(
       actor: getActor(actorId),
     });
 
-    return season;
+    return season as Season;
   });
 }
 
@@ -227,7 +232,7 @@ export async function updateSeason(
   id: string,
   data: UpdateSeasonBody,
   actorId?: string,
-): Promise<unknown> {
+): Promise<Season> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.season.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Season', id);
@@ -260,7 +265,7 @@ export async function updateSeason(
       updated as unknown as Record<string, unknown>,
     );
     if (changes) {
-      await writeAuditLog(tx as unknown as PrismaClient, {
+      await writeAuditLog(tx, {
         entityType: 'season',
         entityId: id,
         action: 'update',
@@ -269,7 +274,7 @@ export async function updateSeason(
       });
     }
 
-    return updated;
+    return updated as Season;
   });
 }
 

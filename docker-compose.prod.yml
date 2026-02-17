@@ -61,6 +61,8 @@ services:
       dockerfile: packages/backend/Dockerfile
     restart: always
     env_file: .env
+    environment:
+      - TZ=Europe/Nicosia
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,6 +88,7 @@ services:
     restart: always
     environment:
       - NEXT_PUBLIC_API_URL=https://api.puppyyogaretreat.com
+      - TZ=Europe/Nicosia
     networks:
       - frontend
     deploy:

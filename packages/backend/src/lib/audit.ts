@@ -1,6 +1,5 @@
-import type { PrismaClient, Prisma, AuditAction } from '@prisma/client';
-
-type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+import type { Prisma, AuditAction } from '@prisma/client';
+import type { PrismaClientOrTx } from '../types/prisma.js';
 
 export interface AuditEntry {
   entityType: string;
@@ -12,7 +11,9 @@ export interface AuditEntry {
 
 /** Derive the actor string for audit logs from the authenticated user ID. */
 export function getActor(userId?: string): string {
-  return userId ? `admin:${userId}` : 'system';
+  if (!userId) return 'system';
+  if (userId === 'api-key') return 'api-key';
+  return `admin:${userId}`;
 }
 
 /**
@@ -26,10 +27,10 @@ export function getActor(userId?: string): string {
  * });
  */
 export async function writeAuditLog(
-  client: PrismaClient | TransactionClient,
+  client: PrismaClientOrTx,
   entry: AuditEntry,
 ): Promise<void> {
-  await (client as PrismaClient).auditLog.create({
+  await client.auditLog.create({
     data: {
       entityType: entry.entityType,
       entityId: entry.entityId,

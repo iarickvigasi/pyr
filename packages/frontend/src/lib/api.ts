@@ -54,6 +54,7 @@ class ApiClient {
     const response = await fetch(url, {
       ...fetchOptions,
       headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -62,12 +63,6 @@ class ApiClient {
         .catch(() => ({ error: { message: response.statusText } }));
       const code = body.error?.code ?? 'UNKNOWN';
       const message = body.error?.message ?? 'Request failed';
-
-      if (response.status === 401 && typeof window !== 'undefined') {
-        localStorage.removeItem('pyr_token');
-        window.location.href = '/login';
-      }
-
       throw new ApiError(response.status, code, message);
     }
 

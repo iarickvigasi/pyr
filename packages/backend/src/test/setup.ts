@@ -22,7 +22,7 @@ export async function getTestApp(): Promise<FastifyInstance> {
 const TABLES = [
   'ai_drafts', 'messages', 'conversations', 'event_bookings',
   'calendar_events', 'payments', 'invoices', 'bookings', 'events',
-  'rooms', 'room_types', 'seasons', 'guests', 'admin_users', 'audit_log',
+  'rooms', 'room_types', 'seasons', 'guests', 'settings', 'admin_users', 'audit_log',
 ].join(', ');
 
 export async function cleanDatabase(): Promise<void> {
@@ -44,13 +44,12 @@ export async function seedAdmin(): Promise<{ id: string; email: string }> {
 
 export async function getAuthToken(testApp: FastifyInstance): Promise<string> {
   await seedAdmin();
-  const response = await testApp.inject({
-    method: 'POST',
-    url: '/api/v1/auth/login',
-    payload: { email: 'test@example.com', password: 'testpass123' },
-  });
-  const body = JSON.parse(response.body);
-  return body.token;
+  // Sign a JWT directly using the app's jwt instance — avoids relying on the
+  // login response body format (token is now in an httpOnly cookie, not the body).
+  return testApp.jwt.sign(
+    { sub: 'test_admin', role: 'admin' },
+    { expiresIn: '1h' },
+  );
 }
 
 export { prisma };

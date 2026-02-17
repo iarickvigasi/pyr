@@ -1,17 +1,18 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, Prisma } from '@prisma/client';
 import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted, computeChanges } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../../lib/errors.js';
 import type { CreateGuestBody, UpdateGuestBody, ListGuestsQuery } from './guest.schema.js';
+import type { Guest, GuestWithRelations } from '../../types/entities.js';
 
 export async function listGuests(
   prisma: PrismaClient,
   query: ListGuestsQuery,
-): Promise<PaginatedResult<Record<string, unknown>>> {
+): Promise<PaginatedResult<Guest>> {
   const limit = clampLimit(query.limit);
-  const where: Record<string, unknown> = { ...notDeleted };
+  const where: Prisma.GuestWhereInput = { ...notDeleted };
 
   if (query.search) {
     where.OR = [
@@ -27,7 +28,7 @@ export async function listGuests(
   }
 
   const guests = await prisma.guest.findMany({
-    where: where as any,
+    where,
     take: limit + 1,
     ...(query.cursor ? { skip: 1, cursor: { id: query.cursor } } : {}),
     orderBy: { createdAt: 'desc' },
@@ -37,7 +38,7 @@ export async function listGuests(
   const data = hasMore ? guests.slice(0, limit) : guests;
 
   return {
-    data: data as unknown as Record<string, unknown>[],
+    data: data as Guest[],
     nextCursor: hasMore ? data[data.length - 1]!.id : null,
     hasMore,
   };
@@ -46,7 +47,7 @@ export async function listGuests(
 export async function getGuest(
   prisma: PrismaClient,
   id: string,
-): Promise<Record<string, unknown>> {
+): Promise<GuestWithRelations & { _count: { bookings: number; conversations: number; eventBookings: number } }> {
   const guest = await prisma.guest.findFirst({
     where: { id, ...notDeleted },
     include: {
@@ -64,14 +65,14 @@ export async function getGuest(
     throw new NotFoundError('Guest', id);
   }
 
-  return guest as unknown as Record<string, unknown>;
+  return guest as GuestWithRelations & { _count: { bookings: number; conversations: number; eventBookings: number } };
 }
 
 export async function createGuest(
   prisma: PrismaClient,
   data: CreateGuestBody,
   actorId?: string,
-): Promise<Record<string, unknown>> {
+): Promise<Guest> {
   return prisma.$transaction(async (tx) => {
     if (data.email) {
       const existing = await tx.guest.findFirst({
@@ -84,7 +85,7 @@ export async function createGuest(
 
     const guest = await tx.guest.create({ data });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'guest',
       entityId: guest.id,
       action: 'create',
@@ -92,7 +93,7 @@ export async function createGuest(
       actor: getActor(actorId),
     });
 
-    return guest as unknown as Record<string, unknown>;
+    return guest as Guest;
   });
 }
 
@@ -101,7 +102,7 @@ export async function updateGuest(
   id: string,
   data: UpdateGuestBody,
   actorId?: string,
-): Promise<Record<string, unknown>> {
+): Promise<Guest> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.guest.findFirst({
       where: { id, ...notDeleted },
@@ -129,7 +130,7 @@ export async function updateGuest(
       guest as unknown as Record<string, unknown>,
     );
     if (changes) {
-      await writeAuditLog(tx as unknown as PrismaClient, {
+      await writeAuditLog(tx, {
         entityType: 'guest',
         entityId: guest.id,
         action: 'update',
@@ -138,7 +139,7 @@ export async function updateGuest(
       });
     }
 
-    return guest as unknown as Record<string, unknown>;
+    return guest as Guest;
   });
 }
 
@@ -160,7 +161,7 @@ export async function deleteGuest(
       data: { deletedAt: new Date() },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'guest',
       entityId: id,
       action: 'delete',
@@ -174,7 +175,7 @@ export async function mergeGuests(
   primaryId: string,
   secondaryId: string,
   actorId?: string,
-): Promise<Record<string, unknown>> {
+): Promise<Guest> {
   if (primaryId === secondaryId) {
     throw new BadRequestError('Cannot merge a guest with itself');
   }
@@ -234,7 +235,7 @@ export async function mergeGuests(
       },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'guest',
       entityId: primaryId,
       action: 'update',
@@ -242,7 +243,7 @@ export async function mergeGuests(
       actor: getActor(actorId),
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'guest',
       entityId: secondaryId,
       action: 'delete',
@@ -250,6 +251,6 @@ export async function mergeGuests(
       actor: getActor(actorId),
     });
 
-    return updated as unknown as Record<string, unknown>;
+    return updated as Guest;
   });
 }

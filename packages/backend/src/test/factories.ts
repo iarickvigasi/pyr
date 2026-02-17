@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { PrismaClient } from '@prisma/client';
 
 type InjectHeaders = Record<string, string>;
 
@@ -192,4 +193,70 @@ export async function createFullBookingSetup(
   const room2 = await createTestRoom(app, token, rt.id, { name: 'Room B' });
 
   return { guestId: guest.id, roomTypeId: rt.id, roomId: room.id, roomId2: room2.id };
+}
+
+// Direct Prisma factories (for tests that need direct DB access without going through the API)
+// These use Prisma directly instead of going through the HTTP API layer.
+
+/** Create a guest directly via Prisma */
+export async function createGuest(
+  prisma: PrismaClient,
+  overrides: Partial<{ name: string; email: string; language: string; phone: string; notes: string }> = {},
+) {
+  return prisma.guest.create({
+    data: {
+      name: overrides.name ?? 'Test Guest',
+      email: overrides.email ?? `guest-${Date.now()}-${Math.random().toString(36).slice(2)}@test.com`,
+      language: overrides.language ?? 'en',
+      ...(overrides.phone !== undefined ? { phone: overrides.phone } : {}),
+      ...(overrides.notes !== undefined ? { notes: overrides.notes } : {}),
+    },
+  });
+}
+
+/** Create a room type directly via Prisma */
+export async function createRoomType(
+  prisma: PrismaClient,
+  overrides: Partial<{ name: string; basePrice: number; maxOccupancy: number; description: string }> = {},
+) {
+  return prisma.roomType.create({
+    data: {
+      name: overrides.name ?? `Room Type ${Date.now()}`,
+      basePrice: overrides.basePrice ?? 10000,
+      maxOccupancy: overrides.maxOccupancy ?? 2,
+      ...(overrides.description !== undefined ? { description: overrides.description } : {}),
+    },
+  });
+}
+
+/** Create a room directly via Prisma */
+export async function createRoom(
+  prisma: PrismaClient,
+  roomTypeId: string,
+  overrides: Partial<{ name: string; status: 'available' | 'occupied' | 'maintenance' }> = {},
+) {
+  return prisma.room.create({
+    data: {
+      roomTypeId,
+      name: overrides.name ?? `Room ${Date.now()}`,
+      status: overrides.status ?? 'available',
+    },
+  });
+}
+
+/** Create an event directly via Prisma */
+export async function createEvent(
+  prisma: PrismaClient,
+  overrides: Partial<{ type: string; title: string; date: Date; time: string; capacity: number; location: string }> = {},
+) {
+  return prisma.event.create({
+    data: {
+      type: (overrides.type as 'puppy_yoga' | 'beach_walk' | 'coffee_cake_cuddles' | 'retreat') ?? 'puppy_yoga',
+      title: overrides.title ?? 'Test Yoga Event',
+      date: overrides.date ?? new Date('2026-04-01'),
+      time: overrides.time ?? '09:00',
+      capacity: overrides.capacity ?? 8,
+      ...(overrides.location !== undefined ? { location: overrides.location } : {}),
+    },
+  });
 }

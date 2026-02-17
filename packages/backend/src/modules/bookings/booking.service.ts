@@ -1,10 +1,12 @@
-import type { PrismaClient, BookingStatus } from '@prisma/client';
+import type { PrismaClient, BookingStatus, Prisma } from '@prisma/client';
 import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted, computeChanges } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../../lib/errors.js';
 import type { CreateBookingBody, UpdateBookingBody, ListBookingsQuery } from './booking.schema.js';
+import type { Booking, BookingWithRelations } from '../../types/entities.js';
+import type { PrismaClientOrTx } from '../../types/prisma.js';
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   inquiry: ['confirmed', 'cancelled'],
@@ -15,24 +17,24 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 };
 
 async function checkOverlap(
-  prisma: PrismaClient | Parameters<Parameters<PrismaClient['$transaction']>[0]>[0],
+  prisma: PrismaClientOrTx,
   roomId: string,
   checkIn: Date,
   checkOut: Date,
   excludeBookingId?: string,
 ): Promise<void> {
-  const where: Record<string, unknown> = {
+  const where: Prisma.BookingWhereInput = {
     roomId,
     deletedAt: null,
     status: { in: ['inquiry', 'confirmed', 'checked_in'] },
-    checkIn: { lt: checkOut },
-    checkOut: { gt: checkIn },
+    checkIn: { lte: checkOut },
+    checkOut: { gte: checkIn },
   };
   if (excludeBookingId) {
     where.id = { not: excludeBookingId };
   }
 
-  const overlap = await (prisma as PrismaClient).booking.findFirst({ where: where as any });
+  const overlap = await prisma.booking.findFirst({ where });
   if (overlap) {
     throw new ConflictError('Room is already booked for the requested dates');
   }
@@ -41,17 +43,21 @@ async function checkOverlap(
 export async function listBookings(
   prisma: PrismaClient,
   query: ListBookingsQuery,
-): Promise<PaginatedResult<Record<string, unknown>>> {
+): Promise<PaginatedResult<BookingWithRelations>> {
   const limit = clampLimit(query.limit);
-  const where: Record<string, unknown> = { ...notDeleted };
+  const where: Prisma.BookingWhereInput = { ...notDeleted };
 
-  if (query.status) where.status = query.status;
+  if (query.status) where.status = query.status as BookingStatus;
   if (query.guestId) where.guestId = query.guestId;
-  if (query.from) where.checkOut = { ...(where.checkOut as any || {}), gt: new Date(query.from) };
-  if (query.to) where.checkIn = { ...(where.checkIn as any || {}), lt: new Date(query.to) };
+  if (query.from) {
+    where.checkOut = { gt: new Date(query.from) };
+  }
+  if (query.to) {
+    where.checkIn = { lt: new Date(query.to) };
+  }
 
   const bookings = await prisma.booking.findMany({
-    where: where as any,
+    where,
     take: limit + 1,
     ...(query.cursor ? { skip: 1, cursor: { id: query.cursor } } : {}),
     orderBy: { checkIn: 'desc' },
@@ -65,7 +71,7 @@ export async function listBookings(
   const data = hasMore ? bookings.slice(0, limit) : bookings;
 
   return {
-    data: data as unknown as Record<string, unknown>[],
+    data: data as BookingWithRelations[],
     nextCursor: hasMore ? data[data.length - 1]!.id : null,
     hasMore,
   };
@@ -74,7 +80,7 @@ export async function listBookings(
 export async function getBooking(
   prisma: PrismaClient,
   id: string,
-): Promise<Record<string, unknown>> {
+): Promise<BookingWithRelations> {
   const booking = await prisma.booking.findFirst({
     where: { id, ...notDeleted },
     include: {
@@ -84,14 +90,14 @@ export async function getBooking(
   });
 
   if (!booking) throw new NotFoundError('Booking', id);
-  return booking as unknown as Record<string, unknown>;
+  return booking as BookingWithRelations;
 }
 
 export async function createBooking(
   prisma: PrismaClient,
   data: CreateBookingBody,
   actorId?: string,
-): Promise<Record<string, unknown>> {
+): Promise<Booking> {
   const checkIn = new Date(data.checkIn);
   const checkOut = new Date(data.checkOut);
 
@@ -124,15 +130,15 @@ export async function createBooking(
       },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'booking',
       entityId: booking.id,
       action: 'create',
-      changes: data as unknown as Record<string, unknown>,
+      changes: data as Record<string, unknown>,
       actor: getActor(actorId),
     });
 
-    return booking as unknown as Record<string, unknown>;
+    return booking as Booking;
   });
 }
 
@@ -141,7 +147,7 @@ export async function updateBooking(
   id: string,
   data: UpdateBookingBody,
   actorId?: string,
-): Promise<Record<string, unknown>> {
+): Promise<Booking> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.booking.findFirst({ where: { id, ...notDeleted } });
     if (!existing) throw new NotFoundError('Booking', id);
@@ -183,11 +189,11 @@ export async function updateBooking(
     });
 
     const changes = computeChanges(
-      existing as unknown as Record<string, unknown>,
-      booking as unknown as Record<string, unknown>,
+      existing as Record<string, unknown>,
+      booking as Record<string, unknown>,
     );
     if (changes) {
-      await writeAuditLog(tx as unknown as PrismaClient, {
+      await writeAuditLog(tx, {
         entityType: 'booking',
         entityId: id,
         action: 'update',
@@ -196,7 +202,7 @@ export async function updateBooking(
       });
     }
 
-    return booking as unknown as Record<string, unknown>;
+    return booking as Booking;
   });
 }
 
@@ -219,7 +225,7 @@ export async function cancelBooking(
       data: { status: 'cancelled', deletedAt: new Date() },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'booking',
       entityId: id,
       action: 'delete',

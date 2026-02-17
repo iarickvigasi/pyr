@@ -7,14 +7,14 @@ const currencyFmt = new Intl.NumberFormat('en-CY', {
 });
 
 const dateFmt = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
+  day: '2-digit',
   month: 'short',
   year: 'numeric',
   timeZone: TZ,
 });
 
 const dateTimeFmt = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
+  day: '2-digit',
   month: 'short',
   year: 'numeric',
   hour: '2-digit',
@@ -33,15 +33,21 @@ export function formatCurrency(cents: number): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return dateFmt.format(typeof date === 'string' ? new Date(date) : date);
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'Invalid date';
+  return dateFmt.format(d);
 }
 
 export function formatDateTime(date: string | Date): string {
-  return dateTimeFmt.format(typeof date === 'string' ? new Date(date) : date);
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'Invalid date';
+  return dateTimeFmt.format(d);
 }
 
 export function formatTime(date: string | Date): string {
-  return timeFmt.format(typeof date === 'string' ? new Date(date) : date);
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'Invalid time';
+  return timeFmt.format(d);
 }
 
 export function formatDateRange(from: string | Date, to: string | Date): string {

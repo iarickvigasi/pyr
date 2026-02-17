@@ -70,7 +70,7 @@ export async function buildApp() {
   await app.register(authPlugin);
 
   // Health check — verifies DB and Redis connectivity
-  app.get('/health', async () => {
+  app.get('/health', async (_request, reply) => {
     const checks: Record<string, string> = {};
 
     try {
@@ -88,11 +88,12 @@ export async function buildApp() {
     }
 
     const healthy = Object.values(checks).every((v) => v === 'ok');
-    return {
+    const httpStatus = healthy ? 200 : 503;
+    return reply.code(httpStatus).send({
       status: healthy ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       checks,
-    };
+    });
   });
 
   // API routes

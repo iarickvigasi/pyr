@@ -23,7 +23,7 @@ export default async function authRoutes(app: FastifyInstance): Promise<void> {
       { sub: user.id, role: 'admin' },
       { expiresIn: '24h' },
     );
-    return reply.send({ token, user });
+    return reply.send({ data: { token, user } });
   });
 
   server.get('/me', {
@@ -35,6 +35,6 @@ export default async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   }, async (request, reply) => {
     const user = await getMe(app.prisma, request.user.sub);
-    return reply.send(user);
+    return reply.send({ data: user });
   });
 }

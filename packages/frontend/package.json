@@ -8,11 +8,15 @@
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
-    "lint": "echo 'no linter configured yet'"
+    "lint": "echo 'no linter configured yet'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@pyr/shared": "workspace:*",
+    "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-slot": "^1.1.1",
     "@tanstack/react-query": "^5.64.1",
     "class-variance-authority": "^0.7.1",
@@ -33,10 +37,17 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.6",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^3.0.4",
+    "jsdom": "^26.0.0",
     "tailwindcss": "^4.0.6",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
   }
 }

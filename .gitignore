@@ -5,6 +5,11 @@ node_modules/
 dist/
 .next/
 out/
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Secrets
+secrets/
 
 # Turbo
 .turbo/

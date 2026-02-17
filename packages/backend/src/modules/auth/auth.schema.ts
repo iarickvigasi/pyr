@@ -8,16 +8,20 @@ export const loginBodySchema = z.object({
 export type LoginBody = z.infer<typeof loginBodySchema>;
 
 export const loginResponseSchema = z.object({
-  token: z.string(),
-  user: z.object({
-    id: z.string(),
-    email: z.string(),
-    name: z.string(),
+  data: z.object({
+    token: z.string(),
+    user: z.object({
+      id: z.string(),
+      email: z.string(),
+      name: z.string(),
+    }),
   }),
 });
 
 export const meResponseSchema = z.object({
-  id: z.string(),
-  email: z.string(),
-  name: z.string(),
+  data: z.object({
+    id: z.string(),
+    email: z.string(),
+    name: z.string(),
+  }),
 });

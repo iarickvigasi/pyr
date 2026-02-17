@@ -1,23 +1,27 @@
-import type { PrismaClient, Channel, ConversationStatus } from '@prisma/client';
+import type { PrismaClient, Channel, ConversationStatus, Prisma } from '@prisma/client';
 import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError } from '../../lib/errors.js';
 import type { CreateConversationBody, ListConversationsQuery } from './inbox.schema.js';
+import type { Conversation, ConversationWithMessages, AiDraft, Message } from '../../types/entities.js';
 
 export async function listConversations(
   prisma: PrismaClient,
   query: ListConversationsQuery,
-): Promise<PaginatedResult<Record<string, unknown>>> {
+): Promise<PaginatedResult<Conversation & {
+  guest: { id: string; name: string; email: string | null };
+  messages: Pick<Message, 'content' | 'direction' | 'sentAt'>[];
+}>> {
   const limit = clampLimit(query.limit);
-  const where: Record<string, unknown> = {};
+  const where: Prisma.ConversationWhereInput = {};
 
-  if (query.status) where.status = query.status;
+  if (query.status) where.status = query.status as ConversationStatus;
   if (query.guestId) where.guestId = query.guestId;
 
   const conversations = await prisma.conversation.findMany({
-    where: where as any,
+    where,
     take: limit + 1,
     ...(query.cursor ? { skip: 1, cursor: { id: query.cursor } } : {}),
     orderBy: { lastMessageAt: { sort: 'desc', nulls: 'last' } },
@@ -35,7 +39,10 @@ export async function listConversations(
   const data = hasMore ? conversations.slice(0, limit) : conversations;
 
   return {
-    data: data as unknown as Record<string, unknown>[],
+    data: data as (Conversation & {
+      guest: { id: string; name: string; email: string | null };
+      messages: Pick<Message, 'content' | 'direction' | 'sentAt'>[];
+    })[],
     nextCursor: hasMore ? data[data.length - 1]!.id : null,
     hasMore,
   };
@@ -44,7 +51,7 @@ export async function listConversations(
 export async function getConversation(
   prisma: PrismaClient,
   id: string,
-): Promise<Record<string, unknown>> {
+): Promise<ConversationWithMessages> {
   const conversation = await prisma.conversation.findUnique({
     where: { id },
     include: {
@@ -56,14 +63,14 @@ export async function getConversation(
   });
 
   if (!conversation) throw new NotFoundError('Conversation', id);
-  return conversation as unknown as Record<string, unknown>;
+  return conversation as ConversationWithMessages;
 }
 
 export async function createConversation(
   prisma: PrismaClient,
   data: CreateConversationBody,
   actorId?: string,
-): Promise<Record<string, unknown>> {
+): Promise<Conversation> {
   return prisma.$transaction(async (tx) => {
     const guest = await tx.guest.findFirst({ where: { id: data.guestId, ...notDeleted } });
     if (!guest) throw new NotFoundError('Guest', data.guestId);
@@ -76,7 +83,7 @@ export async function createConversation(
       },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'conversation',
       entityId: conversation.id,
       action: 'create',
@@ -84,7 +91,7 @@ export async function createConversation(
       actor: getActor(actorId),
     });
 
-    return conversation as unknown as Record<string, unknown>;
+    return conversation as Conversation;
   });
 }
 
@@ -93,7 +100,7 @@ export async function updateConversationStatus(
   id: string,
   status: ConversationStatus,
   actorId?: string,
-): Promise<Record<string, unknown>> {
+): Promise<Conversation> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.conversation.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Conversation', id);
@@ -103,7 +110,7 @@ export async function updateConversationStatus(
       data: { status },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'conversation',
       entityId: id,
       action: 'update',
@@ -111,14 +118,14 @@ export async function updateConversationStatus(
       actor: getActor(actorId),
     });
 
-    return conversation as unknown as Record<string, unknown>;
+    return conversation as Conversation;
   });
 }
 
 export async function listDrafts(
   prisma: PrismaClient,
   conversationId: string,
-): Promise<Record<string, unknown>[]> {
+): Promise<AiDraft[]> {
   const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
   if (!conversation) throw new NotFoundError('Conversation', conversationId);
 
@@ -127,5 +134,5 @@ export async function listDrafts(
     orderBy: { createdAt: 'desc' },
   });
 
-  return drafts as unknown as Record<string, unknown>[];
+  return drafts as AiDraft[];
 }

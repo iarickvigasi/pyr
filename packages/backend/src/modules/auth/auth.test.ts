@@ -25,10 +25,27 @@ describe('Auth API', () => {
 
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.token).toBeDefined();
-      expect(body.user.email).toBe('test@example.com');
-      expect(body.user.name).toBe('Test Admin');
-      expect(body.user.id).toBe('test_admin');
+      expect(body.data).toBeDefined();
+      expect(body.data.token).toBeDefined();
+      expect(typeof body.data.token).toBe('string');
+      expect(body.data.user).toBeDefined();
+      expect(body.data.user.email).toBe('test@example.com');
+      expect(body.data.user.name).toBe('Test Admin');
+      expect(body.data.user.id).toBe('test_admin');
+    });
+
+    it('should not expose password hash in response', async () => {
+      await seedAdmin();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/login',
+        payload: { email: 'test@example.com', password: 'testpass123' },
+      });
+
+      const body = JSON.parse(res.body);
+      expect(JSON.stringify(body)).not.toContain('passwordHash');
+      expect(JSON.stringify(body)).not.toContain('password');
     });
 
     it('should return 401 for wrong password', async () => {
@@ -67,7 +84,7 @@ describe('Auth API', () => {
       expect(res.statusCode).toBe(400);
     });
 
-    it('should return same error message for wrong email and wrong password', async () => {
+    it('should return same error message for wrong email and wrong password (timing-safe)', async () => {
       await seedAdmin();
 
       const wrongPassword = await app.inject({
@@ -89,7 +106,7 @@ describe('Auth API', () => {
   });
 
   describe('GET /api/v1/auth/me', () => {
-    it('should return user with valid JWT', async () => {
+    it('should return user data wrapped in { data } with valid JWT', async () => {
       const token = await getAuthToken(app);
 
       const res = await app.inject({
@@ -100,8 +117,10 @@ describe('Auth API', () => {
 
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.email).toBe('test@example.com');
-      expect(body.name).toBe('Test Admin');
+      expect(body.data).toBeDefined();
+      expect(body.data.email).toBe('test@example.com');
+      expect(body.data.name).toBe('Test Admin');
+      expect(body.data.id).toBe('test_admin');
     });
 
     it('should return 401 without auth header', async () => {
@@ -122,13 +141,35 @@ describe('Auth API', () => {
 
       expect(res.statusCode).toBe(401);
     });
+
+    it('should work end-to-end: login, use token for /me', async () => {
+      await seedAdmin();
+
+      const loginRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/login',
+        payload: { email: 'test@example.com', password: 'testpass123' },
+      });
+
+      const loginBody = JSON.parse(loginRes.body);
+      const token = loginBody.data.token as string;
+
+      const meRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/auth/me',
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(meRes.statusCode).toBe(200);
+      const meBody = JSON.parse(meRes.body);
+      expect(meBody.data.email).toBe('test@example.com');
+    });
   });
 
   describe('API Key auth', () => {
     it('should authenticate with valid API key', async () => {
       await getAuthToken(app);
 
-      // Verify API key works for a protected route
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/guests',
@@ -149,7 +190,6 @@ describe('Auth API', () => {
     });
 
     it('should work without JWT when using API key', async () => {
-      // No Bearer token, only API key
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/guests',

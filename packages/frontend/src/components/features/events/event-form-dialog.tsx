@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -92,6 +93,21 @@ export function EventFormDialog({
       description: event?.description ?? '',
     },
   });
+
+  // Reset form values whenever the dialog opens or the event prop changes
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        type: event?.type ?? '',
+        title: event?.title ?? '',
+        date: event?.date?.split('T')[0] ?? '',
+        time: event?.time ?? '10:00',
+        capacity: event?.capacity ?? 8,
+        location: event?.location ?? '',
+        description: event?.description ?? '',
+      });
+    }
+  }, [open, event]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedType = form.watch('type');
 

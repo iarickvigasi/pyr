@@ -41,22 +41,19 @@ export async function createRoomType(
   actorId?: string,
 ): Promise<RoomType> {
   return prisma.$transaction(async (tx) => {
-    let roomType: Awaited<ReturnType<typeof tx.roomType.create>> | undefined;
-    try {
-      roomType = await tx.roomType.create({ data });
-    } catch (err) {
+    const roomType = await tx.roomType.create({ data }).catch((err: unknown) => {
       handleUniqueViolation(err, 'RoomType');
-    }
+    });
 
     await writeAuditLog(tx, {
       entityType: 'room_type',
-      entityId: roomType!.id,
+      entityId: roomType.id,
       action: 'create',
       changes: data as unknown as Record<string, unknown>,
       actor: getActor(actorId),
     });
 
-    return roomType! as RoomType;
+    return roomType as RoomType;
   });
 }
 
@@ -70,16 +67,13 @@ export async function updateRoomType(
     const existing = await tx.roomType.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('RoomType', id);
 
-    let updated: Awaited<ReturnType<typeof tx.roomType.update>> | undefined;
-    try {
-      updated = await tx.roomType.update({ where: { id }, data });
-    } catch (err) {
+    const updated = await tx.roomType.update({ where: { id }, data }).catch((err: unknown) => {
       handleUniqueViolation(err, 'RoomType');
-    }
+    });
 
     const changes = computeChanges(
       existing as unknown as Record<string, unknown>,
-      updated! as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
     );
     if (changes) {
       await writeAuditLog(tx, {
@@ -91,7 +85,7 @@ export async function updateRoomType(
       });
     }
 
-    return updated! as RoomType;
+    return updated as RoomType;
   });
 }
 
@@ -114,22 +108,19 @@ export async function createRoom(
     const roomType = await tx.roomType.findUnique({ where: { id: data.roomTypeId } });
     if (!roomType) throw new NotFoundError('RoomType', data.roomTypeId);
 
-    let room: Awaited<ReturnType<typeof tx.room.create>> | undefined;
-    try {
-      room = await tx.room.create({ data });
-    } catch (err) {
+    const room = await tx.room.create({ data }).catch((err: unknown) => {
       handleUniqueViolation(err, 'Room');
-    }
+    });
 
     await writeAuditLog(tx, {
       entityType: 'room',
-      entityId: room!.id,
+      entityId: room.id,
       action: 'create',
       changes: data as unknown as Record<string, unknown>,
       actor: getActor(actorId),
     });
 
-    return room! as RoomWithType;
+    return room as RoomWithType;
   });
 }
 
@@ -143,16 +134,13 @@ export async function updateRoom(
     const existing = await tx.room.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Room', id);
 
-    let updated: Awaited<ReturnType<typeof tx.room.update>> | undefined;
-    try {
-      updated = await tx.room.update({ where: { id }, data });
-    } catch (err) {
+    const updated = await tx.room.update({ where: { id }, data }).catch((err: unknown) => {
       handleUniqueViolation(err, 'Room');
-    }
+    });
 
     const changes = computeChanges(
       existing as unknown as Record<string, unknown>,
-      updated! as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
     );
     if (changes) {
       await writeAuditLog(tx, {
@@ -164,7 +152,7 @@ export async function updateRoom(
       });
     }
 
-    return updated! as RoomWithType;
+    return updated as RoomWithType;
   });
 }
 
@@ -344,7 +332,8 @@ export async function checkAvailability(
         const season = seasons.find(
           (s) => nightDate >= s.startDate && nightDate < s.endDate,
         );
-        const multiplier = season ? Number(season.priceMultiplier) : 1.0;
+        // Convert Decimal via toString() to avoid IEEE 754 drift during coercion
+        const multiplier = season ? Number(season.priceMultiplier.toString()) : 1.0;
         totalPrice += Math.round(room.roomType.basePrice * multiplier);
       }
       const pricePerNight = Math.round(totalPrice / nights);
@@ -353,7 +342,7 @@ export async function checkAvailability(
       const firstSeason = seasons.find(
         (s) => checkIn >= s.startDate && checkIn < s.endDate,
       );
-      const seasonMultiplier = firstSeason ? Number(firstSeason.priceMultiplier) : 1.0;
+      const seasonMultiplier = firstSeason ? Number(firstSeason.priceMultiplier.toString()) : 1.0;
 
       return {
         room: { id: room.id, name: room.name, status: room.status },

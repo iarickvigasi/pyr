@@ -8,7 +8,9 @@ import type { CreateBookingBody, UpdateBookingBody, ListBookingsQuery } from './
 import type { Booking, BookingWithRelations } from '../../types/entities.js';
 import type { PrismaClientOrTx } from '../../types/prisma.js';
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
+// Typed as Record<BookingStatus, ...> for compile-time exhaustiveness — adding a new
+// BookingStatus to the Prisma schema will cause a type error here, preventing silent failures.
+const VALID_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   inquiry: ['confirmed', 'cancelled'],
   confirmed: ['checked_in', 'cancelled'],
   checked_in: ['checked_out', 'cancelled'],
@@ -155,7 +157,7 @@ export async function updateBooking(
     // Validate status transition
     if (data.status && data.status !== existing.status) {
       const allowed = VALID_TRANSITIONS[existing.status];
-      if (!allowed?.includes(data.status)) {
+      if (!allowed?.includes(data.status as BookingStatus)) {
         throw new BadRequestError(
           `Cannot transition from '${existing.status}' to '${data.status}'`,
         );

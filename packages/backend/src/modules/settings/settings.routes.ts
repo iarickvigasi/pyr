@@ -47,7 +47,7 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
     },
   }, async (request) => {
     const { key, value } = request.body as { key: string; value: unknown };
-    const setting = await upsertSetting(app.prisma, key, value, request.user.sub);
+    const setting = await upsertSetting(app.prisma, key, value, request.user?.sub);
     return { data: setting };
   });
 
@@ -66,7 +66,7 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
       app.prisma,
       key,
       value,
-      request.user.sub,
+      request.user?.sub,
     );
     return { data: setting };
   });

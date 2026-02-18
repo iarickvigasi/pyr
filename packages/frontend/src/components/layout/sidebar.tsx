@@ -67,7 +67,7 @@ function NavContent() {
           <span className="text-sm font-medium truncate">
             {user?.name ?? 'Admin'}
           </span>
-          <Button variant="ghost" size="icon" onClick={logout} title="Logout">
+          <Button variant="ghost" size="icon" onClick={logout} title="Logout" aria-label="Log out">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>

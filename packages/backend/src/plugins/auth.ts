@@ -32,7 +32,7 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
     try {
       await request.jwtVerify();
     } catch {
-      reply.status(401).send({
+      return reply.status(401).send({
         error: {
           code: 'UNAUTHORIZED',
           message: 'Invalid or missing authentication',

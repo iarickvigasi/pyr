@@ -205,9 +205,8 @@ model Booking {
 
   @@index([guestId])
   @@index([roomId])
-  @@index([status])
+  @@index([deletedAt, status])
   @@index([checkIn, checkOut])
-  @@index([deletedAt])
   @@map("bookings")
 }
 
@@ -243,6 +242,7 @@ model EventBooking {
   guest Guest @relation(fields: [guestId], references: [id])
 
   @@unique([eventId, guestId])
+  @@index([guestId])
   @@map("event_bookings")
 }
 
@@ -301,6 +301,7 @@ model AiDraft {
   message      Message?     @relation(fields: [messageId], references: [id])
 
   @@index([conversationId])
+  @@index([messageId])
   @@index([status])
   @@map("ai_drafts")
 }

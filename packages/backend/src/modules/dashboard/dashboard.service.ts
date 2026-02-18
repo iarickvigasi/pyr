@@ -1,5 +1,17 @@
 import type { PrismaClient } from '@prisma/client';
 
+const TZ = 'Europe/Nicosia';
+
+/** Returns a UTC Date at midnight for the given calendar date string 'YYYY-MM-DD'. */
+function utcMidnight(dateStr: string): Date {
+  return new Date(`${dateStr}T00:00:00.000Z`);
+}
+
+/** Returns the current date string 'YYYY-MM-DD' in the Cyprus timezone. */
+function nicosiaToday(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+}
+
 export interface DashboardStats {
   pendingInquiries: number;
   confirmedBookings: number;
@@ -33,10 +45,13 @@ export interface DashboardToday {
 }
 
 export async function getStats(prisma: PrismaClient): Promise<DashboardStats> {
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  // Use Cyprus timezone for all date boundaries to avoid UTC/local time skew
+  const todayStr = nicosiaToday(); // 'YYYY-MM-DD'
+  const [y, m] = todayStr.split('-').map(Number) as [number, number, number];
+  const monthStart = utcMidnight(`${y}-${String(m).padStart(2, '0')}-01`);
+  const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  const monthEnd = utcMidnight(`${nextMonth}-01`);
+  const today = utcMidnight(todayStr);
 
   const [
     pendingInquiries,
@@ -82,8 +97,7 @@ export async function getStats(prisma: PrismaClient): Promise<DashboardStats> {
 }
 
 export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
-  const now = new Date();
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const today = utcMidnight(nicosiaToday());
 
   const [checkInBookings, checkOutBookings, todayEvents] = await Promise.all([
     prisma.booking.findMany({

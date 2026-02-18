@@ -93,7 +93,7 @@ export function BookingFormDialog({
   const [selectedGuestName, setSelectedGuestName] = useState(booking?.guest.name ?? '');
 
   const debouncedSearch = useDebounce(guestSearch, 300);
-  const guestsQuery = useGuests(debouncedSearch);
+  const guestsQuery = useGuests({ search: debouncedSearch || undefined, limit: 10 });
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -113,10 +113,27 @@ export function BookingFormDialog({
   const checkOut = form.watch('checkOut');
   const availabilityQuery = useAvailability(checkIn, checkOut);
 
+  // Reset form values whenever the dialog opens or the booking prop changes
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        guestId: booking?.guestId ?? '',
+        roomId: booking?.roomId ?? '',
+        checkIn: booking?.checkIn?.split('T')[0] ?? '',
+        checkOut: booking?.checkOut?.split('T')[0] ?? '',
+        status: (booking?.status as 'inquiry' | 'confirmed') ?? 'inquiry',
+        totalPrice: booking?.totalPrice ?? 0,
+        source: booking?.source ?? '',
+        notes: booking?.notes ?? '',
+      });
+      setSelectedGuestName(booking?.guest.name ?? '');
+    }
+  }, [open, booking]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (availabilityQuery.data?.data && !isEdit) {
       const roomId = form.getValues('roomId');
-      const match = availabilityQuery.data.data.find((r) => r.roomId === roomId);
+      const match = availabilityQuery.data?.data?.find((r) => r.roomId === roomId);
       if (match) {
         form.setValue('totalPrice', match.totalPrice);
       }

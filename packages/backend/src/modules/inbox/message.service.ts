@@ -1,5 +1,5 @@
 import type { PrismaClient, Channel, MessageDirection } from '@prisma/client';
-import { writeAuditLog } from '../../lib/audit.js';
+import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError } from '../../lib/errors.js';
 import type { AddMessageBody } from './inbox.schema.js';
 
@@ -35,12 +35,12 @@ export async function addMessage(
       data: { lastMessageAt: sentAt },
     });
 
-    await writeAuditLog(tx as unknown as PrismaClient, {
+    await writeAuditLog(tx, {
       entityType: 'message',
       entityId: message.id,
       action: 'create',
       changes: { conversationId, direction: data.direction, channel: data.channel },
-      actor: actorId ? `admin:${actorId}` : 'system',
+      actor: getActor(actorId),
     });
 
     return message as unknown as Record<string, unknown>;

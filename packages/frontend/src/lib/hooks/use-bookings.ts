@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/query-client';
+export { useGuests } from '@/lib/hooks/use-guests';
 
 interface BookingListParams {
   status?: string;
@@ -123,15 +124,3 @@ export function useAvailability(checkIn: string, checkOut: string) {
   });
 }
 
-export function useGuests(search: string) {
-  return useQuery({
-    queryKey: queryKeys.guests.list({ search }),
-    queryFn: () =>
-      api.get<{
-        data: Array<{ id: string; name: string; email: string | null }>;
-        nextCursor: string | null;
-        hasMore: boolean;
-      }>('/api/v1/guests', { params: { search, limit: 10 } }),
-    enabled: search.length >= 1,
-  });
-}

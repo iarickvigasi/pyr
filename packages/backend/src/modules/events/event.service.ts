@@ -145,10 +145,10 @@ export async function deleteEvent(
   id: string,
   actorId?: string,
 ): Promise<void> {
-  const existing = await prisma.event.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Event', id);
-
   await prisma.$transaction(async (tx) => {
+    const existing = await tx.event.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Event', id);
+
     await tx.eventBooking.deleteMany({ where: { eventId: id } });
     await tx.calendarEvent.deleteMany({ where: { eventId: id } });
     await tx.event.delete({ where: { id } });

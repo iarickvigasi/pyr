@@ -203,7 +203,7 @@ export type Message = {
 };
 
 export type ConversationWithMessages = Conversation & {
-  guest: Pick<Guest, 'id' | 'name' | 'email'>;
+  guest: Pick<Guest, 'id' | 'name' | 'email' | 'language'>;
   messages: Message[];
 };
 

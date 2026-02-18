@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import {
   serializerCompiler,
@@ -48,6 +49,9 @@ export async function buildApp() {
 
   // Error handler
   app.setErrorHandler(errorHandler);
+
+  // Security headers
+  await app.register(helmet, { contentSecurityPolicy: false });
 
   // CORS
   await app.register(cors, {

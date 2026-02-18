@@ -100,8 +100,13 @@ export default async function roomRoutes(app: FastifyInstance): Promise<void> {
       data: rooms.map((r) => ({
         roomId: r.room.id,
         roomName: r.room.name,
+        room: r.room,
         roomTypeName: r.roomType.name,
+        roomType: r.roomType,
+        nights: r.nights,
+        pricePerNight: r.pricePerNight,
         totalPrice: r.totalPrice,
+        seasonMultiplier: r.seasonMultiplier,
         nightlyBreakdown: [] as { date: string; price: number }[],
       })),
     };

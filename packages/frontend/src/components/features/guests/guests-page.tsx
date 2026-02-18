@@ -45,7 +45,7 @@ export function GuestsPage() {
     setAllGuests([]);
   }, [debouncedSearch, source, tag, language]);
 
-  // Accumulate pages
+  // Accumulate pages — cursor in deps ensures we reset when filters change and cursor becomes undefined
   useEffect(() => {
     if (data?.data) {
       if (!cursor) {
@@ -54,7 +54,7 @@ export function GuestsPage() {
         setAllGuests((prev) => [...prev, ...data.data]);
       }
     }
-  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, cursor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync filters to URL
   useEffect(() => {

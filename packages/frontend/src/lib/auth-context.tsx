@@ -41,7 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .get<{ data: User }>('/api/v1/auth/me')
       .then((res) => setUser(res.data))
-      .catch(() => {
+      .catch((err: unknown) => {
+        console.error('Auth verification failed:', err);
         clearToken();
         setUser(null);
       })

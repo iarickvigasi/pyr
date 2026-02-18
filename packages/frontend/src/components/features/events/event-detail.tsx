@@ -59,7 +59,7 @@ export function EventDetail({ id }: { id: string }) {
   const [guestSearch, setGuestSearch] = useState('');
   const [guestOpen, setGuestOpen] = useState(false);
   const debouncedSearch = useDebounce(guestSearch, 300);
-  const guestsQuery = useGuests(debouncedSearch);
+  const guestsQuery = useGuests({ search: debouncedSearch || undefined, limit: 10 });
 
   const event = data?.data;
 

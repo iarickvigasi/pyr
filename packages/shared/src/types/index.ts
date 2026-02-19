@@ -5,3 +5,4 @@ export type { Event, EventBooking, EventCreate } from './event.js';
 export type { Conversation, Message, AiDraft } from './message.js';
 export type { Invoice, Payment } from './invoice.js';
 export type { CalendarEvent } from './calendar.js';
+export * from './jobs.js';

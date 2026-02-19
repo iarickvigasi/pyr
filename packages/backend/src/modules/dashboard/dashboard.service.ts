@@ -1,16 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-
-const TZ = 'Europe/Nicosia';
-
-/** Returns a UTC Date at midnight for the given calendar date string 'YYYY-MM-DD'. */
-function utcMidnight(dateStr: string): Date {
-  return new Date(`${dateStr}T00:00:00.000Z`);
-}
-
-/** Returns the current date string 'YYYY-MM-DD' in the Cyprus timezone. */
-function nicosiaToday(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
-}
+import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
 
 export interface DashboardStats {
   pendingInquiries: number;

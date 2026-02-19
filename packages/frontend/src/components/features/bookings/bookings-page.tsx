@@ -11,6 +11,8 @@ import { useBookings, useUpdateBooking } from '@/lib/hooks/use-bookings';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { toast } from 'sonner';
 
+type Booking = NonNullable<ReturnType<typeof useBookings>['data']>['data'][number];
+
 export function BookingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -20,6 +22,8 @@ export function BookingsPage() {
   const [to, setTo] = useState(searchParams.get('to') ?? '');
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [showCreate, setShowCreate] = useState(searchParams.get('new') === '1');
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
 
   const debouncedSearch = useDebounce(search);
 
@@ -28,11 +32,29 @@ export function BookingsPage() {
     from: from || undefined,
     to: to || undefined,
     search: debouncedSearch || undefined,
+    cursor,
     limit: '20',
   };
 
   const { data, isLoading } = useBookings(params);
   const updateBooking = useUpdateBooking();
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCursor(undefined);
+    setAllBookings([]);
+  }, [status, debouncedSearch, from, to]);
+
+  // Accumulate pages
+  useEffect(() => {
+    if (data?.data) {
+      if (!cursor) {
+        setAllBookings(data.data);
+      } else {
+        setAllBookings((prev) => [...prev, ...data.data]);
+      }
+    }
+  }, [data, cursor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const p = new URLSearchParams();
@@ -50,6 +72,12 @@ export function BookingsPage() {
       toast.success(`Booking ${newStatus.replace('_', ' ')}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update');
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (data?.nextCursor) {
+      setCursor(data.nextCursor);
     }
   };
 
@@ -75,15 +103,19 @@ export function BookingsPage() {
       />
 
       <BookingTable
-        bookings={data?.data ?? []}
+        bookings={allBookings}
         isLoading={isLoading}
         onStatusChange={handleStatusChange}
       />
 
       {data?.hasMore && (
         <div className="text-center">
-          <Button variant="outline" disabled>
-            Load More (pagination coming soon)
+          <Button
+            variant="outline"
+            onClick={handleLoadMore}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Load More'}
           </Button>
         </div>
       )}

@@ -42,7 +42,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { useCreateBooking, useUpdateBooking, useAvailability, useGuests } from '@/lib/hooks/use-bookings';
+import { useCreateBooking, useUpdateBooking, useAvailability } from '@/lib/hooks/use-bookings';
+import { useGuests } from '@/lib/hooks/use-guests';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';

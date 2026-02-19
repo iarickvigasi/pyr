@@ -96,6 +96,70 @@ describe('Rooms API', () => {
     });
   });
 
+  describe('Availability — overlap boundary conditions', () => {
+    // These tests cover the lt/gt boundary in the overlap query:
+    //   checkIn: { lt: checkOut }, checkOut: { gt: checkIn }
+    // which means [A, B) overlaps [C, D) iff A < D && B > C.
+    // Adjacent bookings (check-out = next check-in) must NOT block availability.
+
+    it('should block availability when dates overlap (middle of existing booking)', async () => {
+      const rt = await createTestRoomType(app, token, { name: 'Overlap Test Type' });
+      const room = await createTestRoom(app, token, rt.id, { name: 'Overlap Room' });
+      const guest = await createTestGuest(app, token);
+
+      // Book Apr 1–5
+      await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: { guestId: guest.id, roomId: room.id, checkIn: '2026-04-01', checkOut: '2026-04-05', totalPrice: 40000 },
+      });
+
+      // Check Apr 3–7 (overlaps)
+      const res = await app.inject({
+        method: 'GET', url: '/api/v1/availability?checkIn=2026-04-03&checkOut=2026-04-07', headers: headers(),
+      });
+      const names = JSON.parse(res.body).data.map((r: Record<string, unknown>) => (r.room as Record<string, unknown>).name);
+      expect(names).not.toContain('Overlap Room');
+    });
+
+    it('should allow booking when check-in equals prior booking check-out (adjacent, no gap)', async () => {
+      const rt = await createTestRoomType(app, token, { name: 'Adjacent Type' });
+      const room = await createTestRoom(app, token, rt.id, { name: 'Adjacent Room' });
+      const guest = await createTestGuest(app, token);
+
+      // Book Apr 1–5
+      await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: { guestId: guest.id, roomId: room.id, checkIn: '2026-04-01', checkOut: '2026-04-05', totalPrice: 40000 },
+      });
+
+      // Check Apr 5–9 (check-in = prior check-out → no overlap)
+      const res = await app.inject({
+        method: 'GET', url: '/api/v1/availability?checkIn=2026-04-05&checkOut=2026-04-09', headers: headers(),
+      });
+      const names = JSON.parse(res.body).data.map((r: Record<string, unknown>) => (r.room as Record<string, unknown>).name);
+      expect(names).toContain('Adjacent Room');
+    });
+
+    it('should allow booking when check-out equals next booking check-in (adjacent, no gap)', async () => {
+      const rt = await createTestRoomType(app, token, { name: 'Prior Adjacent Type' });
+      const room = await createTestRoom(app, token, rt.id, { name: 'Prior Adjacent Room' });
+      const guest = await createTestGuest(app, token);
+
+      // Book Apr 1–5
+      await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: { guestId: guest.id, roomId: room.id, checkIn: '2026-04-01', checkOut: '2026-04-05', totalPrice: 40000 },
+      });
+
+      // Check Mar 28–Apr 1 (check-out = next booking check-in → no overlap)
+      const res = await app.inject({
+        method: 'GET', url: '/api/v1/availability?checkIn=2026-03-28&checkOut=2026-04-01', headers: headers(),
+      });
+      const names = JSON.parse(res.body).data.map((r: Record<string, unknown>) => (r.room as Record<string, unknown>).name);
+      expect(names).toContain('Prior Adjacent Room');
+    });
+  });
+
   describe('Availability', () => {
     it('should return available rooms excluding booked ones', async () => {
       // Setup room type + rooms

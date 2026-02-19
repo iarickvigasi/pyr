@@ -83,3 +83,20 @@ describe('Module API', () => {
 4. Follow the pattern above with `beforeAll` / `beforeEach`
 5. Test happy paths, error cases (404, 409, 400), and auth (401)
 6. Run `pnpm --filter @pyr/backend test` to verify
+
+## Audit Log Assertions
+
+When verifying that mutations write to the audit log, use the **standalone `prisma` export** from `setup.ts` for direct DB queries — not `app.prisma`:
+
+```typescript
+import { getTestApp, cleanDatabase, getAuthToken, prisma } from '../../test/setup.js';
+
+// In a test:
+const auditLogs = await prisma.auditLog.findMany({
+  where: { entityType: 'setting' },
+  orderBy: { createdAt: 'desc' },
+});
+expect(auditLogs[0]?.action).toBe('create');
+```
+
+This is acceptable because the audit log has no dedicated API endpoint — the only way to verify it is via a direct DB query. Using the standalone `prisma` (rather than `app.prisma`) keeps the test independent of the app instance internals.

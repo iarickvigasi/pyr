@@ -1,14 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-
-// Query keys factory
-export const guestKeys = {
-  all: ['guests'] as const,
-  lists: () => [...guestKeys.all, 'list'] as const,
-  list: (filters?: GuestFilters) => [...guestKeys.lists(), filters] as const,
-  details: () => [...guestKeys.all, 'detail'] as const,
-  detail: (id: string) => [...guestKeys.details(), id] as const,
-};
+import { queryKeys } from '@/lib/query-client';
 
 // Types
 export interface Guest {
@@ -88,7 +80,7 @@ export interface GuestListResponse {
 // Hooks
 export function useGuests(filters?: GuestFilters) {
   return useQuery({
-    queryKey: guestKeys.list(filters),
+    queryKey: queryKeys.guests.list(filters as Record<string, unknown>),
     queryFn: async () => {
       const response = await api.get<GuestListResponse>(
         '/api/v1/guests',
@@ -102,7 +94,7 @@ export function useGuests(filters?: GuestFilters) {
 
 export function useGuest(id: string | undefined) {
   return useQuery({
-    queryKey: guestKeys.detail(id!),
+    queryKey: queryKeys.guests.detail(id!),
     queryFn: async () => {
       const response = await api.get<{ data: GuestWithHistory }>(`/api/v1/guests/${id}`);
       return response.data;
@@ -120,7 +112,7 @@ export function useCreateGuest() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.guests.all });
     },
   });
 }
@@ -134,8 +126,8 @@ export function useUpdateGuest(id: string) {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: guestKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.guests.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.guests.all });
     },
   });
 }
@@ -148,7 +140,7 @@ export function useDeleteGuest() {
       await api.delete(`/api/v1/guests/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.guests.all });
     },
   });
 }
@@ -165,8 +157,7 @@ export function useMergeGuests() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: guestKeys.details() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.guests.all });
     },
   });
 }

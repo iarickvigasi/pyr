@@ -60,7 +60,8 @@ Routes call services. Services call Prisma. Never import Prisma in route files.
 | `error-handler.ts` | `errorHandler` | Fastify error handler mapping errors to JSON |
 | `audit.ts` | `writeAuditLog` | Writes to `audit_log` table |
 | `pagination.ts` | `clampLimit`, `PaginatedResult`, `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE` | Cursor pagination helpers |
-| `prisma-helpers.ts` | `notDeleted`, `computeChanges` | Soft-delete filter, change diff for audit |
+| `prisma-helpers.ts` | `notDeleted`, `computeChanges`, `handleUniqueConstraint` | Soft-delete filter, change diff for audit, P2002 → ConflictError |
+| `date-helpers.ts` | `TZ`, `utcMidnight`, `nicosiaToday` | Cyprus timezone utilities |
 | `password.ts` | `hashPassword`, `verifyPassword` | scrypt password hashing (no native deps) |
 
 ## Cursor Pagination Pattern
@@ -101,3 +102,56 @@ Two modes, checked in order by `app.authenticate`:
 2. **JWT** — `Authorization: Bearer <token>` with payload `{ sub: userId, role: 'admin' }`
 
 Both grant full access (single-user system).
+
+---
+
+## Timezone Handling
+
+Business timezone: **`Europe/Nicosia`** (EET/EEST, UTC+2 in winter, UTC+3 in summer).
+
+- All timestamps stored in the DB as UTC (`timestamptz(3)`).
+- Date-only fields (`checkIn`, `checkOut`) are stored as UTC midnight (`2026-04-01T00:00:00.000Z`).
+- Use `nicosiaToday()` from `lib/date-helpers.ts` to get the current calendar date in Cyprus. Never use `new Date().toISOString().slice(0, 10)` — that gives UTC date, which differs from Cyprus date during the hours between UTC midnight and Cyprus midnight.
+- Use `utcMidnight(dateStr)` from `lib/date-helpers.ts` to convert a `'YYYY-MM-DD'` string to a `Date` for Prisma queries on date fields.
+
+```typescript
+import { nicosiaToday, utcMidnight } from '../../lib/date-helpers.js';
+
+const todayStr = nicosiaToday();       // '2026-04-15' (Cyprus local date)
+const todayDate = utcMidnight(todayStr); // 2026-04-15T00:00:00.000Z
+```
+
+---
+
+## Error Selection Guide
+
+Use the correct error class from `lib/errors.ts` for every service-layer failure:
+
+| Error class           | Status | When to throw |
+|-----------------------|--------|---------------|
+| `BadRequestError`     | 400    | Invalid input the client should fix (e.g. check-out before check-in, merge guest with self). Also thrown when a booking status transition is rejected by the state machine. |
+| `UnauthorizedError`   | 401    | Missing or invalid auth credentials. |
+| `NotFoundError`       | 404    | Resource does not exist or has been soft-deleted. |
+| `ConflictError`       | 409    | Uniqueness or overlap violation (Prisma P2002, overlapping seasons, double-booking). |
+| `UnprocessableError`  | 422    | Syntactically valid request blocked by application state (e.g. approving an already-rejected draft). |
+
+**Never throw a raw `Error`** from service functions — the error handler only maps `AppError` subclasses to structured JSON. Zod validation failures are handled automatically (400) and do not need manual throws.
+
+---
+
+## Audit Log Scope
+
+The following entities write to `audit_log` on every create/update/delete:
+
+| Entity | Logged in |
+|--------|-----------|
+| guests | `guest.service.ts` |
+| bookings | `booking.service.ts` |
+| rooms, room types, seasons | `room.service.ts` |
+| events, event bookings | `event.service.ts` |
+| messages | `inbox.service.ts` |
+| settings | `settings.service.ts` |
+
+**Rule:** The audit log write is always inside the same `$transaction` as the entity mutation. This ensures the audit trail cannot be bypassed if the entity write fails, and the audit entry cannot be orphaned if the subsequent code throws.
+
+Bypassing the service layer (writing directly to Prisma in routes) loses the audit trail. Always go through services.

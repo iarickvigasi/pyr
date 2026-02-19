@@ -1,6 +1,6 @@
 import type { PrismaClient, Prisma } from '@prisma/client';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
-import { computeChanges } from '../../lib/prisma-helpers.js';
+import { computeChanges, handleUniqueConstraint } from '../../lib/prisma-helpers.js';
 import { NotFoundError, BadRequestError, ConflictError } from '../../lib/errors.js';
 import type { PrismaClientOrTx } from '../../types/prisma.js';
 import type {
@@ -13,17 +13,6 @@ import type {
   AvailabilityQuery,
 } from './room.schema.js';
 import type { RoomType, RoomWithType, Season } from '../../types/entities.js';
-
-function handleUniqueViolation(err: unknown, entity: string): never {
-  if (
-    err instanceof Error &&
-    'code' in err &&
-    (err as { code: string }).code === 'P2002'
-  ) {
-    throw new ConflictError(`${entity} with that name already exists`);
-  }
-  throw err;
-}
 
 // ─── Room Types ──────────────────────────────────────────
 
@@ -42,7 +31,7 @@ export async function createRoomType(
 ): Promise<RoomType> {
   return prisma.$transaction(async (tx) => {
     const roomType = await tx.roomType.create({ data }).catch((err: unknown) => {
-      handleUniqueViolation(err, 'RoomType');
+      handleUniqueConstraint(err, 'RoomType');
     });
 
     await writeAuditLog(tx, {
@@ -68,7 +57,7 @@ export async function updateRoomType(
     if (!existing) throw new NotFoundError('RoomType', id);
 
     const updated = await tx.roomType.update({ where: { id }, data }).catch((err: unknown) => {
-      handleUniqueViolation(err, 'RoomType');
+      handleUniqueConstraint(err, 'RoomType');
     });
 
     const changes = computeChanges(
@@ -109,7 +98,7 @@ export async function createRoom(
     if (!roomType) throw new NotFoundError('RoomType', data.roomTypeId);
 
     const room = await tx.room.create({ data }).catch((err: unknown) => {
-      handleUniqueViolation(err, 'Room');
+      handleUniqueConstraint(err, 'Room');
     });
 
     await writeAuditLog(tx, {
@@ -135,7 +124,7 @@ export async function updateRoom(
     if (!existing) throw new NotFoundError('Room', id);
 
     const updated = await tx.room.update({ where: { id }, data }).catch((err: unknown) => {
-      handleUniqueViolation(err, 'Room');
+      handleUniqueConstraint(err, 'Room');
     });
 
     const changes = computeChanges(

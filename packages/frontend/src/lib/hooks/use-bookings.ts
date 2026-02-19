@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/query-client';
-export { useGuests } from '@/lib/hooks/use-guests';
 
 interface BookingListParams {
   status?: string;

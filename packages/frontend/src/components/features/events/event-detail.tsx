@@ -9,7 +9,7 @@ import {
   useRegisterGuest,
   useDeleteEvent,
 } from '@/lib/hooks/use-events';
-import { useGuests } from '@/lib/hooks/use-bookings';
+import { useGuests } from '@/lib/hooks/use-guests';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
 import {

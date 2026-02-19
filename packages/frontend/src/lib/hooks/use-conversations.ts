@@ -1,15 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-
-// Query keys factory
-export const conversationKeys = {
-  all: ['conversations'] as const,
-  lists: () => [...conversationKeys.all, 'list'] as const,
-  list: (filters?: ConversationFilters) => [...conversationKeys.lists(), filters] as const,
-  details: () => [...conversationKeys.all, 'detail'] as const,
-  detail: (id: string) => [...conversationKeys.details(), id] as const,
-  drafts: (id: string) => [...conversationKeys.detail(id), 'drafts'] as const,
-};
+import { queryKeys } from '@/lib/query-client';
 
 // Types
 export interface Message {
@@ -75,7 +66,7 @@ export interface ApproveDraftData {
 // Hooks
 export function useConversations(filters?: ConversationFilters) {
   return useQuery({
-    queryKey: conversationKeys.list(filters),
+    queryKey: queryKeys.conversations.list(filters as Record<string, unknown>),
     queryFn: async () => {
       const response = await api.get<{
         data: Conversation[];
@@ -89,7 +80,7 @@ export function useConversations(filters?: ConversationFilters) {
 
 export function useConversation(id: string | undefined) {
   return useQuery({
-    queryKey: conversationKeys.detail(id!),
+    queryKey: queryKeys.conversations.detail(id!),
     queryFn: async () => {
       const response = await api.get<{ data: ConversationWithMessages }>(
         `/api/v1/conversations/${id}`
@@ -102,7 +93,7 @@ export function useConversation(id: string | undefined) {
 
 export function useConversationDrafts(id: string | undefined) {
   return useQuery({
-    queryKey: conversationKeys.drafts(id!),
+    queryKey: queryKeys.conversations.drafts(id!),
     queryFn: async () => {
       const response = await api.get<{ data: AiDraft[] }>(
         `/api/v1/conversations/${id}/drafts`
@@ -125,8 +116,8 @@ export function useSendMessage(conversationId: string) {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId) });
-      queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
     },
   });
 }
@@ -143,9 +134,9 @@ export function useApproveDraft(conversationId: string) {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId) });
-      queryClient.invalidateQueries({ queryKey: conversationKeys.drafts(conversationId) });
-      queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.drafts(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
     },
   });
 }

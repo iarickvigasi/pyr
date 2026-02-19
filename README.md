@@ -167,12 +167,12 @@ PYR/
 
 | Phase | Status | Description |
 |-------|--------|-------------|
-| E1 Project Setup | ✅ Complete | Monorepo, Docker, CI/CD |
-| E2 Database & API | ✅ Complete | Schema, Prisma, all CRUD endpoints |
-| E5 Admin Dashboard | ✅ Complete | Next.js dashboard with auth, bookings, events, inbox, settings |
-| E3 CRM Enhancements | Pending | Guest timeline, advanced search |
-| E4 Email Ingestion | Pending | IMAP polling, email threading |
-| E6 AI Engine | Pending | LLM drafts, language detection |
+| E1 Project Setup | ✅ Complete | Monorepo, Docker, CI/CD, env validation |
+| E2 Database & API | ✅ Complete | Schema, Prisma, all CRUD endpoints (guests, bookings, rooms, events, inbox, settings, dashboard) |
+| E3 CRM & Guest Management | ✅ Complete | Guest timeline, filter bar, merge UI, rich detail page, post-audit (49 fixes) |
+| E5 Admin Dashboard | ✅ Complete | Next.js 15 dashboard: auth, bookings, events, inbox, calendar, settings pages |
+| E4 Email Ingestion | Pending | IMAP polling (GMX), email threading, unified inbox |
+| E6 AI Engine | Pending | LLM draft generation, language detection, FAQ system |
 | E7 Calendar Sync | Pending | CalDAV push to Apple Calendar |
-| E8 AI Assistant | Pending | Telegram bot, NLU agent |
-| E9 Testing & Launch | Pending | Excel migration, UAT, go-live |
+| E8 AI Assistant | Pending | Telegram bot, NLU agent, daily briefings |
+| E9 Testing & Launch | Pending | Excel import, UAT, go-live |

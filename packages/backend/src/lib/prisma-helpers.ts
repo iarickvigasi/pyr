@@ -1,8 +1,30 @@
+import { ConflictError } from './errors.js';
+
 /**
  * Prisma `where` filter for non-soft-deleted records.
  * Spread into any query: `{ where: { id, ...notDeleted } }`
  */
 export const notDeleted = { deletedAt: null } as const;
+
+/**
+ * Rethrows as ConflictError when Prisma throws P2002 (unique constraint violation).
+ * Use in `.catch()` on create/update calls where unique names or identifiers are enforced.
+ *
+ * @example
+ * const record = await tx.roomType.create({ data }).catch((err) => {
+ *   handleUniqueConstraint(err, 'RoomType');
+ * });
+ */
+export function handleUniqueConstraint(err: unknown, entity: string): never {
+  if (
+    err instanceof Error &&
+    'code' in err &&
+    (err as { code: string }).code === 'P2002'
+  ) {
+    throw new ConflictError(`${entity} with that name already exists`);
+  }
+  throw err;
+}
 
 /**
  * Compute a diff of changed fields between two objects for audit logging.

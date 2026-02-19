@@ -162,6 +162,52 @@ describe('Bookings API', () => {
       expect(body.data).toHaveLength(1);
       expect(body.data[0].status).toBe('confirmed');
     });
+
+    it('should support cursor pagination', async () => {
+      // Create 3 bookings on different rooms across 3 months
+      await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: { guestId, roomId, checkIn: '2026-07-01', checkOut: '2026-07-05', totalPrice: 40000 },
+      });
+      await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: { guestId, roomId: roomId2, checkIn: '2026-08-01', checkOut: '2026-08-05', totalPrice: 40000 },
+      });
+      // Third booking needs a third room — create one via prisma directly
+      const roomTypeRes = await app.inject({
+        method: 'POST', url: '/api/v1/room-types', headers: headers(),
+        payload: { name: 'Pagination Test Type', basePrice: 10000, maxOccupancy: 2 },
+      });
+      const roomTypeId3 = JSON.parse(roomTypeRes.body).data.id;
+      const roomRes = await app.inject({
+        method: 'POST', url: '/api/v1/rooms', headers: headers(),
+        payload: { roomTypeId: roomTypeId3, name: 'Room C' },
+      });
+      const roomId3 = JSON.parse(roomRes.body).data.id;
+      await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: { guestId, roomId: roomId3, checkIn: '2026-09-01', checkOut: '2026-09-05', totalPrice: 40000 },
+      });
+
+      // Page 1: limit=2 → should have 2 results + hasMore + cursor
+      const page1 = await app.inject({
+        method: 'GET', url: '/api/v1/bookings?limit=2', headers: headers(),
+      });
+      const body1 = JSON.parse(page1.body);
+      expect(body1.data).toHaveLength(2);
+      expect(body1.hasMore).toBe(true);
+      expect(body1.nextCursor).toBeTruthy();
+
+      // Page 2: use cursor → should have 1 result + hasMore=false
+      const page2 = await app.inject({
+        method: 'GET',
+        url: `/api/v1/bookings?limit=2&cursor=${body1.nextCursor}`,
+        headers: headers(),
+      });
+      const body2 = JSON.parse(page2.body);
+      expect(body2.data).toHaveLength(1);
+      expect(body2.hasMore).toBe(false);
+    });
   });
 
   describe('GET /api/v1/bookings/:id', () => {

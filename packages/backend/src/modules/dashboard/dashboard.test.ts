@@ -1,21 +1,29 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 import { getTestApp, cleanDatabase, getAuthToken } from '../../test/setup.js';
-import { createGuest, createRoomType, createRoom, createEvent } from '../../test/factories.js';
+import { createGuest, createRoomType, createRoom } from '../../test/factories.js';
 
 describe('Dashboard Module', () => {
+  let app: FastifyInstance;
+  let token: string;
+
+  beforeAll(async () => {
+    app = await getTestApp();
+  });
+
   beforeEach(async () => {
     await cleanDatabase();
+    token = await getAuthToken(app);
   });
+
+  const headers = () => ({ authorization: `Bearer ${token}` });
 
   describe('GET /api/v1/dashboard/stats - Dashboard statistics', () => {
     it('should return zero stats when no data exists', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       expect(response.statusCode).toBe(200);
@@ -31,9 +39,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should count pending inquiries correctly', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const guest = await createGuest(app.prisma);
       const roomType = await createRoomType(app.prisma);
       const room = await createRoom(app.prisma, roomType.id);
@@ -64,7 +69,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -72,9 +77,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should count confirmed bookings correctly', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const guest = await createGuest(app.prisma);
       const roomType = await createRoomType(app.prisma);
       const room = await createRoom(app.prisma, roomType.id);
@@ -112,7 +114,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -120,9 +122,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should count checked-in guests correctly', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const guest = await createGuest(app.prisma);
       const roomType = await createRoomType(app.prisma);
       const room = await createRoom(app.prisma, roomType.id);
@@ -159,7 +158,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -167,9 +166,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should calculate revenue for current month only', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const guest = await createGuest(app.prisma);
       const roomType = await createRoomType(app.prisma);
       const room = await createRoom(app.prisma, roomType.id);
@@ -227,7 +223,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -235,9 +231,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should count total guests excluding deleted', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       await app.prisma.guest.createMany({
         data: [
           { name: 'Guest 1', email: 'guest1@example.com', language: 'en' },
@@ -249,7 +242,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -257,9 +250,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should count upcoming events only', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
@@ -295,7 +285,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -303,8 +293,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should require authentication', async () => {
-      const app = await getTestApp();
-
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
@@ -314,8 +302,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should work with API key authentication', async () => {
-      const app = await getTestApp();
-
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/stats',
@@ -326,15 +312,12 @@ describe('Dashboard Module', () => {
     });
   });
 
-  describe('GET /api/v1/dashboard/today - Today\'s activity', () => {
+  describe("GET /api/v1/dashboard/today - Today's activity", () => {
     it('should return empty arrays when no activity today', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       expect(response.statusCode).toBe(200);
@@ -346,10 +329,7 @@ describe('Dashboard Module', () => {
       });
     });
 
-    it('should return today\'s check-ins', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
+    it("should return today's check-ins", async () => {
       const guest = await createGuest(app.prisma, { name: 'John Doe' });
       const roomType = await createRoomType(app.prisma);
       const room = await createRoom(app.prisma, roomType.id, { name: 'Room 101' });
@@ -371,7 +351,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -380,10 +360,7 @@ describe('Dashboard Module', () => {
       expect(body.data.checkIns[0].roomName).toBe('Room 101');
     });
 
-    it('should return today\'s check-outs', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
+    it("should return today's check-outs", async () => {
       const guest = await createGuest(app.prisma, { name: 'Jane Smith' });
       const roomType = await createRoomType(app.prisma);
       const room = await createRoom(app.prisma, roomType.id, { name: 'Room 202' });
@@ -406,7 +383,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -415,10 +392,7 @@ describe('Dashboard Module', () => {
       expect(body.data.checkOuts[0].roomName).toBe('Room 202');
     });
 
-    it('should return today\'s events with registration count', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
+    it("should return today's events with registration count", async () => {
       const guest1 = await createGuest(app.prisma);
       const guest2 = await createGuest(app.prisma);
 
@@ -446,7 +420,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -457,9 +431,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should order events by time', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const today = new Date();
       const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
 
@@ -492,7 +463,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -503,9 +474,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should not include deleted bookings', async () => {
-      const app = await getTestApp();
-      const token = await getAuthToken(app);
-
       const guest = await createGuest(app.prisma);
       const roomType = await createRoomType(app.prisma);
       const room = await createRoom(app.prisma, roomType.id);
@@ -528,7 +496,7 @@ describe('Dashboard Module', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',
-        headers: { authorization: `Bearer ${token}` },
+        headers: headers(),
       });
 
       const body = JSON.parse(response.body);
@@ -536,8 +504,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should require authentication', async () => {
-      const app = await getTestApp();
-
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',
@@ -547,8 +513,6 @@ describe('Dashboard Module', () => {
     });
 
     it('should work with API key authentication', async () => {
-      const app = await getTestApp();
-
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/dashboard/today',

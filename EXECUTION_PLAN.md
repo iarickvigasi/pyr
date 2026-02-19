@@ -59,17 +59,17 @@ The MVP delivers these capabilities on day one:
 
 ## 3. Epic Overview
 
-| ID | Epic | Tasks | Est. | Timing |
-|----|------|:-----:|:----:|:------:|
-| E1 | Project Setup & Infrastructure | 7 | 5 days | Week 1 |
-| E2 | Database Design & Backend API | 10 | 13.5 days | Weeks 1–3 |
-| E3 | CRM & Guest Management | 4 | 5.5 days | Weeks 3–4 |
-| E4 | Email Ingestion & Unified Inbox | 7 | 10 days | Weeks 3–5 |
-| E5 | Admin Dashboard | 6 | 9.5 days | Weeks 3–5 |
-| E6 | AI Communication Engine | 5 | 6 days | Weeks 4–5 |
-| E7 | Calendar & Apple Calendar Sync | 4 | 6.5 days | Weeks 4–6 |
-| E8 | Personal AI Assistant | 6 | 11 days | Weeks 5–7 |
-| E9 | Testing, Migration & Launch | 6 | 12 days | Weeks 7–9 |
+| ID | Epic | Status | Tasks | Est. | Timing |
+|----|------|:------:|:-----:|:----:|:------:|
+| E1 | Project Setup & Infrastructure | ✅ Complete | 7 | 5 days | Week 1 |
+| E2 | Database Design & Backend API | ✅ Complete | 10 | 13.5 days | Weeks 1–3 |
+| E3 | CRM & Guest Management | ✅ Complete | 4 | 5.5 days | Weeks 3–4 |
+| E4 | Email Ingestion & Unified Inbox | Pending | 7 | 10 days | Weeks 3–5 |
+| E5 | Admin Dashboard | ✅ Complete | 6 | 9.5 days | Weeks 3–5 |
+| E6 | AI Communication Engine | Pending | 5 | 6 days | Weeks 4–5 |
+| E7 | Calendar & Apple Calendar Sync | Pending | 4 | 6.5 days | Weeks 4–6 |
+| E8 | Personal AI Assistant | Pending | 6 | 11 days | Weeks 5–7 |
+| E9 | Testing, Migration & Launch | Pending | 6 | 12 days | Weeks 7–9 |
 
 ---
 
@@ -77,9 +77,11 @@ The MVP delivers these capabilities on day one:
 
 ---
 
-### E1: Project Setup & Infrastructure
+### E1: Project Setup & Infrastructure ✅ COMPLETE
 
 *Set up the development environment, hosting infrastructure, CI/CD pipeline, and foundational project structure. This epic establishes the technical bedrock that all other work builds upon.*
+
+> **Completed:** Monorepo (pnpm + Turborepo), Docker Compose (PostgreSQL 16 + Redis 7), GitHub Actions CI, `.env` validation (Zod), TypeScript strict mode, Fastify 5 backend, Next.js 15 frontend, shared package.
 
 | Task ID | Task | Priority | Est. | Depends On | Description |
 |---------|------|:--------:|:----:|:----------:|-------------|
@@ -93,9 +95,11 @@ The MVP delivers these capabilities on day one:
 
 ---
 
-### E2: Database Design & Backend API Foundation
+### E2: Database Design & Backend API Foundation ✅ COMPLETE
 
 *Design the complete PostgreSQL schema and build the backend REST API framework. This is the data backbone of the entire platform — every other module depends on it.*
+
+> **Completed:** Full Prisma schema (16 tables), all CRUD modules (guests, bookings, rooms, events, inbox, dashboard, settings), cursor pagination, JWT + API key auth, audit logging, Swagger docs. Post-E2 audit: 57 issues fixed.
 
 | Task ID | Task | Priority | Est. | Depends On | Description |
 |---------|------|:--------:|:----:|:----------:|-------------|
@@ -112,9 +116,11 @@ The MVP delivers these capabilities on day one:
 
 ---
 
-### E3: CRM & Guest Management
+### E3: CRM & Guest Management ✅ COMPLETE
 
 *Build the guest relationship management module that replaces Ines's Excel-based guest tracking. Central profile with full history, preferences, and communication log.*
+
+> **Completed:** Guest CRUD, filter bar (search/source/tag/language), timeline view, merge UI, rich detail page with booking + event history. Post-E3 audit: 49 issues fixed, 151 backend + 28 frontend tests green.
 
 | Task ID | Task | Priority | Est. | Depends On | Description |
 |---------|------|:--------:|:----:|:----------:|-------------|
@@ -141,9 +147,11 @@ The MVP delivers these capabilities on day one:
 
 ---
 
-### E5: Admin Dashboard
+### E5: Admin Dashboard ✅ COMPLETE
 
 *Build the web-based admin dashboard that serves as Ines's primary management interface. It ties together the CRM, bookings, calendar, inbox, and reporting into one cohesive application.*
+
+> **Completed:** Next.js 15 App Router, JWT auth (login + auto-redirect), pages for bookings, events, guests, inbox, calendar (month + week views), settings. shadcn/ui component library. Post-E5 audit: all 10 phases clean.
 
 | Task ID | Task | Priority | Est. | Depends On | Description |
 |---------|------|:--------:|:----:|:----------:|-------------|

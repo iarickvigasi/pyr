@@ -155,3 +155,62 @@ The following entities write to `audit_log` on every create/update/delete:
 **Rule:** The audit log write is always inside the same `$transaction` as the entity mutation. This ensures the audit trail cannot be bypassed if the entity write fails, and the audit entry cannot be orphaned if the subsequent code throws.
 
 Bypassing the service layer (writing directly to Prisma in routes) loses the audit trail. Always go through services.
+
+---
+
+## Integration Module Pattern
+
+Integration modules (email, AI, calendar, assistant) live in `src/services/<name>/` and follow a different pattern from API feature modules. They provide background processing capabilities via BullMQ workers.
+
+### Module Structure
+
+```
+src/services/<name>/
+├── index.ts          # Module entry point — factory function returning contract implementation
+├── <name>.worker.ts  # BullMQ worker processor (optional, if module has background jobs)
+└── ...               # Internal implementation files
+```
+
+### Adding a New Integration Module
+
+1. **Define the contract** in `packages/shared/src/types/module-contracts.ts`:
+   - Add a `<Name>ModuleContract` interface defining the module's public API
+   - Add any supporting types (params, results)
+   - Re-export from `packages/shared/src/types/index.ts`
+
+2. **Create the module entry point** at `packages/backend/src/services/<name>/index.ts`:
+   - Export a `create<Name>Module(app: FastifyInstance): <Name>ModuleContract` factory function
+   - Receive Fastify app instance for access to `app.prisma`, `app.redis`, `app.queues`, `app.log`
+   - Implement the contract interface methods
+   - Document cross-module data flow in JSDoc
+
+3. **Register a BullMQ worker** (if the module processes background jobs):
+   - Define job payload type in `packages/shared/src/types/jobs.ts`
+   - Add queue name to `QUEUE_NAMES` constant
+   - Create processor in `src/services/queue/jobs/<name>.job.ts`
+   - Register queue in `src/services/queue/queue.ts` via `registerQueues()`
+   - Register worker in `src/services/queue/worker.ts` via `registerWorkers()`
+
+4. **Cross-module communication** — NEVER import functions from another module's service directory. Instead:
+   - Enqueue a job to the target module's BullMQ queue
+   - Use typed job payloads from `@pyr/shared` for compile-time safety
+   - Example: Email module enqueues `ai-draft` job -> AI module's worker picks it up
+
+### Module Communication Rules
+
+| Rule | Description |
+|------|-------------|
+| No cross-imports | `services/email/` must NOT import from `services/ai/` or vice versa |
+| Queue-based triggers | Cross-module triggers go through BullMQ job queues |
+| Shared types only | Modules may import types from `@pyr/shared` (contracts, job payloads) |
+| Shared Prisma client | All modules use `app.prisma` but by convention only query their own domain tables |
+| Typed contracts | Each module's public API is defined by its contract interface |
+
+### Existing Modules
+
+| Module | Contract | Queue | Phase |
+|--------|----------|-------|-------|
+| Email | `EmailModuleContract` | `email-poll` | Phase 2 |
+| AI | `AiModuleContract` | `ai-draft` | Phase 4 |
+| Calendar | `CalendarModuleContract` | `calendar-sync` | Phase 6 |
+| Assistant | `AssistantModuleContract` | `scheduled` | Phase 7-8 |

@@ -9,6 +9,7 @@ import {
   Calendar,
   Mail,
   Settings,
+  Layers,
   LogOut,
   Menu,
 } from 'lucide-react';
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/inbox', label: 'Inbox', icon: Mail },
   { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/queues', label: 'Queues', icon: Layers },
 ];
 
 function NavContent() {

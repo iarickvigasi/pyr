@@ -12,6 +12,9 @@ import prismaPlugin from './plugins/prisma.js';
 import authPlugin from './plugins/auth.js';
 import redisPlugin from './plugins/redis.js';
 import swaggerPlugin from './plugins/swagger.js';
+import queuePlugin from './plugins/queue.js';
+import { registerQueues } from './services/queue/queue.js';
+import { registerWorkers, setupSchedulers } from './services/queue/worker.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import guestRoutes from './modules/guests/guest.routes.js';
 import roomRoutes from './modules/rooms/room.routes.js';
@@ -73,6 +76,11 @@ export async function buildApp() {
   await app.register(redisPlugin);
   await app.register(authPlugin);
 
+  // Queue infrastructure (requires redis + auth plugins)
+  if (env.NODE_ENV !== 'test') {
+    await app.register(queuePlugin);
+  }
+
   // Health check — verifies DB and Redis connectivity
   app.get('/health', async (_request, reply) => {
     const checks: Record<string, string> = {};
@@ -109,6 +117,13 @@ export async function buildApp() {
   await app.register(inboxRoutes, { prefix: '/api/v1/conversations' });
   await app.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
   await app.register(settingsRoutes, { prefix: '/api/v1/settings' });
+
+  // Queue setup: register queues, workers, and schedulers (after all plugins + routes)
+  if (env.NODE_ENV !== 'test') {
+    await registerQueues(app);
+    await registerWorkers(app);
+    await setupSchedulers(app);
+  }
 
   return app;
 }

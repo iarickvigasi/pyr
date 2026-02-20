@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 5 - AI-Email Integration
+**Current focus:** Phase 6 - CalDAV Calendar Sync
 
 ## Current Position
 
-Phase: 5 of 9 (AI-Email Integration)
-Plan: 4 of 4 in current phase
-Status: Phase 05 Complete
-Last activity: 2026-02-20 -- Completed 05-04-PLAN.md (AI Draft Pipeline & Workflow Tests)
+Phase: 6 of 9 (CalDAV Calendar Sync)
+Plan: 1 of 4 in current phase
+Status: Executing Phase 06
+Last activity: 2026-02-20 -- Completed 06-01-PLAN.md (CalDAV Schema & Client Foundation)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 54%
+Progress: [▓▓▓▓▓▓▓▓▓░] 57%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
-- Average duration: 7min
-- Total execution time: 1.99 hours
+- Total plans completed: 20
+- Average duration: 6min
+- Total execution time: 2.07 hours
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 54%
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
 | 05-ai-email-integration | 4/4 | 23min | 5.8min |
+| 06-caldav-calendar-sync | 1/4 | 5min | 5.0min |
 
 **Recent Trend:**
-- Last 5 plans: 3min, 9min, 5min, 4min, 5min
+- Last 5 plans: 9min, 5min, 4min, 5min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -125,6 +126,10 @@ Recent decisions affecting current work:
 - [05-04]: mockImplementation over mockReturnValue for vi.mock factories to survive vi.clearAllMocks between tests
 - [05-04]: vi.restoreAllMocks avoided in afterEach for tests using vi.mock module factories (restoreAllMocks resets factory implementations)
 - [05-04]: Dedup test verifies per-message scope by testing findFirst query patterns rather than running full BullMQ job processor
+- [Phase 06]: [06-01]: CalDAV credentials in Settings table (encrypted, same pattern as email_provider) with env var fallback
+- [Phase 06]: [06-01]: All-day booking VEVENT end date = checkOut + 1 day per RFC 5545 non-inclusive DTEND rule
+- [Phase 06]: [06-01]: Event durations from type mapping (puppy_yoga:90, beach_walk:120, coffee_cake_cuddles:60) -- no DB field needed
+- [Phase 06]: [06-01]: CalDAV client cached as lazy singleton with resetCaldavClient() for credential changes
 
 ### Pending Todos
 
@@ -139,5 +144,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 05-04-PLAN.md (AI Draft Pipeline & Workflow Tests) -- Phase 05 Complete
-Resume file: .planning/phases/06-*/06-01-PLAN.md
+Stopped at: Completed 06-01-PLAN.md (CalDAV Schema & Client Foundation)
+Resume file: .planning/phases/06-caldav-calendar-sync/06-02-PLAN.md

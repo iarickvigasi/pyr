@@ -122,7 +122,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Schema migration + CalDAV client (tsdav) + iCalendar builder (ical-generator)
+- [x] 06-01-PLAN.md — Schema migration + CalDAV client (tsdav) + iCalendar builder (ical-generator)
 - [ ] 06-02-PLAN.md — CalDAV sync engine + job processor + booking/event mutation hooks
 - [ ] 06-03-PLAN.md — Calendar API endpoints + CalDAV settings UI + sync status banner
 - [ ] 06-04-PLAN.md — iCalendar builder unit tests + CalDAV integration tests (real iCloud) + end-to-end verification
@@ -189,12 +189,12 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Queue & Module Foundation | 1/2 | Complete    | 2026-02-19 |
-| 2. Email Ingestion Pipeline | 0/6 | Planned     | - |
-| 3. Email UI & OTA Parsing | 0/3 | Planned     | - |
-| 4. AI Communication Engine | 3/4 | Complete    | 2026-02-20 |
-| 5. AI-Email Integration | 0/4 | Not started | - |
-| 6. CalDAV Calendar Sync | 0/4 | Planned     | - |
+| 1. Queue & Module Foundation | 2/2 | Complete    | 2026-02-19 |
+| 2. Email Ingestion Pipeline | 6/6 | Complete    | 2026-02-20 |
+| 3. Email UI & OTA Parsing | 3/3 | Complete    | 2026-02-20 |
+| 4. AI Communication Engine | 4/4 | Complete    | 2026-02-20 |
+| 5. AI-Email Integration | 4/4 | Complete    | 2026-02-20 |
+| 6. CalDAV Calendar Sync | 1/4 | In Progress | - |
 | 7. OpenClaw Assistant Core | 0/4 | Not started | - |
 | 8. Assistant Actions & Automation | 0/4 | Not started | - |
 | 9. Migration, UAT & Launch | 0/4 | Not started | - |

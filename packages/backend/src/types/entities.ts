@@ -116,6 +116,8 @@ export type Booking = {
   totalPrice: number;
   source: string | null;
   notes: string | null;
+  sourceConversationId: string | null;
+  needsReview: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -183,6 +185,7 @@ export type Conversation = {
   subject: string | null;
   status: ConversationStatus;
   classification: string | null;
+  isRead: boolean;
   lastMessageAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -209,9 +212,23 @@ export type Message = {
   createdAt: Date;
 };
 
+export type Attachment = {
+  id: string;
+  messageId: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  contentId: string | null;
+  createdAt: Date;
+};
+
+export type MessageWithAttachments = Message & {
+  attachments: Omit<Attachment, 'messageId' | 'createdAt'>[];
+};
+
 export type ConversationWithMessages = Conversation & {
   guest: Pick<Guest, 'id' | 'name' | 'email' | 'language'> | null;
-  messages: Message[];
+  messages: (Message & { attachments?: Omit<Attachment, 'messageId' | 'createdAt'>[] })[];
 };
 
 // ──────────────────────────────────────────────────────────────

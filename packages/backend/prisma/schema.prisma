@@ -185,23 +185,26 @@ model Room {
 }
 
 model Booking {
-  id         String        @id @default(cuid())
-  guestId    String        @map("guest_id")
-  roomId     String        @map("room_id")
-  checkIn    DateTime      @map("check_in") @db.Date
-  checkOut   DateTime      @map("check_out") @db.Date
-  status     BookingStatus @default(inquiry)
-  totalPrice Int           @map("total_price") // cents
-  source     String?
-  notes      String?
-  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt  DateTime?     @map("deleted_at") @db.Timestamptz(3)
+  id                   String        @id @default(cuid())
+  guestId              String        @map("guest_id")
+  roomId               String        @map("room_id")
+  checkIn              DateTime      @map("check_in") @db.Date
+  checkOut             DateTime      @map("check_out") @db.Date
+  status               BookingStatus @default(inquiry)
+  totalPrice           Int           @map("total_price") // cents
+  source               String?
+  notes                String?
+  sourceConversationId String?       @map("source_conversation_id")
+  needsReview          Boolean       @default(false) @map("needs_review")
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt            DateTime?     @map("deleted_at") @db.Timestamptz(3)
 
-  guest          Guest           @relation(fields: [guestId], references: [id])
-  room           Room            @relation(fields: [roomId], references: [id])
-  calendarEvents CalendarEvent[]
-  invoices       Invoice[]
+  guest              Guest           @relation(fields: [guestId], references: [id])
+  room               Room            @relation(fields: [roomId], references: [id])
+  sourceConversation Conversation?   @relation(fields: [sourceConversationId], references: [id])
+  calendarEvents     CalendarEvent[]
+  invoices           Invoice[]
 
   @@index([guestId])
   @@index([roomId])
@@ -253,6 +256,7 @@ model Conversation {
   subject        String?
   status         ConversationStatus @default(open)
   classification String?            // guest_inquiry, ota_notification, spam_newsletter, admin_system
+  isRead         Boolean            @default(true) @map("is_read")
   lastMessageAt  DateTime?          @map("last_message_at") @db.Timestamptz(3)
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -260,9 +264,11 @@ model Conversation {
   guest    Guest?    @relation(fields: [guestId], references: [id])
   messages Message[]
   aiDrafts AiDraft[]
+  bookings Booking[]
 
   @@index([guestId])
   @@index([status])
+  @@index([status, isRead])
   @@index([lastMessageAt])
   @@map("conversations")
 }
@@ -287,11 +293,28 @@ model Message {
 
   conversation Conversation @relation(fields: [conversationId], references: [id])
   aiDrafts     AiDraft[]
+  attachments  Attachment[]
 
   @@index([conversationId])
   @@index([sentAt])
   @@index([fromAddress])
   @@map("messages")
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  messageId   String   @map("message_id")
+  filename    String
+  contentType String   @map("content_type")
+  size        Int
+  contentId   String?  @map("content_id") // for inline images (cid: references)
+  data        Bytes
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("attachments")
 }
 
 model AiDraft {

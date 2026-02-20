@@ -11,6 +11,8 @@ export async function listConversations(
   prisma: PrismaClient,
   query: ListConversationsQuery,
 ): Promise<PaginatedResult<Conversation & {
+  isRead: boolean;
+  messagePreview: string | null;
   guest: { id: string; name: string; email: string | null } | null;
   messages: Pick<Message, 'content' | 'direction' | 'sentAt'>[];
 }>> {
@@ -38,8 +40,21 @@ export async function listConversations(
   const hasMore = conversations.length > limit;
   const data = hasMore ? conversations.slice(0, limit) : conversations;
 
+  // Compute messagePreview for each conversation
+  const enriched = data.map((c) => {
+    const lastMessage = c.messages[0];
+    const messagePreview = lastMessage
+      ? lastMessage.content.length > 80
+        ? lastMessage.content.slice(0, 80) + '...'
+        : lastMessage.content
+      : null;
+    return { ...c, messagePreview };
+  });
+
   return {
-    data: data as (Conversation & {
+    data: enriched as (Conversation & {
+      isRead: boolean;
+      messagePreview: string | null;
       guest: { id: string; name: string; email: string | null } | null;
       messages: Pick<Message, 'content' | 'direction' | 'sentAt'>[];
     })[],
@@ -52,18 +67,49 @@ export async function getConversation(
   prisma: PrismaClient,
   id: string,
 ): Promise<ConversationWithMessages> {
-  const conversation = await prisma.conversation.findUnique({
-    where: { id },
-    include: {
-      guest: { select: { id: true, name: true, email: true, language: true } },
-      messages: {
-        orderBy: { sentAt: 'asc' },
+  // Use a transaction to atomically mark as read and fetch
+  const conversation = await prisma.$transaction(async (tx) => {
+    // Mark as read when opened
+    await tx.conversation.updateMany({
+      where: { id, isRead: false },
+      data: { isRead: true },
+    });
+
+    return tx.conversation.findUnique({
+      where: { id },
+      include: {
+        guest: { select: { id: true, name: true, email: true, language: true } },
+        messages: {
+          orderBy: { sentAt: 'asc' },
+          include: {
+            attachments: {
+              select: {
+                id: true,
+                filename: true,
+                contentType: true,
+                size: true,
+                contentId: true,
+              },
+            },
+          },
+        },
       },
-    },
+    });
   });
 
   if (!conversation) throw new NotFoundError('Conversation', id);
-  return conversation as ConversationWithMessages;
+  return conversation as unknown as ConversationWithMessages;
+}
+
+/**
+ * Get count of unread open conversations.
+ */
+export async function getUnreadCount(
+  prisma: PrismaClient,
+): Promise<number> {
+  return prisma.conversation.count({
+    where: { isRead: false, status: 'open' },
+  });
 }
 
 export async function createConversation(

@@ -3,6 +3,14 @@ import sanitizeHtml from 'sanitize-html';
 
 // ─── Types ──────────────────────────────────────────────────
 
+export interface ParsedAttachment {
+  filename: string;
+  contentType: string;
+  size: number;
+  contentId?: string;
+  content: Buffer;
+}
+
 export interface ParsedEmail {
   messageId: string;
   inReplyTo: string | undefined;
@@ -14,6 +22,7 @@ export interface ParsedEmail {
   html: string;
   date: Date;
   rawSource: Buffer;
+  attachments: ParsedAttachment[];
 }
 
 // ─── Sanitization config ────────────────────────────────────
@@ -91,6 +100,15 @@ export async function parseEmail(source: Buffer): Promise<ParsedEmail> {
     typeof parsed.html === 'string' ? parsed.html : '',
   );
 
+  // Extract attachments
+  const attachments: ParsedAttachment[] = (parsed.attachments ?? []).map((att) => ({
+    filename: att.filename ?? 'unnamed',
+    contentType: att.contentType ?? 'application/octet-stream',
+    size: att.size ?? att.content?.length ?? 0,
+    contentId: att.contentId?.replace(/[<>]/g, '') ?? undefined,
+    content: att.content ?? Buffer.alloc(0),
+  }));
+
   return {
     messageId: parsed.messageId ?? '',
     inReplyTo: parsed.inReplyTo ?? undefined,
@@ -102,5 +120,6 @@ export async function parseEmail(source: Buffer): Promise<ParsedEmail> {
     html,
     date: parsed.date ?? new Date(),
     rawSource: source,
+    attachments,
   };
 }

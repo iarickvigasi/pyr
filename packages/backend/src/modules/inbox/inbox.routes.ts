@@ -8,10 +8,13 @@ import {
   listConversationsQuerySchema,
   addMessageSchema,
   replySchema,
+  unreadCountResponseSchema,
+  attachmentParamsSchema,
 } from './inbox.schema.js';
 import {
   listConversations,
   getConversation,
+  getUnreadCount,
   createConversation,
   updateConversation,
   listDrafts,
@@ -29,6 +32,18 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Inbox'], summary: 'List conversations with status and guest filters', querystring: listConversationsQuerySchema },
   }, async (request) => {
     return listConversations(app.prisma, request.query);
+  });
+
+  // Register unread-count BEFORE /:id to avoid path conflicts
+  server.get('/unread-count', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Get count of unread open conversations',
+      response: { 200: unreadCountResponseSchema },
+    },
+  }, async () => {
+    const count = await getUnreadCount(app.prisma);
+    return { data: { count } };
   });
 
   server.get('/:id', {
@@ -180,5 +195,37 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Inbox'], summary: 'List AI drafts for a conversation', params: idParamSchema },
   }, async (request) => {
     return { data: await listDrafts(app.prisma, request.params.id) };
+  });
+
+  server.get('/:id/messages/:messageId/attachments/:attachmentId', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Get attachment binary data',
+      params: attachmentParamsSchema,
+    },
+  }, async (request, reply) => {
+    const { id, messageId, attachmentId } = request.params as {
+      id: string;
+      messageId: string;
+      attachmentId: string;
+    };
+
+    // Verify the attachment belongs to the conversation
+    const attachment = await app.prisma.attachment.findFirst({
+      where: {
+        id: attachmentId,
+        messageId,
+        message: { conversationId: id },
+      },
+    });
+
+    if (!attachment) {
+      throw new NotFoundError('Attachment', attachmentId);
+    }
+
+    return reply
+      .type(attachment.contentType)
+      .header('Content-Disposition', `inline; filename="${attachment.filename}"`)
+      .send(Buffer.from(attachment.data));
   });
 }

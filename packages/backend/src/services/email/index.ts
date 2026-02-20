@@ -191,6 +191,29 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           },
         });
 
+        // f2. Store attachments
+        if (parsed.attachments.length > 0) {
+          for (const att of parsed.attachments) {
+            await app.prisma.attachment.create({
+              data: {
+                messageId: message.id,
+                filename: att.filename,
+                contentType: att.contentType,
+                size: att.size,
+                contentId: att.contentId ?? null,
+                // Prisma Bytes expects Buffer; cast through unknown to satisfy strict TS
+              data: Buffer.from(att.content.buffer, att.content.byteOffset, att.content.byteLength) as Buffer<ArrayBuffer>,
+              },
+            });
+          }
+        }
+
+        // f3. Mark conversation as unread (new inbound message)
+        await app.prisma.conversation.update({
+          where: { id: conversationId },
+          data: { isRead: false },
+        });
+
         // g. Write audit log
         await writeAuditLog(app.prisma, {
           entityType: 'message',

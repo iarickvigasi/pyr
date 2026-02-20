@@ -43,3 +43,13 @@ export const replySchema = z.object({
 });
 
 export type ReplyBody = z.infer<typeof replySchema>;
+
+export const unreadCountResponseSchema = z.object({
+  data: z.object({ count: z.number() }),
+});
+
+export const attachmentParamsSchema = z.object({
+  id: z.string(),
+  messageId: z.string(),
+  attachmentId: z.string(),
+});

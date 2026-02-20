@@ -13,8 +13,8 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [ ] **EMAIL-02**: System polls inbox via BullMQ scheduled job (2-3 min interval) and ingests new messages
 - [x] **EMAIL-03**: System parses email content (plain text + HTML) using mailparser with MIME handling
 - [x] **EMAIL-04**: System threads conversations using In-Reply-To and References headers (RFC 5322)
-- [ ] **EMAIL-05**: System auto-matches sender email to existing CRM guest or creates new guest record
-- [ ] **EMAIL-06**: System classifies incoming emails into categories: guest inquiry, OTA notification, spam/newsletter, admin/system
+- [x] **EMAIL-05**: System auto-matches sender email to existing CRM guest or creates new guest record
+- [x] **EMAIL-06**: System classifies incoming emails into categories: guest inquiry, OTA notification, spam/newsletter, admin/system
 - [ ] **EMAIL-07**: System sends outbound emails via configurable SMTP with correct threading headers preserved
 - [ ] **EMAIL-08**: Unified inbox UI shows conversations with live email data, sorted by latest message
 - [ ] **EMAIL-09**: AI draft is auto-generated for guest inquiry emails with conversation context
@@ -131,8 +131,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EMAIL-02 | Phase 2 | Pending |
 | EMAIL-03 | Phase 2 | Complete |
 | EMAIL-04 | Phase 2 | Complete |
-| EMAIL-05 | Phase 2 | Pending |
-| EMAIL-06 | Phase 2 | Pending |
+| EMAIL-05 | Phase 2 | Complete |
+| EMAIL-06 | Phase 2 | Complete |
 | EMAIL-07 | Phase 2 | Pending |
 | TEST-01 | Phase 2 | Pending |
 | TEST-03 | Phase 2 | Pending |

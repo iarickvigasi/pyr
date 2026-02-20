@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 2 of 9 (Email Ingestion Pipeline)
-Plan: 2 of 6 in current phase
+Plan: 3 of 6 in current phase
 Status: In Progress
-Last activity: 2026-02-20 -- Completed 02-02-PLAN.md (Email Parsing & Threading)
+Last activity: 2026-02-20 -- Completed 02-03-PLAN.md (Contact Matching & Email Classification)
 
-Progress: [▓▓▓░░░░░░░] 12%
+Progress: [▓▓▓▓░░░░░░] 15%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 6min
-- Total execution time: 0.42 hours
+- Total execution time: 0.48 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
-| 02-email-ingestion-pipeline | 2/6 | 10min | 5min |
+| 02-email-ingestion-pipeline | 3/6 | 14min | 4.7min |
 
 **Recent Trend:**
-- Last 5 plans: 8min, 7min, 6min, 4min
+- Last 5 plans: 8min, 7min, 6min, 4min, 4min
 - Trend: Improving
 
 *Updated after each plan completion*
@@ -64,6 +64,9 @@ Recent decisions affecting current work:
 - [02-02]: References checked newest-first -- most recent ancestor is most likely match in DB
 - [02-02]: Forwarded emails (Fwd:/Fw:) always force new conversation creation
 - [02-02]: References chain capped at 20 entries -- prevents unbounded header growth
+- [02-03]: Classification priority order: OTA domains (0.95) > system senders (0.9) > spam senders (0.8) > default guest_inquiry (0.6)
+- [02-03]: isSystemSender combines OTA + spam + system patterns for single-call non-guest detection
+- [02-03]: vi.mock paths resolve relative to test file, not module under test -- use ../../../lib/audit.js from __tests__/
 
 ### Pending Todos
 
@@ -78,5 +81,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 02-02-PLAN.md (Email Parsing & Threading)
-Resume file: .planning/phases/02-email-ingestion-pipeline/02-02-SUMMARY.md
+Stopped at: Completed 02-03-PLAN.md (Contact Matching & Email Classification)
+Resume file: .planning/phases/02-email-ingestion-pipeline/02-03-SUMMARY.md

@@ -10,6 +10,8 @@ import {
   replySchema,
   unreadCountResponseSchema,
   attachmentParamsSchema,
+  draftActionParamsSchema,
+  approveDraftBodySchema,
 } from './inbox.schema.js';
 import {
   listConversations,
@@ -18,6 +20,9 @@ import {
   createConversation,
   updateConversation,
   listDrafts,
+  approveDraft,
+  rejectDraft,
+  regenerateDraft,
 } from './conversation.service.js';
 import { addMessage } from './message.service.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
@@ -195,6 +200,44 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Inbox'], summary: 'List AI drafts for a conversation', params: idParamSchema },
   }, async (request) => {
     return { data: await listDrafts(app.prisma, request.params.id) };
+  });
+
+  server.post('/:id/drafts/:draftId/approve', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Approve an AI draft and send via SMTP',
+      params: draftActionParamsSchema,
+      body: approveDraftBodySchema,
+    },
+  }, async (request) => {
+    const { id, draftId } = request.params as { id: string; draftId: string };
+    const body = request.body as { content?: string };
+    const result = await approveDraft(app.prisma, app, id, draftId, body.content, request.user?.sub);
+    return { data: result };
+  });
+
+  server.post('/:id/drafts/:draftId/reject', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Reject an AI draft',
+      params: draftActionParamsSchema,
+    },
+  }, async (request) => {
+    const { id, draftId } = request.params as { id: string; draftId: string };
+    const draft = await rejectDraft(app.prisma, id, draftId, request.user?.sub);
+    return { data: draft };
+  });
+
+  server.post('/:id/drafts/:draftId/regenerate', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Regenerate an AI draft (replaces old with new)',
+      params: draftActionParamsSchema,
+    },
+  }, async (request) => {
+    const { id, draftId } = request.params as { id: string; draftId: string };
+    const result = await regenerateDraft(app.prisma, app, id, draftId, request.user?.sub);
+    return { data: result };
   });
 
   server.get('/:id/messages/:messageId/attachments/:attachmentId', {

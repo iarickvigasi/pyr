@@ -1,9 +1,12 @@
 import type { PrismaClient, Channel, ConversationStatus, Prisma } from '@prisma/client';
+import type { FastifyInstance } from 'fastify';
 import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
-import { NotFoundError } from '../../lib/errors.js';
+import { NotFoundError, BadRequestError } from '../../lib/errors.js';
+import { QUEUE_NAMES } from '@pyr/shared';
+import type { AiDraftJobData } from '@pyr/shared';
 import type { CreateConversationBody, ListConversationsQuery } from './inbox.schema.js';
 import type { Conversation, ConversationWithMessages, AiDraft, Message } from '../../types/entities.js';
 
@@ -211,4 +214,239 @@ export async function listDrafts(
   });
 
   return drafts as AiDraft[];
+}
+
+/**
+ * Approve an AI draft: send email via SMTP, then update draft status and store outbound message.
+ * SMTP send happens FIRST -- if it fails, draft stays pending (no stale data).
+ */
+export async function approveDraft(
+  prisma: PrismaClient,
+  app: FastifyInstance,
+  conversationId: string,
+  draftId: string,
+  editedContent?: string,
+  actorId?: string,
+): Promise<{ messageId: string; sentAt: Date }> {
+  // Find draft and verify ownership
+  const draft = await prisma.aiDraft.findFirst({
+    where: { id: draftId, conversationId },
+  });
+
+  if (!draft) {
+    throw new NotFoundError('AiDraft', draftId);
+  }
+
+  if (draft.status !== 'pending' && draft.status !== 'failed') {
+    throw new BadRequestError(
+      `Cannot approve draft with status '${draft.status}' -- only pending or failed drafts can be approved`,
+    );
+  }
+
+  // Determine final content and status
+  const finalContent = editedContent ?? draft.content;
+  const finalStatus = editedContent ? 'edited' : 'approved';
+
+  // Get conversation with guest and messages for threading
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      guest: { select: { id: true, name: true, email: true } },
+      messages: {
+        orderBy: { sentAt: 'desc' },
+        select: { messageId: true, direction: true },
+      },
+    },
+  });
+
+  if (!conversation) {
+    throw new NotFoundError('Conversation', conversationId);
+  }
+
+  const guestEmail = conversation.guest?.email;
+  if (!guestEmail) {
+    throw new BadRequestError('Cannot send: conversation has no guest email address');
+  }
+
+  // Build threading headers
+  const lastInbound = conversation.messages.find(
+    (m) => m.direction === 'in' && m.messageId,
+  );
+  const inReplyTo = lastInbound?.messageId ?? undefined;
+
+  const allMessageIds = conversation.messages
+    .filter((m) => m.messageId)
+    .map((m) => m.messageId as string);
+
+  const { buildReferencesChain } = await import('../../services/email/email-threader.js');
+  const references = allMessageIds.length > 0
+    ? buildReferencesChain(allMessageIds, inReplyTo ?? '')
+      .filter(Boolean)
+    : undefined;
+
+  // SMTP send FIRST -- if this fails, draft stays pending
+  const { createEmailModule } = await import('../../services/email/index.js');
+  const emailModule = createEmailModule(app);
+  const { messageId: sentMessageId } = await emailModule.sendEmail({
+    to: guestEmail,
+    subject: conversation.subject ?? '(no subject)',
+    body: finalContent,
+    inReplyTo,
+    references,
+  });
+
+  // Then update draft + store outbound message in a transaction
+  const sentAt = new Date();
+  await prisma.$transaction(async (tx) => {
+    // Update draft status
+    await tx.aiDraft.update({
+      where: { id: draftId },
+      data: { status: finalStatus, content: finalContent },
+    });
+
+    // Create outbound message
+    await tx.message.create({
+      data: {
+        conversationId,
+        direction: 'out',
+        content: finalContent,
+        channel: 'email',
+        messageId: sentMessageId,
+        inReplyTo: inReplyTo ?? null,
+        references: references?.join(' ') ?? null,
+        fromAddress: process.env.EMAIL_USER ?? null,
+        fromName: 'Puppy Yoga Retreat',
+        subject: conversation.subject,
+        sentAt,
+      },
+    });
+
+    // Update conversation lastMessageAt
+    await tx.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: sentAt },
+    });
+
+    await writeAuditLog(tx, {
+      entityType: 'ai_draft',
+      entityId: draftId,
+      action: 'update',
+      changes: {
+        status: { from: draft.status, to: finalStatus },
+        trigger: 'ai-draft-approve',
+        to: guestEmail,
+      },
+      actor: getActor(actorId),
+    });
+  });
+
+  return { messageId: sentMessageId, sentAt };
+}
+
+/**
+ * Reject an AI draft -- changes status to 'rejected'.
+ */
+export async function rejectDraft(
+  prisma: PrismaClient,
+  conversationId: string,
+  draftId: string,
+  actorId?: string,
+): Promise<AiDraft> {
+  const draft = await prisma.aiDraft.findFirst({
+    where: { id: draftId, conversationId },
+  });
+
+  if (!draft) {
+    throw new NotFoundError('AiDraft', draftId);
+  }
+
+  if (draft.status !== 'pending') {
+    throw new BadRequestError(
+      `Cannot reject draft with status '${draft.status}' -- only pending drafts can be rejected`,
+    );
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedDraft = await tx.aiDraft.update({
+      where: { id: draftId },
+      data: { status: 'rejected' },
+    });
+
+    await writeAuditLog(tx, {
+      entityType: 'ai_draft',
+      entityId: draftId,
+      action: 'update',
+      changes: { status: { from: 'pending', to: 'rejected' } },
+      actor: getActor(actorId),
+    });
+
+    return updatedDraft;
+  });
+
+  return updated as AiDraft;
+}
+
+/**
+ * Regenerate an AI draft -- rejects the old draft and enqueues a new AI draft job.
+ */
+export async function regenerateDraft(
+  prisma: PrismaClient,
+  app: FastifyInstance,
+  conversationId: string,
+  draftId: string,
+  actorId?: string,
+): Promise<{ queued: true }> {
+  const draft = await prisma.aiDraft.findFirst({
+    where: { id: draftId, conversationId },
+  });
+
+  if (!draft) {
+    throw new NotFoundError('AiDraft', draftId);
+  }
+
+  if (draft.status !== 'pending' && draft.status !== 'rejected' && draft.status !== 'failed') {
+    throw new BadRequestError(
+      `Cannot regenerate draft with status '${draft.status}' -- only pending, rejected, or failed drafts can be regenerated`,
+    );
+  }
+
+  // Mark old draft as rejected (no history kept)
+  await prisma.$transaction(async (tx) => {
+    await tx.aiDraft.update({
+      where: { id: draftId },
+      data: { status: 'rejected' },
+    });
+
+    await writeAuditLog(tx, {
+      entityType: 'ai_draft',
+      entityId: draftId,
+      action: 'update',
+      changes: {
+        status: { from: draft.status, to: 'rejected' },
+        trigger: 'ai-draft-regenerate',
+      },
+      actor: getActor(actorId),
+    });
+  });
+
+  // Get guest language for the new draft
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      guest: { select: { language: true } },
+    },
+  });
+  const guestLanguage = (conversation?.guest?.language === 'de' ? 'de' : 'en') as 'en' | 'de';
+
+  // Enqueue new AI draft job
+  const aiDraftQueue = app.queues?.getQueue(QUEUE_NAMES.AI_DRAFT);
+  if (aiDraftQueue) {
+    await aiDraftQueue.add('ai-draft', {
+      conversationId,
+      messageId: draft.messageId ?? '',
+      guestLanguage,
+    } satisfies AiDraftJobData);
+  }
+
+  return { queued: true };
 }

@@ -53,3 +53,16 @@ export const attachmentParamsSchema = z.object({
   messageId: z.string(),
   attachmentId: z.string(),
 });
+
+// ─── Draft Action Schemas ────────────────────────────────
+
+export const draftActionParamsSchema = z.object({
+  id: z.string().min(1),
+  draftId: z.string().min(1),
+});
+export type DraftActionParams = z.infer<typeof draftActionParamsSchema>;
+
+export const approveDraftBodySchema = z.object({
+  content: z.string().optional(), // If edited, the modified content
+});
+export type ApproveDraftBody = z.infer<typeof approveDraftBodySchema>;

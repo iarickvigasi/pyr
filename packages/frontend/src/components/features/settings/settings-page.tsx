@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RoomsTab } from './rooms-tab';
 import { SeasonsTab } from './seasons-tab';
 import { EmailAiTab } from './email-ai-tab';
+import { FaqTab } from './faq-tab';
 import { BusinessHoursTab } from './business-hours-tab';
 import { NotificationsTab } from './notifications-tab';
 
@@ -16,6 +17,7 @@ export function SettingsPage() {
           <TabsTrigger value="rooms">Rooms</TabsTrigger>
           <TabsTrigger value="seasons">Seasons</TabsTrigger>
           <TabsTrigger value="email-ai">Email & AI</TabsTrigger>
+          <TabsTrigger value="faq">FAQ</TabsTrigger>
           <TabsTrigger value="hours">Business Hours</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
@@ -27,6 +29,9 @@ export function SettingsPage() {
         </TabsContent>
         <TabsContent value="email-ai" className="mt-6">
           <EmailAiTab />
+        </TabsContent>
+        <TabsContent value="faq" className="mt-6">
+          <FaqTab />
         </TabsContent>
         <TabsContent value="hours" className="mt-6">
           <BusinessHoursTab />

@@ -65,7 +65,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 ### Testing & Documentation
 
 - [x] **TEST-01**: Integration tests cover email ingestion pipeline (IMAP -> parse -> thread -> classify -> store)
-- [ ] **TEST-02**: Integration tests cover AI draft generation (context injection -> LLM call -> draft stored)
+- [x] **TEST-02**: Integration tests cover AI draft generation (context injection -> LLM call -> draft stored)
 - [x] **TEST-03**: Email threading verified against Gmail, Outlook, and Apple Mail clients
 - [ ] **TEST-04**: CalDAV sync tested with real iCloud account (create, update, delete events)
 - [ ] **TEST-05**: Excel data migration script imports real guest and booking data with validation
@@ -150,7 +150,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EMAIL-09 | Phase 5 | Complete |
 | EMAIL-10 | Phase 5 | Complete |
 | AI-04 | Phase 5 | Complete |
-| TEST-02 | Phase 5 | Pending |
+| TEST-02 | Phase 5 | Complete |
 | CAL-01 | Phase 6 | Pending |
 | CAL-02 | Phase 6 | Pending |
 | CAL-03 | Phase 6 | Pending |

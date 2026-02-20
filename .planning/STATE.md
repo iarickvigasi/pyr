@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 5 of 9 (AI-Email Integration)
-Plan: 3 of 4 in current phase
-Status: Executing Phase 05
-Last activity: 2026-02-20 -- Completed 05-03-PLAN.md (Draft Review UI & FAQ Management)
+Plan: 4 of 4 in current phase
+Status: Phase 05 Complete
+Last activity: 2026-02-20 -- Completed 05-04-PLAN.md (AI Draft Pipeline & Workflow Tests)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 51%
+Progress: [▓▓▓▓▓▓▓▓▓░] 54%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
+- Total plans completed: 19
 - Average duration: 7min
-- Total execution time: 1.91 hours
+- Total execution time: 1.99 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 51%
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
-| 05-ai-email-integration | 3/4 | 18min | 6.0min |
+| 05-ai-email-integration | 4/4 | 23min | 5.8min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 3min, 9min, 5min, 4min
+- Last 5 plans: 3min, 9min, 5min, 4min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -122,6 +122,9 @@ Recent decisions affecting current work:
 - [05-03]: Failed drafts detected via 5-second polling (same as pending drafts) -- no separate error mechanism
 - [05-03]: Manual reply composer always visible regardless of draft state
 - [05-03]: FAQ tag filtering uses client-side Set dedup from loaded FAQ data
+- [05-04]: mockImplementation over mockReturnValue for vi.mock factories to survive vi.clearAllMocks between tests
+- [05-04]: vi.restoreAllMocks avoided in afterEach for tests using vi.mock module factories (restoreAllMocks resets factory implementations)
+- [05-04]: Dedup test verifies per-message scope by testing findFirst query patterns rather than running full BullMQ job processor
 
 ### Pending Todos
 
@@ -136,5 +139,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 05-03-PLAN.md (Draft Review UI & FAQ Management)
-Resume file: .planning/phases/05-ai-email-integration/05-04-PLAN.md
+Stopped at: Completed 05-04-PLAN.md (AI Draft Pipeline & Workflow Tests) -- Phase 05 Complete
+Resume file: .planning/phases/06-*/06-01-PLAN.md

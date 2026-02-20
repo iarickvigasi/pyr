@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 2 - Email Ingestion Pipeline
+**Current focus:** Phase 3 - Email UI & OTA Parsing
 
 ## Current Position
 
-Phase: 2 of 9 (Email Ingestion Pipeline)
-Plan: 6 of 6 in current phase
-Status: Phase Complete
-Last activity: 2026-02-20 -- Completed 02-06-PLAN.md (Pipeline Integration & Threading Client Tests)
+Phase: 3 of 9 (Email UI & OTA Parsing)
+Plan: 1 of 3 in current phase
+Status: In Progress
+Last activity: 2026-02-20 -- Completed 03-01-PLAN.md (Inbox UI Rewrite)
 
-Progress: [▓▓▓▓░░░░░░] 21%
+Progress: [▓▓▓▓▓░░░░░] 24%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 6min
-- Total execution time: 0.82 hours
+- Total plans completed: 9
+- Average duration: 7min
+- Total execution time: 0.93 hours
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [▓▓▓▓░░░░░░] 21%
 |-------|-------|-------|----------|
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
+| 03-email-ui-ota-parsing | 1/3 | 11min | 11min |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 4min, 2min, 12min, 6min
+- Last 5 plans: 4min, 2min, 12min, 6min, 11min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -75,6 +76,11 @@ Recent decisions affecting current work:
 - [02-05]: Email signature loaded from settings table per outbound email -- configurable via admin UI
 - [02-06]: Pipeline integration tests use in-memory mock Prisma with array-backed stores -- avoids DB dependency while exercising real logic
 - [02-06]: runPipeline test harness mirrors orchestration loop with injected raw emails instead of IMAP
+- [03-01]: Sandboxed iframe with DOMPurify for HTML email rendering -- CSP blocks scripts, sandbox allows popups for links
+- [03-01]: Attachment data stored as Bytes in PostgreSQL -- avoids external file storage complexity for MVP
+- [03-01]: isRead defaults to true on Conversation -- existing conversations don't retroactively appear unread
+- [03-01]: 30-second refetchInterval on conversations and unread count -- balances freshness vs server load
+- [03-01]: Mark conversation as read atomically in same transaction as fetch
 
 ### Pending Todos
 
@@ -89,5 +95,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 02-06-PLAN.md (Pipeline Integration & Threading Client Tests) -- Phase 2 complete
-Resume file: .planning/phases/02-email-ingestion-pipeline/02-06-SUMMARY.md
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-email-ui-ota-parsing/03-02-PLAN.md

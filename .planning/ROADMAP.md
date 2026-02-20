@@ -67,12 +67,12 @@ Plans:
   1. The inbox page shows real email conversations sorted by latest message -- Ines can read full threads without leaving the dashboard
   2. Admin settings page allows Ines to configure email provider credentials (IMAP and SMTP host, port, user, password) without code changes
   3. When a Tripaneer or BookYogaRetreats booking notification email arrives, the system extracts guest name, dates, and package -- and creates a booking record linked to the guest
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Inbox UI wiring (connect existing inbox components to live email API, real-time conversation display)
-- [ ] 03-02: Email provider settings (admin settings UI for IMAP/SMTP configuration, encrypted credential storage)
-- [ ] 03-03: OTA email parser (Tripaneer/BookYogaRetreats pattern matching, structured data extraction, auto-booking creation)
+- [ ] 03-01: Gmail-style inbox UI rewrite with schema extensions, HTML email rendering, attachments, unread tracking, classification badges, auto-refresh (Wave 1)
+- [ ] 03-02: Email provider settings with encrypted credentials, connection testing, polling control, Tiptap signature editor (Wave 1)
+- [ ] 03-03: OTA email parser with Tripaneer/BookYogaRetreats extraction, auto-booking creation, bidirectional UI links (Wave 2, TDD)
 
 ### Phase 4: AI Communication Engine
 **Goal**: The system can generate context-rich, brand-appropriate message drafts using LLM APIs with full business context
@@ -191,7 +191,7 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 |-------|----------------|--------|-----------|
 | 1. Queue & Module Foundation | 1/2 | Complete    | 2026-02-19 |
 | 2. Email Ingestion Pipeline | 0/6 | Planned     | - |
-| 3. Email UI & OTA Parsing | 0/3 | Not started | - |
+| 3. Email UI & OTA Parsing | 0/3 | Planned     | - |
 | 4. AI Communication Engine | 0/4 | Not started | - |
 | 5. AI-Email Integration | 0/4 | Not started | - |
 | 6. CalDAV Calendar Sync | 0/4 | Not started | - |

@@ -318,15 +318,23 @@ model Attachment {
 }
 
 model AiDraft {
-  id             String        @id @default(cuid())
-  conversationId String        @map("conversation_id")
-  messageId      String?       @map("message_id") // optional: linked to triggering message
-  content        String
-  status         AiDraftStatus @default(pending)
-  model          String
-  tokensUsed     Int           @map("tokens_used")
-  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id               String        @id @default(cuid())
+  conversationId   String        @map("conversation_id")
+  messageId        String?       @map("message_id") // optional: linked to triggering message
+  content          String
+  status           AiDraftStatus @default(pending)
+  model            String
+  tokensUsed       Int           @map("tokens_used")
+  inputTokens      Int           @default(0) @map("input_tokens")
+  outputTokens     Int           @default(0) @map("output_tokens")
+  cacheReadTokens  Int           @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int           @default(0) @map("cache_write_tokens")
+  costEur          Int           @default(0) @map("cost_eur") // microcents (EUR * 100,000)
+  provider         String        @default("anthropic")
+  durationMs       Int           @default(0) @map("duration_ms")
+  flags            String[]      @default([]) // edge case flags: complaint, medical, dietary, cancellation, adoption
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   conversation Conversation @relation(fields: [conversationId], references: [id])
   message      Message?     @relation(fields: [messageId], references: [id])

@@ -57,6 +57,7 @@ export interface DraftContext {
     capacity: number;
     registrationCount: number;
   }>;
+  faqs: Array<{ question: string; answer: string }>;
 }
 
 // ─── Public API ──────────────────────────────────────────
@@ -138,6 +139,12 @@ export async function buildDraftContext(
   // 4. Load upcoming events for next 30 days
   const events = await getUpcomingEvents(prisma);
 
+  // 5. Load all FAQ entries (inject all into prompt -- LLM selects relevant ones naturally)
+  const faqEntries = await prisma.faq.findMany({
+    orderBy: { createdAt: 'asc' },
+    select: { question: true, answer: true },
+  });
+
   return {
     conversation: {
       id: conversation.id,
@@ -152,6 +159,7 @@ export async function buildDraftContext(
     bookings,
     availability,
     events,
+    faqs: faqEntries,
   };
 }
 

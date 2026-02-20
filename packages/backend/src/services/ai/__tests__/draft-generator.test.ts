@@ -127,6 +127,9 @@ function makePrisma(opts: {
     event: {
       findMany: vi.fn().mockResolvedValue(events),
     },
+    faq: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     aiDraft: {
       create: vi.fn().mockImplementation(({ data }) => {
         return Promise.resolve({ ...createdDraft, ...data, id: 'draft-1' });

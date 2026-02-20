@@ -182,6 +182,20 @@ export function formatEvents(
     .join('\n');
 }
 
+/**
+ * Format FAQ entries for the system prompt.
+ * All FAQs are injected -- the LLM naturally selects relevant ones based on context.
+ * FAQ entries are English-only; the AI translates when responding in German.
+ */
+export function formatFaqs(faqs: Array<{ question: string; answer: string }>): string {
+  if (faqs.length === 0) {
+    return 'No FAQ entries available -- respond based on the general business information above.';
+  }
+  return faqs
+    .map((f, i) => `${i + 1}. **Q:** ${f.question}\n   **A:** ${f.answer}`)
+    .join('\n\n');
+}
+
 // ─── Prompt assembly ─────────────────────────────────────
 
 /**
@@ -214,6 +228,12 @@ ${formatAvailability(context.availability)}
 ## Upcoming Events (Next 30 Days)
 
 ${formatEvents(context.events)}
+
+## Frequently Asked Questions
+
+Use these pre-approved answers when the guest's question matches. Adapt the tone and language to the guest's context. If responding in German, translate the FAQ answer naturally.
+
+${formatFaqs(context.faqs)}
 
 ${GUARDRAILS}
 

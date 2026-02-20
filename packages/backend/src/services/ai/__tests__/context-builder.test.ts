@@ -7,6 +7,7 @@ import {
   formatBookings,
   formatAvailability,
   formatEvents,
+  formatFaqs,
 } from '../prompts/system.js';
 import { CLASSIFICATION_PROMPT, formatClassificationContext } from '../prompts/classification.js';
 import { buildDraftContext, type DraftContext } from '../context-builder.js';
@@ -65,6 +66,10 @@ function makeDraftContext(overrides?: Partial<DraftContext>): DraftContext {
         capacity: 12,
         registrationCount: 2,
       },
+    ],
+    faqs: [
+      { question: 'What time is check-in?', answer: 'Check-in is from 3:00 PM onwards.' },
+      { question: 'Are meals included?', answer: 'Yes, all retreat packages include vegetarian meals.' },
     ],
     ...overrides,
   };
@@ -202,6 +207,25 @@ describe('formatEvents', () => {
   });
 });
 
+describe('formatFaqs', () => {
+  it('formats FAQ entries with numbered Q&A pairs', () => {
+    const faqs = [
+      { question: 'What time is check-in?', answer: 'Check-in is from 3:00 PM onwards.' },
+      { question: 'Are meals included?', answer: 'Yes, all retreat packages include vegetarian meals.' },
+    ];
+    const result = formatFaqs(faqs);
+    expect(result).toContain('1. **Q:** What time is check-in?');
+    expect(result).toContain('**A:** Check-in is from 3:00 PM onwards.');
+    expect(result).toContain('2. **Q:** Are meals included?');
+    expect(result).toContain('**A:** Yes, all retreat packages include vegetarian meals.');
+  });
+
+  it('returns fallback message for empty array', () => {
+    const result = formatFaqs([]);
+    expect(result).toContain('No FAQ entries available');
+  });
+});
+
 // ─── buildSystemPrompt tests ─────────────────────────────
 
 describe('buildSystemPrompt', () => {
@@ -231,6 +255,20 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(ctx, 'en');
     expect(prompt).toContain('Puppy Yoga on the Rooftop');
     expect(prompt).toContain('Puppy Beach Walk');
+  });
+
+  it('includes FAQ section with entries', () => {
+    const ctx = makeDraftContext();
+    const prompt = buildSystemPrompt(ctx, 'en');
+    expect(prompt).toContain('Frequently Asked Questions');
+    expect(prompt).toContain('What time is check-in?');
+    expect(prompt).toContain('Are meals included?');
+  });
+
+  it('includes FAQ fallback when no FAQs exist', () => {
+    const ctx = makeDraftContext({ faqs: [] });
+    const prompt = buildSystemPrompt(ctx, 'en');
+    expect(prompt).toContain('No FAQ entries available');
   });
 
   it('includes brand voice prefix content', () => {
@@ -331,6 +369,9 @@ describe('buildDraftContext', () => {
       event: {
         findMany: vi.fn(),
       },
+      faq: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     };
   });
 
@@ -401,6 +442,28 @@ describe('buildDraftContext', () => {
     expect(result.availability[0]!.available).toBe(1); // 2 total - 1 booked
     expect(result.events).toHaveLength(1);
     expect(result.events[0]!.registrationCount).toBe(3);
+    expect(result.faqs).toEqual([]);
+  });
+
+  it('loads FAQ entries into context', async () => {
+    mockPrisma['conversation']!['findUnique']!.mockResolvedValue({
+      id: 'conv-3',
+      subject: 'FAQ test',
+      guest: null,
+      messages: [{ direction: 'in', content: 'Question', sentAt: new Date() }],
+    });
+    mockPrisma['roomType']!['findMany']!.mockResolvedValue([]);
+    mockPrisma['event']!['findMany']!.mockResolvedValue([]);
+    mockPrisma['faq']!['findMany']!.mockResolvedValue([
+      { question: 'What is check-in time?', answer: 'Check-in is at 3 PM.' },
+    ]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await buildDraftContext(mockPrisma as any, 'conv-3');
+
+    expect(result.faqs).toHaveLength(1);
+    expect(result.faqs[0]!.question).toBe('What is check-in time?');
+    expect(result.faqs[0]!.answer).toBe('Check-in is at 3 PM.');
   });
 
   it('handles conversation without guest', async () => {

@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 4 of 9 (AI Communication Engine) -- IN PROGRESS
-Plan: 1 of 3 in current phase
-Status: Plan 04-01 Complete
-Last activity: 2026-02-20 -- Completed 04-01-PLAN.md (OpenClaw Gateway + Agent API)
+Plan: 2 of 3 in current phase
+Status: Plan 04-02 Complete
+Last activity: 2026-02-20 -- Completed 04-02-PLAN.md (Context Builder & Classifier)
 
-Progress: [▓▓▓▓▓▓▓▓░░] 34%
+Progress: [▓▓▓▓▓▓▓▓░░] 38%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 7min
-- Total execution time: 1.36 hours
+- Total execution time: 1.48 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [▓▓▓▓▓▓▓▓░░] 34%
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
-| 04-ai-communication-engine | 1/3 | 5min | 5min |
+| 04-ai-communication-engine | 2/3 | 12min | 6min |
 
 **Recent Trend:**
-- Last 5 plans: 6min, 11min, 9min, 12min, 5min
+- Last 5 plans: 11min, 9min, 12min, 5min, 7min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -96,6 +96,10 @@ Recent decisions affecting current work:
 - [04-01]: Docker Compose default network instead of explicit named network -- all services share default bridge
 - [04-01]: Agent API uses same auth as other modules (JWT + API key) -- OpenClaw authenticates via PYR_API_KEY
 - [04-01]: Room availability counts rooms with any overlapping booking as booked (simplified for AI summary)
+- [04-02]: Pattern-only classification (no LLM) for edge-case detection -- zero cost, instant, sufficient for EN/DE
+- [04-02]: Cost stored as EUR microcents (EUR * 100,000) for 5 decimal places of precision
+- [04-02]: MODEL_PRICING prefix matching sorted longest-first to prevent gpt-4o matching gpt-4o-mini
+- [04-02]: BRAND_VOICE_PREFIX at 5449 chars exceeds Anthropic 1024-token prompt caching minimum
 
 ### Pending Todos
 
@@ -110,5 +114,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/04-ai-communication-engine/04-02-PLAN.md
+Stopped at: Completed 04-02-PLAN.md
+Resume file: .planning/phases/04-ai-communication-engine/04-03-PLAN.md

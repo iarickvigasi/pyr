@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 5 of 9 (AI-Email Integration)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: Executing Phase 05
-Last activity: 2026-02-20 -- Completed 05-02-PLAN.md (FAQ Knowledge Base)
+Last activity: 2026-02-20 -- Completed 05-03-PLAN.md (Draft Review UI & FAQ Management)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 49%
+Progress: [▓▓▓▓▓▓▓▓▓░] 51%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 7min
-- Total execution time: 1.84 hours
+- Total execution time: 1.91 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 49%
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
-| 05-ai-email-integration | 2/4 | 14min | 7.0min |
+| 05-ai-email-integration | 3/4 | 18min | 6.0min |
 
 **Recent Trend:**
-- Last 5 plans: 7min, 5min, 3min, 9min, 5min
+- Last 5 plans: 5min, 3min, 9min, 5min, 4min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -117,6 +117,11 @@ Recent decisions affecting current work:
 - [05-02]: Hard delete for FAQ entries -- ephemeral content, not core business data
 - [05-02]: All FAQs injected into every prompt -- LLM naturally selects relevant ones (10-50 entries within token limits)
 - [05-02]: Response schema uses z.date() for Prisma Date fields -- Fastify serializer handles Date-to-string
+- [05-03]: Two-step approve uses shadcn Dialog with preview content and explicit Send Email confirmation
+- [05-03]: Rejected drafts show grayed-out with strikethrough and Generate new draft button
+- [05-03]: Failed drafts detected via 5-second polling (same as pending drafts) -- no separate error mechanism
+- [05-03]: Manual reply composer always visible regardless of draft state
+- [05-03]: FAQ tag filtering uses client-side Set dedup from loaded FAQ data
 
 ### Pending Todos
 
@@ -131,5 +136,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 05-02-PLAN.md (FAQ Knowledge Base)
-Resume file: .planning/phases/05-ai-email-integration/05-03-PLAN.md
+Stopped at: Completed 05-03-PLAN.md (Draft Review UI & FAQ Management)
+Resume file: .planning/phases/05-ai-email-integration/05-04-PLAN.md

@@ -11,7 +11,7 @@ export async function listConversations(
   prisma: PrismaClient,
   query: ListConversationsQuery,
 ): Promise<PaginatedResult<Conversation & {
-  guest: { id: string; name: string; email: string | null };
+  guest: { id: string; name: string; email: string | null } | null;
   messages: Pick<Message, 'content' | 'direction' | 'sentAt'>[];
 }>> {
   const limit = clampLimit(query.limit);
@@ -40,7 +40,7 @@ export async function listConversations(
 
   return {
     data: data as (Conversation & {
-      guest: { id: string; name: string; email: string | null };
+      guest: { id: string; name: string; email: string | null } | null;
       messages: Pick<Message, 'content' | 'direction' | 'sentAt'>[];
     })[],
     nextCursor: hasMore ? data[data.length - 1]!.id : null,

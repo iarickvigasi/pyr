@@ -186,7 +186,7 @@ export function InboxPage() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>
-              {conversation ? conversation.guest.name : 'Select a conversation'}
+              {conversation ? (conversation.guest?.name ?? 'Unknown Sender') : 'Select a conversation'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -211,7 +211,7 @@ export function InboxPage() {
                 <div className="border rounded-lg max-h-[400px] overflow-y-auto">
                   <ConversationThread
                     messages={conversation.messages}
-                    guestName={conversation.guest.name}
+                    guestName={conversation.guest?.name ?? 'Unknown Sender'}
                   />
                 </div>
 
@@ -232,7 +232,7 @@ export function InboxPage() {
                     <MessageComposer
                       onSend={handleSendMessage}
                       isPending={sendMessage.isPending}
-                      placeholder={`Reply to ${conversation.guest.name}...`}
+                      placeholder={`Reply to ${conversation.guest?.name ?? 'Unknown Sender'}...`}
                     />
                   </div>
                 )}

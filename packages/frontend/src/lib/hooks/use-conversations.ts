@@ -26,10 +26,11 @@ export interface AiDraft {
 
 export interface Conversation {
   id: string;
-  guestId: string;
+  guestId: string | null;
   channel: string;
   subject: string | null;
   status: string;
+  classification: string | null;
   lastMessageAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -38,7 +39,7 @@ export interface Conversation {
     name: string;
     email: string | null;
     language: string;
-  };
+  } | null;
 }
 
 export interface ConversationWithMessages extends Conversation {

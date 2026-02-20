@@ -47,7 +47,7 @@ export function ConversationList({
                 <Icon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="font-medium truncate">{conversation.guest.name}</p>
+                    <p className="font-medium truncate">{conversation.guest?.name ?? 'Unknown Sender'}</p>
                     <Badge
                       variant={
                         conversation.status === 'open'
@@ -70,7 +70,7 @@ export function ConversationList({
                     <Badge variant="outline" className="text-xs">
                       {conversation.channel}
                     </Badge>
-                    {conversation.guest.language && (
+                    {conversation.guest?.language && (
                       <Badge variant="outline" className="text-xs">
                         {conversation.guest.language.toUpperCase()}
                       </Badge>

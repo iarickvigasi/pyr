@@ -247,16 +247,17 @@ model EventBooking {
 }
 
 model Conversation {
-  id            String             @id @default(cuid())
-  guestId       String             @map("guest_id")
-  channel       Channel
-  subject       String?
-  status        ConversationStatus @default(open)
-  lastMessageAt DateTime?          @map("last_message_at") @db.Timestamptz(3)
-  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id             String             @id @default(cuid())
+  guestId        String?            @map("guest_id")
+  channel        Channel
+  subject        String?
+  status         ConversationStatus @default(open)
+  classification String?            // guest_inquiry, ota_notification, spam_newsletter, admin_system
+  lastMessageAt  DateTime?          @map("last_message_at") @db.Timestamptz(3)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  guest    Guest     @relation(fields: [guestId], references: [id])
+  guest    Guest?    @relation(fields: [guestId], references: [id])
   messages Message[]
   aiDrafts AiDraft[]
 
@@ -275,6 +276,12 @@ model Message {
   messageId      String?          @map("message_id") // email Message-ID header
   inReplyTo      String?          @map("in_reply_to") // email In-Reply-To header
   references     String?          // email References header
+  rawSource      Bytes?           @map("raw_source") // raw .eml MIME content
+  htmlContent    String?          @map("html_content") // sanitized HTML body
+  fromAddress    String?          @map("from_address") // sender email address
+  fromName       String?          @map("from_name") // sender display name
+  subject        String?          // email subject line
+  classification String?          // guest_inquiry, ota_notification, spam_newsletter, admin_system
   sentAt         DateTime         @map("sent_at") @db.Timestamptz(3)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
@@ -283,6 +290,7 @@ model Message {
 
   @@index([conversationId])
   @@index([sentAt])
+  @@index([fromAddress])
   @@map("messages")
 }
 

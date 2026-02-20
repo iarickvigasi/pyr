@@ -178,10 +178,11 @@ export type ConversationStatus = 'open' | 'closed';
 
 export type Conversation = {
   id: string;
-  guestId: string;
+  guestId: string | null;
   channel: Channel;
   subject: string | null;
   status: ConversationStatus;
+  classification: string | null;
   lastMessageAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -198,12 +199,18 @@ export type Message = {
   messageId: string | null;
   inReplyTo: string | null;
   references: string | null;
+  rawSource: Buffer | null;
+  htmlContent: string | null;
+  fromAddress: string | null;
+  fromName: string | null;
+  subject: string | null;
+  classification: string | null;
   sentAt: Date;
   createdAt: Date;
 };
 
 export type ConversationWithMessages = Conversation & {
-  guest: Pick<Guest, 'id' | 'name' | 'email' | 'language'>;
+  guest: Pick<Guest, 'id' | 'name' | 'email' | 'language'> | null;
   messages: Message[];
 };
 

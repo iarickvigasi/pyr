@@ -3,3 +3,8 @@ export { ConversationList } from './conversation-list';
 export { ConversationThread } from './conversation-thread';
 export { DraftCard } from './draft-card';
 export { MessageComposer } from './message-composer';
+export { EmailHtmlRenderer } from './email-html-renderer';
+export { EmailMessage } from './email-message';
+export { AttachmentList } from './attachment-list';
+export { ClassificationBadge } from './classification-badge';
+export { ReclassifyDropdown } from './reclassify-dropdown';

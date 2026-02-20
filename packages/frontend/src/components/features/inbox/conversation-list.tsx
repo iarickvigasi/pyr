@@ -1,9 +1,9 @@
 'use client';
 
-import { Mail, MessageCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDateTime } from '@/lib/format';
+import { formatRelative } from '@/lib/format';
+import { ClassificationBadge } from './classification-badge';
 import type { Conversation } from '@/lib/hooks/use-conversations';
 
 interface ConversationListProps {
@@ -30,57 +30,51 @@ export function ConversationList({
     <div className="divide-y">
       {conversations.map((conversation) => {
         const isSelected = conversation.id === selectedId;
-        const channelIcon = conversation.channel === 'email' ? Mail : MessageCircle;
-        const Icon = channelIcon;
+        const isUnread = !conversation.isRead;
 
         return (
           <div
             key={conversation.id}
             className={cn(
-              'p-4 cursor-pointer hover:bg-muted/50 transition-colors',
-              isSelected && 'bg-muted border-l-4 border-l-primary'
+              'p-3 cursor-pointer hover:bg-muted/50 transition-colors',
+              isSelected && 'bg-muted border-l-4 border-l-primary',
+              isUnread && !isSelected && 'bg-primary/5'
             )}
             onClick={() => onSelect(conversation.id)}
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <Icon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-medium truncate">{conversation.guest?.name ?? 'Unknown Sender'}</p>
-                    <Badge
-                      variant={
-                        conversation.status === 'open'
-                          ? 'default'
-                          : conversation.status === 'closed'
-                            ? 'secondary'
-                            : 'outline'
-                      }
-                      className="text-xs flex-shrink-0"
-                    >
-                      {conversation.status}
-                    </Badge>
-                  </div>
-                  {conversation.subject && (
-                    <p className="text-sm text-muted-foreground truncate mb-1">
-                      {conversation.subject}
-                    </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  {isUnread && (
+                    <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
                   )}
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline" className="text-xs">
-                      {conversation.channel}
-                    </Badge>
-                    {conversation.guest?.language && (
-                      <Badge variant="outline" className="text-xs">
-                        {conversation.guest.language.toUpperCase()}
-                      </Badge>
-                    )}
-                  </div>
+                  <p className={cn(
+                    'truncate text-sm',
+                    isUnread ? 'font-semibold' : 'font-medium'
+                  )}>
+                    {conversation.guest?.name ?? 'Unknown Sender'}
+                  </p>
+                </div>
+                {conversation.subject && (
+                  <p className={cn(
+                    'text-xs truncate mb-0.5',
+                    isUnread ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  )}>
+                    {conversation.subject}
+                  </p>
+                )}
+                {conversation.messagePreview && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {conversation.messagePreview}
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <ClassificationBadge classification={conversation.classification} />
                 </div>
               </div>
               {conversation.lastMessageAt && (
-                <time className="text-xs text-muted-foreground flex-shrink-0">
-                  {formatDateTime(conversation.lastMessageAt).split(', ')[1]}
+                <time className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                  {formatRelative(conversation.lastMessageAt)}
                 </time>
               )}
             </div>

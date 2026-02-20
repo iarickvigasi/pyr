@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
+import { useUnreadCount } from '@/lib/hooks/use-conversations';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +34,7 @@ const navItems = [
 function NavContent() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { data: unreadCount } = useUnreadCount();
 
   return (
     <div className="flex h-full flex-col">
@@ -46,6 +48,8 @@ function NavContent() {
               ? pathname === '/'
               : pathname.startsWith(item.href);
           const Icon = item.icon;
+          const isInbox = item.href === '/inbox';
+          const showBadge = isInbox && typeof unreadCount === 'number' && unreadCount > 0;
           return (
             <Link
               key={item.href}
@@ -58,7 +62,12 @@ function NavContent() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {showBadge && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}

@@ -10,7 +10,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 ### Email Ingestion
 
 - [x] **EMAIL-01**: System connects to any IMAP email provider (configurable host, port, credentials via admin settings)
-- [ ] **EMAIL-02**: System polls inbox via BullMQ scheduled job (2-3 min interval) and ingests new messages
+- [x] **EMAIL-02**: System polls inbox via BullMQ scheduled job (2-3 min interval) and ingests new messages
 - [x] **EMAIL-03**: System parses email content (plain text + HTML) using mailparser with MIME handling
 - [x] **EMAIL-04**: System threads conversations using In-Reply-To and References headers (RFC 5322)
 - [x] **EMAIL-05**: System auto-matches sender email to existing CRM guest or creates new guest record
@@ -128,7 +128,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ARCH-01 | Phase 1 | Complete |
 | ARCH-02 | Phase 1 | Complete |
 | EMAIL-01 | Phase 2 | Complete |
-| EMAIL-02 | Phase 2 | Pending |
+| EMAIL-02 | Phase 2 | Complete |
 | EMAIL-03 | Phase 2 | Complete |
 | EMAIL-04 | Phase 2 | Complete |
 | EMAIL-05 | Phase 2 | Complete |

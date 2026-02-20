@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 2 of 9 (Email Ingestion Pipeline)
-Plan: 4 of 6 in current phase
+Plan: 5 of 6 in current phase
 Status: In Progress
-Last activity: 2026-02-20 -- Completed 02-04-PLAN.md (SMTP Sending Service)
+Last activity: 2026-02-20 -- Completed 02-05-PLAN.md (Pipeline Integration & Inbox Routes)
 
-Progress: [▓▓▓▓░░░░░░] 18%
+Progress: [▓▓▓▓░░░░░░] 21%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 5min
-- Total execution time: 0.52 hours
+- Total plans completed: 7
+- Average duration: 6min
+- Total execution time: 0.72 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
-| 02-email-ingestion-pipeline | 4/6 | 16min | 4min |
+| 02-email-ingestion-pipeline | 5/6 | 28min | 5.6min |
 
 **Recent Trend:**
-- Last 5 plans: 7min, 6min, 4min, 4min, 2min
-- Trend: Improving
+- Last 5 plans: 6min, 4min, 4min, 2min, 12min
+- Trend: Stable (12min plan was large integration task)
 
 *Updated after each plan completion*
 
@@ -69,6 +69,10 @@ Recent decisions affecting current work:
 - [02-03]: vi.mock paths resolve relative to test file, not module under test -- use ../../../lib/audit.js from __tests__/
 - [02-04]: No retry logic in SMTP service -- caller or BullMQ handles retries, service is send-and-report
 - [02-04]: Transporter created once in factory -- nodemailer handles connection pooling internally
+- [02-05]: Dynamic imports in email-poll.job.ts and inbox.routes.ts -- avoids vitest singleFork module cache pollution
+- [02-05]: Email module lazily initialized per job processor lifecycle -- not per-poll, avoids redundant SMTP transporter creation
+- [02-05]: updateConversation generalizes updateConversationStatus -- both status and classification updated atomically
+- [02-05]: Email signature loaded from settings table per outbound email -- configurable via admin UI
 
 ### Pending Todos
 
@@ -83,5 +87,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 02-04-PLAN.md (SMTP Sending Service)
-Resume file: .planning/phases/02-email-ingestion-pipeline/02-04-SUMMARY.md
+Stopped at: Completed 02-05-PLAN.md (Pipeline Integration & Inbox Routes)
+Resume file: .planning/phases/02-email-ingestion-pipeline/02-05-SUMMARY.md

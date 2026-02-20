@@ -34,3 +34,85 @@ export function useUpdateSetting() {
     },
   });
 }
+
+// ─── Email Provider Config Hooks ──────────────────────────
+
+interface EmailProviderConfigResponse {
+  data: {
+    configured: boolean;
+    provider: string | null;
+    imapHost: string | null;
+    imapPort: number | null;
+    smtpHost: string | null;
+    smtpPort: number | null;
+    email: string | null;
+    password: string;
+    pollIntervalMinutes: number;
+    pollingEnabled: boolean;
+    lastPollTime: string | null;
+    connectionHealthy: boolean | null;
+  };
+}
+
+interface TestEmailConnectionResponse {
+  data: {
+    imap: boolean;
+    smtp: boolean;
+    error?: string;
+  };
+}
+
+export function useEmailProviderConfig() {
+  return useQuery({
+    queryKey: queryKeys.settings.key('email-provider'),
+    queryFn: () =>
+      api.get<EmailProviderConfigResponse>('/api/v1/settings/email-provider'),
+    retry: false,
+  });
+}
+
+export function useSaveEmailProviderConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (config: {
+      provider: string;
+      imapHost: string;
+      imapPort: number;
+      smtpHost: string;
+      smtpPort: number;
+      email: string;
+      password: string;
+      pollIntervalMinutes: number;
+      pollingEnabled: boolean;
+    }) => api.post<{ data: { saved: boolean } }>('/api/v1/settings/email-provider', config),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.settings.key('email-provider') });
+      qc.invalidateQueries({ queryKey: queryKeys.settings.all });
+    },
+  });
+}
+
+export function useTestEmailConnection() {
+  return useMutation({
+    mutationFn: (params: {
+      provider: string;
+      imapHost: string;
+      imapPort: number;
+      smtpHost: string;
+      smtpPort: number;
+      email: string;
+      password: string;
+    }) => api.post<TestEmailConnectionResponse>('/api/v1/settings/test-email-connection', params),
+  });
+}
+
+export function useTogglePolling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { enabled: boolean }) =>
+      api.post<{ data: { pollingEnabled: boolean } }>('/api/v1/settings/email-provider/toggle-polling', params),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.settings.key('email-provider') });
+    },
+  });
+}

@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSetting, useUpdateSetting } from '@/lib/hooks/use-settings';
 import { toast } from 'sonner';
+import { EmailProviderSection } from './email-provider-section';
+import { SignatureEditor } from './signature-editor';
 
 const DEFAULT_AI_PROMPT = `You are Ines, the owner of Puppy Yoga Retreat in Peyia, Cyprus. You help guests with booking inquiries, event information, and general questions about the retreat. You are warm, welcoming, and knowledgeable about yoga, wellness, and the rescued puppies. Respond in the guest's language (English or German).`;
 
@@ -21,8 +23,9 @@ export function EmailAiTab() {
 
   useEffect(() => {
     if (signatureQuery.data?.data?.value) {
-      const val = signatureQuery.data.data.value as { text: string };
-      setSignature(val.text ?? '');
+      const val = signatureQuery.data.data.value as { html?: string; text?: string };
+      // Support HTML (from Tiptap) with fallback to plain text
+      setSignature(val.html ?? val.text ?? '');
     }
   }, [signatureQuery.data]);
 
@@ -39,7 +42,7 @@ export function EmailAiTab() {
     try {
       await updateSetting.mutateAsync({
         key: 'email_signature',
-        value: { text: signature },
+        value: { html: signature },
       });
       toast.success('Email signature saved');
     } catch (err) {
@@ -65,6 +68,8 @@ export function EmailAiTab() {
 
   return (
     <div className="space-y-6">
+      <EmailProviderSection />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Email Signature</CardTitle>
@@ -75,17 +80,12 @@ export function EmailAiTab() {
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="signature">Signature</Label>
-            <Textarea
-              id="signature"
-              rows={4}
-              value={signature}
-              onChange={(e) => setSignature(e.target.value)}
-              placeholder="Warm regards,&#10;Ines&#10;Puppy Yoga Retreat, Peyia"
-            />
+            <SignatureEditor value={signature} onChange={setSignature} />
           </div>
           {signature && (
-            <div className="rounded border bg-muted/50 p-3 text-sm whitespace-pre-wrap">
-              {signature}
+            <div className="rounded border bg-muted/50 p-3 text-sm">
+              <p className="text-xs text-muted-foreground mb-2">Preview:</p>
+              <div dangerouslySetInnerHTML={{ __html: signature }} />
             </div>
           )}
           <Button onClick={saveSignature} disabled={updateSetting.isPending}>

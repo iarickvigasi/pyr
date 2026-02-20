@@ -23,9 +23,9 @@ Requirements for MVP completion. Each maps to roadmap phases.
 
 ### OTA Email Parsing
 
-- [ ] **OTA-01**: System identifies Tripaneer/BookYogaRetreats booking notification emails by sender/subject patterns
-- [ ] **OTA-02**: System extracts structured booking data (guest name, dates, package) from OTA notification emails
-- [ ] **OTA-03**: System auto-creates booking records and links to guest from parsed OTA emails
+- [x] **OTA-01**: System identifies Tripaneer/BookYogaRetreats booking notification emails by sender/subject patterns
+- [x] **OTA-02**: System extracts structured booking data (guest name, dates, package) from OTA notification emails
+- [x] **OTA-03**: System auto-creates booking records and links to guest from parsed OTA emails
 
 ### AI Communication Engine
 
@@ -138,9 +138,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-03 | Phase 2 | Complete |
 | EMAIL-08 | Phase 3 | Complete |
 | EMAIL-11 | Phase 3 | Complete |
-| OTA-01 | Phase 3 | Pending |
-| OTA-02 | Phase 3 | Pending |
-| OTA-03 | Phase 3 | Pending |
+| OTA-01 | Phase 3 | Complete |
+| OTA-02 | Phase 3 | Complete |
+| OTA-03 | Phase 3 | Complete |
 | AI-01 | Phase 4 | Pending |
 | AI-02 | Phase 4 | Pending |
 | AI-03 | Phase 4 | Pending |

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 3 - Email UI & OTA Parsing
+**Current focus:** Phase 4 - AI Engine (next)
 
 ## Current Position
 
-Phase: 3 of 9 (Email UI & OTA Parsing)
-Plan: 2 of 3 in current phase
-Status: In Progress
-Last activity: 2026-02-20 -- Completed 03-02-PLAN.md (Email Provider Settings)
+Phase: 3 of 9 (Email UI & OTA Parsing) -- COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase Complete
+Last activity: 2026-02-20 -- Completed 03-03-PLAN.md (OTA Email Parser with Auto-Booking Creation)
 
-Progress: [▓▓▓▓▓▓░░░░] 27%
+Progress: [▓▓▓▓▓▓▓░░░] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 7min
-- Total execution time: 1.08 hours
+- Total execution time: 1.28 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [▓▓▓▓▓▓░░░░] 27%
 |-------|-------|-------|----------|
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
-| 03-email-ui-ota-parsing | 2/3 | 20min | 10min |
+| 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 
 **Recent Trend:**
-- Last 5 plans: 2min, 12min, 6min, 11min, 9min
+- Last 5 plans: 12min, 6min, 11min, 9min, 12min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -85,6 +85,12 @@ Recent decisions affecting current work:
 - [03-02]: Dynamic import of ImapFlow/nodemailer in test-connection route -- avoids loading email deps in settings tests
 - [03-02]: SMTP service lazily recreated only when config changes -- avoids redundant transporter creation
 - [03-02]: Signature stored as HTML object { html: string } with backward compat for { text: string }
+- [03-03]: OTA parser uses strategy pattern with registry -- new platforms added by implementing OtaParser interface
+- [03-03]: Multi-strategy extraction: label-based regex with fallback patterns for varying email formats
+- [03-03]: OTA booking auto-creation uses direct Prisma calls (not booking service) to avoid validation rejection of incomplete bookings
+- [03-03]: Guest matching order: email match first, name match second, create new guest third
+- [03-03]: First available room auto-assigned for OTA bookings -- Ines reassigns later
+- [03-03]: Placeholder dates (today/tomorrow) when OTA email lacks check-in/check-out -- needsReview=true alerts Ines
 
 ### Pending Todos
 
@@ -99,5 +105,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 03-02-PLAN.md
-Resume file: .planning/phases/03-email-ui-ota-parsing/03-03-PLAN.md
+Stopped at: Completed 03-03-PLAN.md (Phase 3 complete)
+Resume file: .planning/phases/04-*/04-01-PLAN.md

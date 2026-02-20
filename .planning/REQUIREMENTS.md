@@ -29,12 +29,12 @@ Requirements for MVP completion. Each maps to roadmap phases.
 
 ### AI Communication Engine
 
-- [ ] **AI-01**: System prompt includes business context injection: guest CRM data, conversation history, current availability, pricing, upcoming events, brand voice guidelines
-- [ ] **AI-02**: LLM integration supports Claude API (primary) and OpenAI (fallback) with model-agnostic abstraction layer
+- [x] **AI-01**: System prompt includes business context injection: guest CRM data, conversation history, current availability, pricing, upcoming events, brand voice guidelines
+- [x] **AI-02**: LLM integration supports Claude API (primary) and OpenAI (fallback) with model-agnostic abstraction layer
 - [ ] **AI-03**: Every AI call logs token usage and estimated cost
 - [ ] **AI-04**: Admin can manage FAQ entries (question/answer pairs, categorized) that are injected into AI context
 - [ ] **AI-05**: System classifies incoming messages for edge cases (complaints, medical/dietary requests, cancellations, adoption inquiries) and flags for priority manual handling
-- [ ] **AI-06**: System prompt prefix is cached (Anthropic prompt caching) for cost optimization
+- [x] **AI-06**: System prompt prefix is cached (Anthropic prompt caching) for cost optimization
 
 ### Calendar Sync
 
@@ -141,11 +141,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OTA-01 | Phase 3 | Complete |
 | OTA-02 | Phase 3 | Complete |
 | OTA-03 | Phase 3 | Complete |
-| AI-01 | Phase 4 | Pending |
-| AI-02 | Phase 4 | Pending |
+| AI-01 | Phase 4 | Complete |
+| AI-02 | Phase 4 | Complete |
 | AI-03 | Phase 4 | Pending |
 | AI-05 | Phase 4 | Pending |
-| AI-06 | Phase 4 | Pending |
+| AI-06 | Phase 4 | Complete |
 | ARCH-03 | Phase 4 | Pending |
 | EMAIL-09 | Phase 5 | Pending |
 | EMAIL-10 | Phase 5 | Pending |

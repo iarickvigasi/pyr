@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 4 - AI Engine (next)
+**Current focus:** Phase 4 - AI Communication Engine (in progress)
 
 ## Current Position
 
-Phase: 3 of 9 (Email UI & OTA Parsing) -- COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-02-20 -- Completed 03-03-PLAN.md (OTA Email Parser with Auto-Booking Creation)
+Phase: 4 of 9 (AI Communication Engine) -- IN PROGRESS
+Plan: 1 of 3 in current phase
+Status: Plan 04-01 Complete
+Last activity: 2026-02-20 -- Completed 04-01-PLAN.md (OpenClaw Gateway + Agent API)
 
-Progress: [▓▓▓▓▓▓▓░░░] 30%
+Progress: [▓▓▓▓▓▓▓▓░░] 34%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 7min
-- Total execution time: 1.28 hours
+- Total execution time: 1.36 hours
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [▓▓▓▓▓▓▓░░░] 30%
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
+| 04-ai-communication-engine | 1/3 | 5min | 5min |
 
 **Recent Trend:**
-- Last 5 plans: 12min, 6min, 11min, 9min, 12min
+- Last 5 plans: 6min, 11min, 9min, 12min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -91,6 +92,10 @@ Recent decisions affecting current work:
 - [03-03]: Guest matching order: email match first, name match second, create new guest third
 - [03-03]: First available room auto-assigned for OTA bookings -- Ines reassigns later
 - [03-03]: Placeholder dates (today/tomorrow) when OTA email lacks check-in/check-out -- needsReview=true alerts Ines
+- [04-01]: Manual Prisma migration (migrate deploy) instead of migrate dev due to prior migration drift
+- [04-01]: Docker Compose default network instead of explicit named network -- all services share default bridge
+- [04-01]: Agent API uses same auth as other modules (JWT + API key) -- OpenClaw authenticates via PYR_API_KEY
+- [04-01]: Room availability counts rooms with any overlapping booking as booked (simplified for AI summary)
 
 ### Pending Todos
 
@@ -105,5 +110,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 03-03-PLAN.md (Phase 3 complete)
-Resume file: .planning/phases/04-*/04-01-PLAN.md
+Stopped at: Completed 04-01-PLAN.md
+Resume file: .planning/phases/04-ai-communication-engine/04-02-PLAN.md

@@ -5,7 +5,6 @@ import { Mail } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConversationList } from './conversation-list';
 import { ConversationThread } from './conversation-thread';
-import { DraftCard } from './draft-card';
 import { MessageComposer } from './message-composer';
 import { ReclassifyDropdown } from './reclassify-dropdown';
 import {
@@ -14,6 +13,8 @@ import {
   useConversationDrafts,
   useSendMessage,
   useApproveDraft,
+  useRejectDraft,
+  useRegenerateDraft,
 } from '@/lib/hooks/use-conversations';
 import { toast } from 'sonner';
 
@@ -27,13 +28,14 @@ export function InboxPage() {
 
   const sendMessage = useSendMessage(selectedConversationId ?? '');
   const approveDraft = useApproveDraft(selectedConversationId ?? '');
+  const rejectDraft = useRejectDraft(selectedConversationId ?? '');
+  const regenerateDraft = useRegenerateDraft(selectedConversationId ?? '');
 
   const conversations = conversationsData ?? [];
   const conversation = conversationData;
   const drafts = draftsData ?? [];
-  const pendingDraft = drafts.find((d) => d.status === 'pending');
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string): Promise<void> => {
     try {
       await sendMessage.mutateAsync({ content });
       toast.success('Message sent successfully');
@@ -42,7 +44,9 @@ export function InboxPage() {
     }
   };
 
-  const handleApproveDraft = async (content: string) => {
+  const handleApproveDraft = async (content: string): Promise<void> => {
+    // Find the pending draft to approve (could be any visible pending draft)
+    const pendingDraft = drafts.find((d) => d.status === 'pending');
     if (!pendingDraft) return;
 
     try {
@@ -57,8 +61,22 @@ export function InboxPage() {
     }
   };
 
-  const handleRejectDraft = () => {
-    toast.info('Draft rejected. You can compose a manual reply below.');
+  const handleRejectDraft = async (draftId: string): Promise<void> => {
+    try {
+      await rejectDraft.mutateAsync(draftId);
+      toast.info('Draft rejected. You can compose a manual reply or generate a new draft.');
+    } catch {
+      toast.error('Failed to reject draft');
+    }
+  };
+
+  const handleRegenerateDraft = async (draftId: string): Promise<void> => {
+    try {
+      await regenerateDraft.mutateAsync(draftId);
+      toast.success('New draft generation started');
+    } catch {
+      toast.error('Failed to regenerate draft');
+    }
   };
 
   return (
@@ -130,7 +148,7 @@ export function InboxPage() {
                 </div>
               </div>
 
-              {/* Message Thread */}
+              {/* Message Thread (drafts now rendered inline) */}
               <div className="flex-1 overflow-y-auto">
                 <ConversationThread
                   messages={conversation.messages}
@@ -138,31 +156,24 @@ export function InboxPage() {
                   conversationId={conversation.id}
                   bookings={conversation.bookings}
                   classification={conversation.classification}
+                  drafts={drafts}
+                  onApproveDraft={handleApproveDraft}
+                  onRejectDraft={handleRejectDraft}
+                  onRegenerateDraft={handleRegenerateDraft}
+                  isApprovePending={approveDraft.isPending}
+                  isRejectPending={rejectDraft.isPending}
+                  isRegeneratePending={regenerateDraft.isPending}
                 />
               </div>
 
-              {/* AI Draft (if pending) */}
-              {pendingDraft && (
-                <div className="shrink-0 px-4 py-3 border-t">
-                  <DraftCard
-                    draft={pendingDraft}
-                    onApprove={handleApproveDraft}
-                    onReject={handleRejectDraft}
-                    isPending={approveDraft.isPending}
-                  />
-                </div>
-              )}
-
-              {/* Manual Reply Composer */}
-              {!pendingDraft && (
-                <div className="shrink-0 px-4 py-3 border-t">
-                  <MessageComposer
-                    onSend={handleSendMessage}
-                    isPending={sendMessage.isPending}
-                    placeholder={`Reply to ${conversation.guest?.name ?? 'Unknown Sender'}...`}
-                  />
-                </div>
-              )}
+              {/* Manual Reply Composer -- always available */}
+              <div className="shrink-0 px-4 py-3 border-t">
+                <MessageComposer
+                  onSend={handleSendMessage}
+                  isPending={sendMessage.isPending}
+                  placeholder={`Reply to ${conversation.guest?.name ?? 'Unknown Sender'}...`}
+                />
+              </div>
             </div>
           ) : null}
         </div>

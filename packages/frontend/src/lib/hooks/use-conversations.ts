@@ -31,7 +31,7 @@ export interface AiDraft {
   messageId: string | null;
   conversationId: string;
   content: string;
-  status: 'pending' | 'approved' | 'edited' | 'rejected';
+  status: 'pending' | 'approved' | 'edited' | 'rejected' | 'failed';
   model: string;
   tokensUsed: number;
   inputTokens: number;
@@ -133,6 +133,7 @@ export function useConversationDrafts(id: string | undefined) {
       return response.data;
     },
     enabled: !!id,
+    refetchInterval: 5_000,
   });
 }
 
@@ -174,8 +175,8 @@ export function useApproveDraft(conversationId: string) {
   return useMutation({
     mutationFn: async (data: ApproveDraftData) => {
       const response = await api.post<{ data: Message }>(
-        `/api/v1/conversations/${conversationId}/approve`,
-        data
+        `/api/v1/conversations/${conversationId}/drafts/${data.draftId}/approve`,
+        { content: data.content }
       );
       return response.data;
     },
@@ -184,6 +185,40 @@ export function useApproveDraft(conversationId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.drafts(conversationId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.unreadCount });
+    },
+  });
+}
+
+export function useRejectDraft(conversationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (draftId: string) => {
+      const response = await api.post<{ data: AiDraft }>(
+        `/api/v1/conversations/${conversationId}/drafts/${draftId}/reject`
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.drafts(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+    },
+  });
+}
+
+export function useRegenerateDraft(conversationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (draftId: string) => {
+      const response = await api.post<{ data: AiDraft }>(
+        `/api/v1/conversations/${conversationId}/drafts/${draftId}/regenerate`
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.drafts(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
     },
   });
 }

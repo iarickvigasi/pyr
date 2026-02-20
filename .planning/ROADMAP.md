@@ -101,13 +101,13 @@ Plans:
   2. Ines can approve a draft with one click (sends immediately), edit it before sending, or reject it -- all from the inbox UI
   3. Admin can create, edit, and delete FAQ entries (question/answer pairs) that are injected into the AI context for more accurate responses
   4. Automated tests verify AI draft generation end-to-end (context injection, LLM call, draft stored) with mocked LLM responses
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: Auto-draft pipeline (email ingestion triggers AI draft generation, draft stored and displayed in inbox)
-- [ ] 05-02: Draft approval workflow (approve/edit/reject UI actions, approved drafts send via SMTP immediately)
-- [ ] 05-03: FAQ knowledge base (CRUD admin UI, FAQ injection into AI context)
-- [ ] 05-04: AI draft integration tests (mocked LLM responses, context injection verification, draft storage and retrieval)
+- [ ] 05-01-PLAN.md — Email pipeline AI draft trigger + approve/reject/regenerate backend endpoints (Wave 1)
+- [ ] 05-02-PLAN.md — FAQ Prisma model, CRUD API, context builder + system prompt injection (Wave 1)
+- [ ] 05-03-PLAN.md — Draft review UI (two-step approve, reject+regenerate, inline display) + FAQ settings tab (Wave 2)
+- [ ] 05-04-PLAN.md — AI draft pipeline integration tests + draft workflow tests with mocked LLM (Wave 3, TDD)
 
 ### Phase 6: CalDAV Calendar Sync
 **Goal**: Ines's Apple Calendar automatically reflects all bookings and events from the system -- always up to date, verified with real iCloud account tests

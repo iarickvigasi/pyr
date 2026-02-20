@@ -351,6 +351,11 @@ model CalendarEvent {
   bookingId  String?   @map("booking_id")
   eventId    String?   @map("event_id")
   caldavUid  String?   @map("caldav_uid")
+  caldavUrl  String?   @map("caldav_url")      // Full URL for PUT/DELETE operations
+  etag       String?                            // For conditional updates (If-Match)
+  syncStatus String    @default("pending") @map("sync_status") // pending | synced | failed
+  lastError  String?   @map("last_error")       // Last sync error message
+  sequence   Int       @default(0)              // VEVENT SEQUENCE number
   lastSynced DateTime? @map("last_synced") @db.Timestamptz(3)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -360,6 +365,7 @@ model CalendarEvent {
 
   @@index([bookingId])
   @@index([eventId])
+  @@index([syncStatus])
   @@map("calendar_events")
 }
 

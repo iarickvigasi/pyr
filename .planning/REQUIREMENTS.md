@@ -41,8 +41,8 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **CAL-01**: System pushes booking events to Apple Calendar via CalDAV (one-way: DB -> Calendar)
 - [x] **CAL-02**: System pushes standalone events to Apple Calendar via CalDAV
 - [x] **CAL-03**: Calendar events include guest name, room assignment, dietary info, arrival time in description
-- [ ] **CAL-04**: When a booking is updated (room change, dietary change, payment received), the corresponding calendar event is automatically updated
-- [ ] **CAL-05**: When a booking or event is cancelled, the corresponding calendar event is deleted
+- [x] **CAL-04**: When a booking is updated (room change, dietary change, payment received), the corresponding calendar event is automatically updated
+- [x] **CAL-05**: When a booking or event is cancelled, the corresponding calendar event is deleted
 
 ### AI Assistant (OpenClaw)
 
@@ -154,8 +154,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAL-01 | Phase 6 | Complete |
 | CAL-02 | Phase 6 | Complete |
 | CAL-03 | Phase 6 | Complete |
-| CAL-04 | Phase 6 | Pending |
-| CAL-05 | Phase 6 | Pending |
+| CAL-04 | Phase 6 | Complete |
+| CAL-05 | Phase 6 | Complete |
 | TEST-04 | Phase 6 | Pending |
 | ASST-01 | Phase 7 | Pending |
 | ASST-02 | Phase 7 | Pending |

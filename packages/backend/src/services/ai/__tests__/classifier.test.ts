@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { classifyEdgeCases, EDGE_CASE_PATTERNS } from '../classifier.js';
-import { calculateCost, MODEL_PRICING, formatCostEur } from '../cost-calculator.js';
+import { calculateCost, MODEL_PRICING, formatCostEur, type ModelPricing } from '../cost-calculator.js';
 
 // ─── Edge-case classifier tests ─────────────────────────
 
@@ -208,9 +208,10 @@ describe('calculateCost', () => {
 
 describe('MODEL_PRICING', () => {
   it('includes pricing for Claude Sonnet 4.5', () => {
-    expect(MODEL_PRICING['claude-sonnet-4-5']).toBeDefined();
-    expect(MODEL_PRICING['claude-sonnet-4-5']!.inputPerMTok).toBe(3.0);
-    expect(MODEL_PRICING['claude-sonnet-4-5']!.outputPerMTok).toBe(15.0);
+    const pricing = MODEL_PRICING['claude-sonnet-4-5'] as ModelPricing;
+    expect(pricing).toBeDefined();
+    expect(pricing.inputPerMTok).toBe(3.0);
+    expect(pricing.outputPerMTok).toBe(15.0);
   });
 
   it('includes pricing for Claude Haiku 3.5', () => {

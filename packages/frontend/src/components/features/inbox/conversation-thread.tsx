@@ -2,15 +2,24 @@
 
 import { useEffect, useRef } from 'react';
 import { EmailMessage } from './email-message';
-import type { Message } from '@/lib/hooks/use-conversations';
+import { OtaBookingBadge } from './ota-booking-badge';
+import type { Message, LinkedBooking } from '@/lib/hooks/use-conversations';
 
 interface ConversationThreadProps {
   messages: Message[];
   guestName: string;
   conversationId: string;
+  bookings?: LinkedBooking[];
+  classification?: string | null;
 }
 
-export function ConversationThread({ messages, guestName, conversationId }: ConversationThreadProps) {
+export function ConversationThread({
+  messages,
+  guestName,
+  conversationId,
+  bookings,
+  classification,
+}: ConversationThreadProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,15 +34,32 @@ export function ConversationThread({ messages, guestName, conversationId }: Conv
     );
   }
 
+  // Determine if we should show booking badges after the last message
+  const isOtaConversation = classification === 'ota_notification';
+  const linkedBookings = bookings ?? [];
+
   return (
     <div className="space-y-4 p-4">
-      {messages.map((message) => (
-        <EmailMessage
-          key={message.id}
-          message={message}
-          guestName={guestName}
-          conversationId={conversationId}
-        />
+      {messages.map((message, index) => (
+        <div key={message.id}>
+          <EmailMessage
+            message={message}
+            guestName={guestName}
+            conversationId={conversationId}
+          />
+          {/* Show booking badges after the last message in an OTA conversation */}
+          {isOtaConversation && index === messages.length - 1 && linkedBookings.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {linkedBookings.map((booking) => (
+                <OtaBookingBadge
+                  key={booking.id}
+                  bookingId={booking.id}
+                  needsReview={booking.needsReview}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       ))}
       <div ref={messagesEndRef} />
     </div>

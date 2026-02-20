@@ -93,6 +93,10 @@ export async function getConversation(
             },
           },
         },
+        bookings: {
+          where: { deletedAt: null },
+          select: { id: true, status: true, needsReview: true },
+        },
       },
     });
   });

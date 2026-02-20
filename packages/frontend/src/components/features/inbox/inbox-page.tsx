@@ -136,6 +136,8 @@ export function InboxPage() {
                   messages={conversation.messages}
                   guestName={conversation.guest?.name ?? 'Unknown Sender'}
                   conversationId={conversation.id}
+                  bookings={conversation.bookings}
+                  classification={conversation.classification}
                 />
               </div>
 

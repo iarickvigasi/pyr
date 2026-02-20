@@ -26,6 +26,8 @@ export function useBookings(params: BookingListParams) {
           totalPrice: number;
           source: string | null;
           notes: string | null;
+          needsReview: boolean;
+          sourceConversationId: string | null;
           guest: { id: string; name: string; email: string | null; phone: string | null; language: string };
           room: { id: string; name: string; roomType: { id: string; name: string; basePrice: number; maxOccupancy: number } };
         }>;
@@ -50,6 +52,8 @@ export function useBooking(id: string) {
           totalPrice: number;
           source: string | null;
           notes: string | null;
+          needsReview: boolean;
+          sourceConversationId: string | null;
           createdAt: string;
           updatedAt: string;
           guest: { id: string; name: string; email: string | null; phone: string | null; language: string };

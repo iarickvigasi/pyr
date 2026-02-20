@@ -1,8 +1,9 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Mail, AlertTriangle } from 'lucide-react';
 import { useBooking, useUpdateBooking } from '@/lib/hooks/use-bookings';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -78,6 +79,34 @@ export function BookingDetail({ id }: { id: string }) {
         </div>
         <BookingStatusBadge status={booking.status} />
       </div>
+
+      {/* OTA booking banners */}
+      {booking.sourceConversationId && (
+        <Alert>
+          <Mail className="h-4 w-4" />
+          <AlertTitle>Created from OTA email</AlertTitle>
+          <AlertDescription>
+            This booking was automatically created from an OTA email notification.{' '}
+            <Link
+              href={`/inbox?conversation=${booking.sourceConversationId}`}
+              className="font-medium underline underline-offset-4 hover:text-primary"
+            >
+              View source email
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {booking.needsReview && (
+        <Alert variant="destructive" className="border-orange-200 bg-orange-50 text-orange-900 [&>svg]:text-orange-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Needs Review</AlertTitle>
+          <AlertDescription>
+            This booking may have incomplete data from automatic parsing. Please review
+            and fill in any missing fields (dates, pricing, room assignment).
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

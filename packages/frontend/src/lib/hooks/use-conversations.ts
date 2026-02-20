@@ -57,8 +57,15 @@ export interface Conversation {
   } | null;
 }
 
+export interface LinkedBooking {
+  id: string;
+  status: string;
+  needsReview: boolean;
+}
+
 export interface ConversationWithMessages extends Conversation {
   messages: Message[];
+  bookings?: LinkedBooking[];
 }
 
 export interface ConversationFilters extends Record<string, string | number | boolean | undefined> {

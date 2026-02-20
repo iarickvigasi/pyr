@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { MoreHorizontal } from 'lucide-react';
+import { AlertTriangle, MoreHorizontal } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookingStatusBadge } from './booking-status-badge';
@@ -28,6 +29,7 @@ interface BookingRow {
   checkOut: string;
   status: string;
   totalPrice: number;
+  needsReview?: boolean;
   guest: { id: string; name: string };
   room: { name: string; roomType: { name: string } };
 }
@@ -101,7 +103,15 @@ export function BookingTable({
               <TableCell>{formatDate(b.checkIn)}</TableCell>
               <TableCell>{formatDate(b.checkOut)}</TableCell>
               <TableCell>
-                <BookingStatusBadge status={b.status} />
+                <div className="flex items-center gap-1.5">
+                  <BookingStatusBadge status={b.status} />
+                  {b.needsReview && (
+                    <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700 text-xs">
+                      <AlertTriangle className="mr-0.5 h-3 w-3" />
+                      Review
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(b.totalPrice)}

@@ -419,3 +419,14 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_log")
 }
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String   @db.Text
+  tags      String[] @default([])
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("faqs")
+}

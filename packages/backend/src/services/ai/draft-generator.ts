@@ -11,7 +11,7 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
-import type { Logger } from 'pino';
+import type { FastifyBaseLogger } from 'fastify';
 import { buildDraftContext } from './context-builder.js';
 import { buildSystemPrompt } from './prompts/system.js';
 import { classifyEdgeCases } from './classifier.js';
@@ -43,7 +43,7 @@ export interface GenerateDraftParams {
   conversationId: string;
   messageId: string;
   guestLanguage: 'en' | 'de';
-  logger: Logger;
+  logger: FastifyBaseLogger;
 }
 
 /** OpenAI-compatible chat completion response from OpenClaw Gateway */
@@ -148,7 +148,8 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
   const cacheReadTokens = usage?.cache_read_input_tokens ?? 0;
   const cacheWriteTokens = usage?.cache_creation_input_tokens ?? 0;
 
-  // 7. Calculate cost
+  // 7. Calculate cost (strip provider prefix for pricing lookup)
+  const modelForPricing = stripProviderPrefix(model);
   const costEur = calculateCost(
     {
       inputTokens,
@@ -156,7 +157,7 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
       cacheReadTokens,
       cacheCreationTokens: cacheWriteTokens,
     },
-    model,
+    modelForPricing,
   );
 
   // Derive provider from model string
@@ -232,6 +233,16 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
 }
 
 // ─── Helpers ────────────────────────────────────────────
+
+/**
+ * Strip provider prefix from model string.
+ * OpenClaw returns "anthropic/claude-sonnet-4-5-20250929" but cost calculator
+ * expects "claude-sonnet-4-5-20250929".
+ */
+function stripProviderPrefix(model: string): string {
+  const slashIndex = model.indexOf('/');
+  return slashIndex >= 0 ? model.slice(slashIndex + 1) : model;
+}
 
 /**
  * Derive the AI provider name from the model string.

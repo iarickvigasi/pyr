@@ -1,26 +1,69 @@
-import type { FastifyInstance } from 'fastify';
-import type { AiModuleContract, GenerateDraftParams } from '@pyr/shared';
-
 /**
- * AI integration module.
- * Provides LLM-powered draft generation, message classification, and context assembly.
- * Real implementation: Phase 4 (AI Communication Engine).
+ * AI integration module -- AiModuleContract implementation.
  *
+ * Bridges the email module to OpenClaw via the contract interface.
  * Cross-module communication:
  * - Receives: ai-draft jobs from BullMQ (enqueued by email module on new inbound messages)
- * - Produces: Nothing directly (drafts are stored in DB by the job processor for inbox review)
+ * - Produces: AiDraft records in DB (for inbox review by Ines)
  */
+
+import type { FastifyInstance } from 'fastify';
+import type { AiModuleContract } from '@pyr/shared';
+import { classifyEdgeCases } from './classifier.js';
+import { generateDraft } from './draft-generator.js';
+
 export function createAiModule(app: FastifyInstance): AiModuleContract {
+  const config = app.config;
+  const logger = app.log.child({ module: 'ai' });
+
   return {
-    async generateDraft(_params: GenerateDraftParams) {
-      throw new Error('AI module not implemented (Phase 4)');
+    async generateDraft(params) {
+      const result = await generateDraft({
+        prisma: app.prisma,
+        config: {
+          openclawGatewayUrl: config.OPENCLAW_GATEWAY_URL,
+          openclawGatewayToken: config.OPENCLAW_GATEWAY_TOKEN,
+        },
+        conversationId: params.conversationId,
+        messageId: params.messageId,
+        guestLanguage: params.guestLanguage,
+        logger,
+      });
+      return {
+        content: result.content,
+        model: result.model,
+        tokensUsed: { input: result.inputTokens, output: result.outputTokens },
+        costEur: result.costEur,
+      };
     },
-    async classifyMessage(_content: string, _metadata?: Record<string, unknown>) {
-      throw new Error('AI module not implemented (Phase 4)');
+
+    async classifyMessage(content, _metadata) {
+      const flags = classifyEdgeCases(content);
+      return {
+        category: 'guest-inquiry',
+        confidence: flags.length > 0 ? 0.8 : 0.6,
+        flags,
+      };
     },
+
     async healthCheck() {
-      app.log.warn('AI module health check: not implemented');
-      return { primary: false, fallback: false };
+      try {
+        const response = await fetch(`${config.OPENCLAW_GATEWAY_URL}/v1/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${config.OPENCLAW_GATEWAY_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'openclaw:main',
+            messages: [{ role: 'user', content: 'health check' }],
+            max_tokens: 1,
+          }),
+        });
+        return { primary: response.ok, fallback: response.ok };
+      } catch {
+        return { primary: false, fallback: false };
+      }
     },
   };
 }

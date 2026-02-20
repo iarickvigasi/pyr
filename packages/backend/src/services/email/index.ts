@@ -13,6 +13,7 @@ import { matchOrCreateGuest } from './contact-matcher.js';
 import { getSetting } from '../../modules/settings/settings.service.js';
 import { getEmailProviderConfig } from '../../modules/settings/settings.service.js';
 import { writeAuditLog } from '../../lib/audit.js';
+import { parseOtaEmail } from './ota-parsers/index.js';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -296,7 +297,166 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           data: { isRead: false },
         });
 
-        // g. Write audit log
+        // g. OTA booking auto-creation
+        if (classification.category === 'ota_notification') {
+          try {
+            const senderDomain = parsed.from.address.split('@').pop()?.toLowerCase() ?? '';
+            const otaData = parseOtaEmail(
+              parsed.from.address,
+              parsed.subject,
+              parsed.html || '',
+              parsed.text,
+            );
+
+            if (otaData) {
+              // Match or create guest from OTA data (use guest email/name, not OTA sender)
+              let otaGuestId: string | null = null;
+              if (otaData.guestEmail) {
+                const existingGuest = await app.prisma.guest.findFirst({
+                  where: { email: otaData.guestEmail, deletedAt: null },
+                });
+                if (existingGuest) {
+                  otaGuestId = existingGuest.id;
+                }
+              }
+
+              if (!otaGuestId && otaData.guestName) {
+                // Try name match as fallback
+                const nameGuest = await app.prisma.guest.findFirst({
+                  where: { name: otaData.guestName, deletedAt: null },
+                });
+                if (nameGuest) {
+                  otaGuestId = nameGuest.id;
+                }
+              }
+
+              if (!otaGuestId && (otaData.guestName || otaData.guestEmail)) {
+                // Create new guest
+                const newGuest = await app.prisma.$transaction(async (tx) => {
+                  const guest = await tx.guest.create({
+                    data: {
+                      name: otaData.guestName ?? otaData.guestEmail?.split('@')[0] ?? 'Unknown',
+                      email: otaData.guestEmail ?? null,
+                      source: otaData.otaPlatform,
+                    },
+                  });
+                  await writeAuditLog(tx, {
+                    entityType: 'guest',
+                    entityId: guest.id,
+                    action: 'create',
+                    changes: {
+                      name: guest.name,
+                      email: guest.email,
+                      source: otaData.otaPlatform,
+                      trigger: 'ota-email-parse',
+                    },
+                    actor: 'system',
+                  });
+                  return guest;
+                });
+                otaGuestId = newGuest.id;
+              }
+
+              if (otaGuestId) {
+                // Pick first available room (Ines will reassign)
+                const room = await app.prisma.room.findFirst({
+                  where: { status: 'available' },
+                  orderBy: { name: 'asc' },
+                });
+
+                if (room) {
+                  // Parse dates or use placeholders
+                  let checkInDate: Date;
+                  let checkOutDate: Date;
+
+                  if (otaData.checkIn) {
+                    checkInDate = new Date(otaData.checkIn);
+                    if (isNaN(checkInDate.getTime())) {
+                      // Placeholder: date string not parseable, needsReview=true
+                      checkInDate = new Date();
+                    }
+                  } else {
+                    // Placeholder: actual date missing from OTA email, needsReview=true
+                    checkInDate = new Date();
+                  }
+
+                  if (otaData.checkOut) {
+                    checkOutDate = new Date(otaData.checkOut);
+                    if (isNaN(checkOutDate.getTime())) {
+                      // Placeholder: date string not parseable, needsReview=true
+                      checkOutDate = new Date(Date.now() + 86_400_000);
+                    }
+                  } else {
+                    // Placeholder: actual date missing from OTA email, needsReview=true
+                    checkOutDate = new Date(Date.now() + 86_400_000);
+                  }
+
+                  // Ensure checkOut > checkIn
+                  if (checkOutDate <= checkInDate) {
+                    checkOutDate = new Date(checkInDate.getTime() + 86_400_000);
+                  }
+
+                  const booking = await app.prisma.$transaction(async (tx) => {
+                    const newBooking = await tx.booking.create({
+                      data: {
+                        guestId: otaGuestId!,
+                        roomId: room.id,
+                        checkIn: checkInDate,
+                        checkOut: checkOutDate,
+                        status: 'inquiry',
+                        totalPrice: otaData.totalPrice ?? 0,
+                        source: otaData.otaPlatform,
+                        sourceConversationId: conversationId,
+                        needsReview: otaData.needsReview,
+                        notes: JSON.stringify(otaData.rawFields),
+                      },
+                    });
+
+                    await writeAuditLog(tx, {
+                      entityType: 'booking',
+                      entityId: newBooking.id,
+                      action: 'create',
+                      changes: {
+                        guestId: otaGuestId,
+                        source: otaData.otaPlatform,
+                        otaReferenceId: otaData.otaReferenceId,
+                        needsReview: otaData.needsReview,
+                        conversationId,
+                        trigger: 'ota-email-parse',
+                      },
+                      actor: 'system',
+                    });
+
+                    return newBooking;
+                  });
+
+                  app.log.info(
+                    {
+                      bookingId: booking.id,
+                      otaPlatform: otaData.otaPlatform,
+                      needsReview: otaData.needsReview,
+                      conversationId,
+                    },
+                    'OTA booking auto-created from email',
+                  );
+                } else {
+                  app.log.warn(
+                    { conversationId, otaPlatform: otaData.otaPlatform },
+                    'No available room for OTA booking -- skipping auto-creation',
+                  );
+                }
+              }
+            }
+          } catch (otaErr) {
+            // OTA parsing failure should not prevent email processing
+            app.log.warn(
+              { error: otaErr, conversationId },
+              'OTA parsing/booking creation failed -- email still stored',
+            );
+          }
+        }
+
+        // h. Write audit log for message
         await writeAuditLog(app.prisma, {
           entityType: 'message',
           entityId: message.id,
@@ -312,7 +472,7 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           actor: 'system',
         });
 
-        // h. Update last processed UID
+        // i. Update last processed UID
         await upsertLastUid(raw.uid);
 
         processed++;

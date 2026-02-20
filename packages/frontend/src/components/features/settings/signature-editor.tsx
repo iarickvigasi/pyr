@@ -14,6 +14,7 @@ interface SignatureEditorProps {
 
 export function SignatureEditor({ value, onChange }: SignatureEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: false,

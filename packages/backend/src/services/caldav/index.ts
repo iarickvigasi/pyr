@@ -1,10 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { CalendarModuleContract } from '@pyr/shared';
+import { syncBookingToCalendar, syncEventToCalendar } from './caldav.service.js';
+import { getCaldavClient } from './caldav.client.js';
 
 /**
  * CalDAV integration module.
  * Pushes bookings and events to Apple Calendar via CalDAV protocol.
- * Real implementation: Phase 6 (Calendar & Apple Calendar Sync).
  *
  * Cross-module communication:
  * - Receives: calendar-sync jobs from BullMQ (enqueued by booking/event mutations)
@@ -15,15 +16,19 @@ import type { CalendarModuleContract } from '@pyr/shared';
  */
 export function createCaldavModule(app: FastifyInstance): CalendarModuleContract {
   return {
-    async syncBooking(_bookingId: string, _action: 'create' | 'update' | 'delete') {
-      throw new Error('CalDAV module not implemented (Phase 6)');
+    async syncBooking(bookingId: string, action: 'create' | 'update' | 'delete') {
+      await syncBookingToCalendar(app, bookingId, action);
     },
-    async syncEvent(_eventId: string, _action: 'create' | 'update' | 'delete') {
-      throw new Error('CalDAV module not implemented (Phase 6)');
+    async syncEvent(eventId: string, action: 'create' | 'update' | 'delete') {
+      await syncEventToCalendar(app, eventId, action);
     },
     async healthCheck() {
-      app.log.warn('CalDAV module health check: not implemented');
-      return { caldav: false };
+      try {
+        await getCaldavClient(app.prisma);
+        return { caldav: true };
+      } catch {
+        return { caldav: false };
+      }
     },
   };
 }

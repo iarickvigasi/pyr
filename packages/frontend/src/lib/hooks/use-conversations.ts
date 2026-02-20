@@ -3,12 +3,25 @@ import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/query-client';
 
 // Types
+export interface MessageAttachment {
+  id: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  contentId: string | null;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
   direction: 'in' | 'out';
   content: string;
   channel: string;
+  htmlContent: string | null;
+  fromAddress: string | null;
+  fromName: string | null;
+  subject: string | null;
+  attachments?: MessageAttachment[];
   sentAt: string;
   createdAt: string;
 }
@@ -31,6 +44,8 @@ export interface Conversation {
   subject: string | null;
   status: string;
   classification: string | null;
+  isRead: boolean;
+  messagePreview: string | null;
   lastMessageAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -38,7 +53,7 @@ export interface Conversation {
     id: string;
     name: string;
     email: string | null;
-    language: string;
+    language?: string;
   } | null;
 }
 
@@ -76,6 +91,7 @@ export function useConversations(filters?: ConversationFilters) {
       }>('/api/v1/conversations', { params: filters as Record<string, string | number | boolean | undefined> });
       return response.data;
     },
+    refetchInterval: 30_000,
   });
 }
 
@@ -105,6 +121,19 @@ export function useConversationDrafts(id: string | undefined) {
   });
 }
 
+export function useUnreadCount() {
+  return useQuery({
+    queryKey: queryKeys.conversations.unreadCount,
+    queryFn: async () => {
+      const response = await api.get<{ data: { count: number } }>(
+        '/api/v1/conversations/unread-count'
+      );
+      return response.data.count;
+    },
+    refetchInterval: 30_000,
+  });
+}
+
 export function useSendMessage(conversationId: string) {
   const queryClient = useQueryClient();
 
@@ -119,6 +148,7 @@ export function useSendMessage(conversationId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.unreadCount });
     },
   });
 }
@@ -137,6 +167,25 @@ export function useApproveDraft(conversationId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.drafts(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.unreadCount });
+    },
+  });
+}
+
+export function useUpdateConversation(conversationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { classification?: string; status?: string }) => {
+      const response = await api.patch<{ data: Conversation }>(
+        `/api/v1/conversations/${conversationId}`,
+        data
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
     },
   });

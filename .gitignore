@@ -40,3 +40,10 @@ pnpm-debug.log*
 
 # Docker
 docker-compose.override.yml
+
+# OpenClaw runtime data
+openclaw/agents/
+openclaw/*.log
+
+# GSD Planning
+.planning/

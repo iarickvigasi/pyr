@@ -30,6 +30,10 @@ const envSchema = z.object({
 
   TELEGRAM_BOT_TOKEN: z.string().default(''),
   TELEGRAM_ALLOWED_USER_ID: z.string().default(''),
+
+  OPENCLAW_GATEWAY_URL: z.string().default('http://localhost:18789'),
+  OPENCLAW_HOOK_TOKEN: z.string().default(''),
+  OPENCLAW_GATEWAY_TOKEN: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

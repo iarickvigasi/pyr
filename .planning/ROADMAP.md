@@ -84,13 +84,12 @@ Plans:
   3. Every AI call logs model used, token count (input + output), and estimated cost in EUR -- viewable in admin
   4. Incoming messages containing complaints, medical/dietary requests, cancellations, or adoption inquiries are flagged for priority manual handling
   5. System prompt prefixes are cached using Anthropic prompt caching to reduce cost on repeated calls
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: LLM abstraction layer (model-agnostic interface, Claude primary + OpenAI fallback, error handling)
-- [ ] 04-02: Context injection engine (system prompt builder with guest data, availability, pricing, events, brand voice)
-- [ ] 04-03: Message classification and edge case detection (complaint, medical, cancellation, adoption flagging)
-- [ ] 04-04: Token tracking, cost logging, and prompt caching
+- [ ] 04-01-PLAN.md — OpenClaw Docker Compose service, Gateway config (Claude primary/OpenAI fallback), SOUL.md persona, AiDraft schema migration, agent API endpoints
+- [ ] 04-02-PLAN.md — Context builder with system prompts and brand voice, edge-case classifier with bilingual detection, cost calculator (TDD)
+- [ ] 04-03-PLAN.md — SKILL.md files per business domain, draft generator via OpenClaw HTTP API, AiModuleContract implementation, BullMQ job processor wiring
 
 ### Phase 5: AI-Email Integration
 **Goal**: Inbound guest emails automatically get AI-drafted replies that Ines can approve, edit, or reject from the inbox -- with automated tests verifying the draft pipeline
@@ -192,7 +191,7 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 | 1. Queue & Module Foundation | 1/2 | Complete    | 2026-02-19 |
 | 2. Email Ingestion Pipeline | 0/6 | Planned     | - |
 | 3. Email UI & OTA Parsing | 0/3 | Planned     | - |
-| 4. AI Communication Engine | 0/4 | Not started | - |
+| 4. AI Communication Engine | 0/3 | Planned     | - |
 | 5. AI-Email Integration | 0/4 | Not started | - |
 | 6. CalDAV Calendar Sync | 0/4 | Not started | - |
 | 7. OpenClaw Assistant Core | 0/4 | Not started | - |

@@ -1,0 +1,56 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-5-20250929",
+        "fallbacks": ["openai/gpt-4o"]
+      },
+      "contextTokens": 200000,
+      "timeoutSeconds": 120
+    }
+  },
+  "hooks": {
+    "enabled": true,
+    "token": "${OPENCLAW_HOOK_TOKEN}",
+    "path": "/hooks",
+    "defaultSessionKey": "hook:pyr",
+    "allowedAgentIds": ["hooks", "main"],
+    "maxBodyBytes": 262144,
+    "mappings": [
+      {
+        "match": { "path": "draft" },
+        "action": "agent",
+        "agentId": "main",
+        "sessionKey": "hook:draft:{{message}}",
+        "deliver": false
+      }
+    ]
+  },
+  "skills": {
+    "load": {
+      "extraDirs": []
+    },
+    "entries": {}
+  },
+  "gateway": {
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    },
+    "auth": {
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    }
+  },
+  "logging": {
+    "level": "info"
+  },
+  "env": {
+    "vars": {
+      "PYR_API_URL": "http://host.docker.internal:3001",
+      "PYR_API_KEY": "${API_KEY}"
+    }
+  }
+}

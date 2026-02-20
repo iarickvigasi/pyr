@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 4 - AI Communication Engine (COMPLETE)
+**Current focus:** Phase 5 - AI-Email Integration
 
 ## Current Position
 
-Phase: 4 of 9 (AI Communication Engine) -- COMPLETE
-Plan: 4 of 4 in current phase
-Status: Phase 04 Complete
-Last activity: 2026-02-20 -- Completed 04-04-PLAN.md (Admin Visibility Gap Closure)
+Phase: 5 of 9 (AI-Email Integration)
+Plan: 1 of 4 in current phase
+Status: Executing Phase 05
+Last activity: 2026-02-20 -- Completed 05-01-PLAN.md (AI Draft Pipeline Wiring)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 43%
+Progress: [▓▓▓▓▓▓▓▓▓░] 46%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: 7min
-- Total execution time: 1.61 hours
+- Total execution time: 1.76 hours
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 43%
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
+| 05-ai-email-integration | 1/4 | 9min | 9.0min |
 
 **Recent Trend:**
-- Last 5 plans: 12min, 5min, 7min, 5min, 3min
+- Last 5 plans: 5min, 7min, 5min, 3min, 9min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -108,6 +109,11 @@ Recent decisions affecting current work:
 - [04-04]: Backward compat: show legacy tokensUsed when inputTokens is 0 for old drafts
 - [04-04]: Destructive badge variant for complaint/cancellation flags; amber outline for medical/dietary/adoption
 - [04-04]: Euro sign (U+20AC) prefix on formatCostMicrocents output for display clarity
+- [05-01]: SMTP send before transaction commit in approveDraft -- consistent with existing reply pattern
+- [05-01]: Per-message dedup (not per-conversation) in AI draft job processor -- each message gets own draft
+- [05-01]: onFailed handler writes empty failed draft record for frontend detection
+- [05-01]: Draft enqueueing wrapped in try/catch so failures never block email processing
+- [05-01]: Regenerate rejects old draft and enqueues new job (no history kept)
 
 ### Pending Todos
 
@@ -122,5 +128,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 04-04-PLAN.md (Phase 04 fully complete with gap closure)
-Resume file: Next phase
+Stopped at: Completed 05-01-PLAN.md (AI Draft Pipeline Wiring)
+Resume file: .planning/phases/05-ai-email-integration/05-02-PLAN.md

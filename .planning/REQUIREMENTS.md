@@ -17,8 +17,8 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **EMAIL-06**: System classifies incoming emails into categories: guest inquiry, OTA notification, spam/newsletter, admin/system
 - [x] **EMAIL-07**: System sends outbound emails via configurable SMTP with correct threading headers preserved
 - [x] **EMAIL-08**: Unified inbox UI shows conversations with live email data, sorted by latest message
-- [ ] **EMAIL-09**: AI draft is auto-generated for guest inquiry emails with conversation context
-- [ ] **EMAIL-10**: Ines can approve, edit, or reject AI drafts from the inbox UI -- approved drafts send immediately
+- [x] **EMAIL-09**: AI draft is auto-generated for guest inquiry emails with conversation context
+- [x] **EMAIL-10**: Ines can approve, edit, or reject AI drafts from the inbox UI -- approved drafts send immediately
 - [x] **EMAIL-11**: Admin settings page allows configuring email provider (IMAP host/port/user/pass, SMTP host/port/user/pass)
 
 ### OTA Email Parsing
@@ -147,8 +147,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-05 | Phase 4 | Complete |
 | AI-06 | Phase 4 | Complete |
 | ARCH-03 | Phase 4 | Complete |
-| EMAIL-09 | Phase 5 | Pending |
-| EMAIL-10 | Phase 5 | Pending |
+| EMAIL-09 | Phase 5 | Complete |
+| EMAIL-10 | Phase 5 | Complete |
 | AI-04 | Phase 5 | Pending |
 | TEST-02 | Phase 5 | Pending |
 | CAL-01 | Phase 6 | Pending |

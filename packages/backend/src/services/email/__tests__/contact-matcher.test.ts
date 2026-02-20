@@ -4,12 +4,12 @@ import type { EmailCategory } from '../email-classifier.js';
 
 // ─── Mocks ──────────────────────────────────────────────────
 
-vi.mock('../../lib/audit.js', () => ({
+vi.mock('../../../lib/audit.js', () => ({
   writeAuditLog: vi.fn(),
 }));
 
 // Import the mocked writeAuditLog for assertions
-const { writeAuditLog } = await import('../../lib/audit.js');
+const { writeAuditLog } = await import('../../../lib/audit.js');
 
 function createMockPrisma() {
   const mockCreate = vi.fn();

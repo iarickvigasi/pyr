@@ -10,7 +10,10 @@ export const createConversationSchema = z.object({
 export type CreateConversationBody = z.infer<typeof createConversationSchema>;
 
 export const updateConversationSchema = z.object({
-  status: z.enum(['open', 'closed']),
+  status: z.enum(['open', 'closed']).optional(),
+  classification: z.enum(['guest_inquiry', 'ota_notification', 'spam_newsletter', 'admin_system']).optional(),
+}).refine(data => data.status !== undefined || data.classification !== undefined, {
+  message: 'At least one of status or classification must be provided',
 });
 
 export type UpdateConversationBody = z.infer<typeof updateConversationSchema>;
@@ -33,3 +36,10 @@ export const addMessageSchema = z.object({
 });
 
 export type AddMessageBody = z.infer<typeof addMessageSchema>;
+
+export const replySchema = z.object({
+  content: z.string().min(1),
+  html: z.string().optional(),
+});
+
+export type ReplyBody = z.infer<typeof replySchema>;

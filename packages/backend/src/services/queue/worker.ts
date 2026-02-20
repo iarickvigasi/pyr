@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { QUEUE_NAMES } from '@pyr/shared';
-import type { HealthCheckJobData } from '@pyr/shared';
+import type { HealthCheckJobData, EmailPollJobData } from '@pyr/shared';
 import { createHealthCheckProcessor } from './jobs/health-check.job.js';
 import { createEmailPollProcessor } from './jobs/email-poll.job.js';
 import { createAiDraftProcessor } from './jobs/ai-draft.job.js';
@@ -20,13 +20,14 @@ export async function registerWorkers(app: FastifyInstance): Promise<void> {
     { concurrency: 1 },
   );
 
-  // Placeholder workers -- will fail loudly if accidentally triggered
+  // Email poll worker -- polls IMAP inbox via email module pipeline
   app.queues.createWorker(
     QUEUE_NAMES.EMAIL_POLL,
     createEmailPollProcessor(app),
     { concurrency: 1 },
   );
 
+  // Placeholder workers -- will fail loudly if accidentally triggered
   app.queues.createWorker(
     QUEUE_NAMES.AI_DRAFT,
     createAiDraftProcessor(app),
@@ -76,5 +77,28 @@ export async function setupSchedulers(app: FastifyInstance): Promise<void> {
       data: { timestamp: new Date().toISOString() } satisfies HealthCheckJobData,
     });
     app.log.info({ intervalMs: healthCheckIntervalMs }, 'Health check scheduler registered');
+  }
+
+  // Email poll scheduler -- polls IMAP inbox every 2 minutes (configurable)
+  let emailPollIntervalMs = 120_000;
+  try {
+    const setting = await getSetting(app.prisma, 'email_poll_interval_ms');
+    const parsed = Number(setting.value);
+    if (!Number.isNaN(parsed) && parsed >= 30_000) {
+      emailPollIntervalMs = parsed;
+    }
+  } catch {
+    app.log.info('email_poll_interval_ms setting not found, using default (120000ms)');
+  }
+
+  const emailPollQueue = app.queues.getQueue(QUEUE_NAMES.EMAIL_POLL);
+  if (emailPollQueue) {
+    await emailPollQueue.upsertJobScheduler('email-poll-scheduler', {
+      every: emailPollIntervalMs,
+    }, {
+      name: 'email-poll',
+      data: {} satisfies EmailPollJobData,
+    });
+    app.log.info({ intervalMs: emailPollIntervalMs }, 'Email poll scheduler registered');
   }
 }

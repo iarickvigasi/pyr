@@ -101,20 +101,46 @@ export async function updateConversationStatus(
   status: ConversationStatus,
   actorId?: string,
 ): Promise<Conversation> {
+  return updateConversation(prisma, id, { status }, actorId);
+}
+
+/**
+ * Update conversation fields (status and/or classification).
+ * Wraps in a transaction with audit logging.
+ */
+export async function updateConversation(
+  prisma: PrismaClient,
+  id: string,
+  data: { status?: ConversationStatus; classification?: string },
+  actorId?: string,
+): Promise<Conversation> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.conversation.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Conversation', id);
 
+    const updateData: Record<string, unknown> = {};
+    const changes: Record<string, unknown> = {};
+
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+      changes.status = { from: existing.status, to: data.status };
+    }
+
+    if (data.classification !== undefined) {
+      updateData.classification = data.classification;
+      changes.classification = { from: existing.classification, to: data.classification };
+    }
+
     const conversation = await tx.conversation.update({
       where: { id },
-      data: { status },
+      data: updateData,
     });
 
     await writeAuditLog(tx, {
       entityType: 'conversation',
       entityId: id,
       action: 'update',
-      changes: { status: { from: existing.status, to: status } },
+      changes,
       actor: getActor(actorId),
     });
 

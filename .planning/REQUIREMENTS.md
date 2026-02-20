@@ -15,7 +15,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **EMAIL-04**: System threads conversations using In-Reply-To and References headers (RFC 5322)
 - [x] **EMAIL-05**: System auto-matches sender email to existing CRM guest or creates new guest record
 - [x] **EMAIL-06**: System classifies incoming emails into categories: guest inquiry, OTA notification, spam/newsletter, admin/system
-- [ ] **EMAIL-07**: System sends outbound emails via configurable SMTP with correct threading headers preserved
+- [x] **EMAIL-07**: System sends outbound emails via configurable SMTP with correct threading headers preserved
 - [ ] **EMAIL-08**: Unified inbox UI shows conversations with live email data, sorted by latest message
 - [ ] **EMAIL-09**: AI draft is auto-generated for guest inquiry emails with conversation context
 - [ ] **EMAIL-10**: Ines can approve, edit, or reject AI drafts from the inbox UI -- approved drafts send immediately
@@ -133,7 +133,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EMAIL-04 | Phase 2 | Complete |
 | EMAIL-05 | Phase 2 | Complete |
 | EMAIL-06 | Phase 2 | Complete |
-| EMAIL-07 | Phase 2 | Pending |
+| EMAIL-07 | Phase 2 | Complete |
 | TEST-01 | Phase 2 | Pending |
 | TEST-03 | Phase 2 | Pending |
 | EMAIL-08 | Phase 3 | Pending |

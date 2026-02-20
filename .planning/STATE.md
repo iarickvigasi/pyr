@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 2 of 9 (Email Ingestion Pipeline)
-Plan: 3 of 6 in current phase
+Plan: 4 of 6 in current phase
 Status: In Progress
-Last activity: 2026-02-20 -- Completed 02-03-PLAN.md (Contact Matching & Email Classification)
+Last activity: 2026-02-20 -- Completed 02-04-PLAN.md (SMTP Sending Service)
 
-Progress: [▓▓▓▓░░░░░░] 15%
+Progress: [▓▓▓▓░░░░░░] 18%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 6min
-- Total execution time: 0.48 hours
+- Total plans completed: 6
+- Average duration: 5min
+- Total execution time: 0.52 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
-| 02-email-ingestion-pipeline | 3/6 | 14min | 4.7min |
+| 02-email-ingestion-pipeline | 4/6 | 16min | 4min |
 
 **Recent Trend:**
-- Last 5 plans: 8min, 7min, 6min, 4min, 4min
+- Last 5 plans: 7min, 6min, 4min, 4min, 2min
 - Trend: Improving
 
 *Updated after each plan completion*
@@ -67,6 +67,8 @@ Recent decisions affecting current work:
 - [02-03]: Classification priority order: OTA domains (0.95) > system senders (0.9) > spam senders (0.8) > default guest_inquiry (0.6)
 - [02-03]: isSystemSender combines OTA + spam + system patterns for single-call non-guest detection
 - [02-03]: vi.mock paths resolve relative to test file, not module under test -- use ../../../lib/audit.js from __tests__/
+- [02-04]: No retry logic in SMTP service -- caller or BullMQ handles retries, service is send-and-report
+- [02-04]: Transporter created once in factory -- nodemailer handles connection pooling internally
 
 ### Pending Todos
 
@@ -81,5 +83,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 02-03-PLAN.md (Contact Matching & Email Classification)
-Resume file: .planning/phases/02-email-ingestion-pipeline/02-03-SUMMARY.md
+Stopped at: Completed 02-04-PLAN.md (SMTP Sending Service)
+Resume file: .planning/phases/02-email-ingestion-pipeline/02-04-SUMMARY.md

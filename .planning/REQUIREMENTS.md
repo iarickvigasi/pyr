@@ -19,7 +19,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **EMAIL-08**: Unified inbox UI shows conversations with live email data, sorted by latest message
 - [ ] **EMAIL-09**: AI draft is auto-generated for guest inquiry emails with conversation context
 - [ ] **EMAIL-10**: Ines can approve, edit, or reject AI drafts from the inbox UI -- approved drafts send immediately
-- [ ] **EMAIL-11**: Admin settings page allows configuring email provider (IMAP host/port/user/pass, SMTP host/port/user/pass)
+- [x] **EMAIL-11**: Admin settings page allows configuring email provider (IMAP host/port/user/pass, SMTP host/port/user/pass)
 
 ### OTA Email Parsing
 
@@ -137,7 +137,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-01 | Phase 2 | Complete |
 | TEST-03 | Phase 2 | Complete |
 | EMAIL-08 | Phase 3 | Complete |
-| EMAIL-11 | Phase 3 | Pending |
+| EMAIL-11 | Phase 3 | Complete |
 | OTA-01 | Phase 3 | Pending |
 | OTA-02 | Phase 3 | Pending |
 | OTA-03 | Phase 3 | Pending |

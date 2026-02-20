@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 6 of 9 (CalDAV Calendar Sync)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: Executing Phase 06
-Last activity: 2026-02-20 -- Completed 06-02-PLAN.md (CalDAV Sync Engine & Mutation Hooks)
+Last activity: 2026-02-20 -- Completed 06-03-PLAN.md (Calendar API Endpoints & CalDAV Settings UI)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 57%
+Progress: [▓▓▓▓▓▓▓▓▓░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
+- Total plans completed: 21
 - Average duration: 6min
-- Total execution time: 2.07 hours
+- Total execution time: 2.15 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 57%
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
 | 05-ai-email-integration | 4/4 | 23min | 5.8min |
-| 06-caldav-calendar-sync | 2/4 | 14min | 7.0min |
+| 06-caldav-calendar-sync | 3/4 | 19min | 6.3min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 4min, 5min, 5min, 9min
+- Last 5 plans: 4min, 5min, 5min, 9min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -133,6 +133,10 @@ Recent decisions affecting current work:
 - [Phase 06]: [06-02]: Sync job enqueueing in route handlers (not services) to keep services pure -- same pattern as AI draft enqueueing
 - [Phase 06]: [06-02]: Event DELETE syncs [CANCELLED] to calendar synchronously before hard-delete (DB cascade prevents async BullMQ approach)
 - [Phase 06]: [06-02]: Payment status uses simple heuristic (totalPrice > 0 = Unpaid) for MVP -- no payment model queries
+- [Phase 06]: [06-03]: CalDAV config saved via same encrypted Settings pattern as email_provider -- saveCaldavConfig calls resetCaldavClient()
+- [Phase 06]: [06-03]: Test connection saves config first then tests -- ensures latest credentials used for validation
+- [Phase 06]: [06-03]: Sync status banner polls /api/v1/calendar/status every 60s -- shown above settings tabs regardless of active tab
+- [Phase 06]: [06-03]: resyncAll includes all bookings (even cancelled) since cancelled need [CANCELLED] prefix in calendar
 
 ### Pending Todos
 
@@ -147,5 +151,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 06-02-PLAN.md (CalDAV Sync Engine & Mutation Hooks)
-Resume file: .planning/phases/06-caldav-calendar-sync/06-03-PLAN.md
+Stopped at: Completed 06-03-PLAN.md (Calendar API Endpoints & CalDAV Settings UI)
+Resume file: .planning/phases/06-caldav-calendar-sync/06-04-PLAN.md

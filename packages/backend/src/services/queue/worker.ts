@@ -3,7 +3,7 @@ import { QUEUE_NAMES } from '@pyr/shared';
 import type { HealthCheckJobData, EmailPollJobData } from '@pyr/shared';
 import { createHealthCheckProcessor } from './jobs/health-check.job.js';
 import { createEmailPollProcessor } from './jobs/email-poll.job.js';
-import { createAiDraftProcessor } from './jobs/ai-draft.job.js';
+import { createAiDraftProcessor, createAiDraftFailedHandler } from './jobs/ai-draft.job.js';
 import { createCalendarSyncProcessor } from './jobs/calendar-sync.job.js';
 import { createScheduledProcessor } from './jobs/scheduled.job.js';
 import { getSetting } from '../../modules/settings/settings.service.js';
@@ -27,12 +27,13 @@ export async function registerWorkers(app: FastifyInstance): Promise<void> {
     { concurrency: 1 },
   );
 
-  // Placeholder workers -- will fail loudly if accidentally triggered
-  app.queues.createWorker(
+  // AI draft worker -- generates AI draft replies for guest emails
+  const aiDraftWorker = app.queues.createWorker(
     QUEUE_NAMES.AI_DRAFT,
     createAiDraftProcessor(app),
     { concurrency: 1 },
   );
+  aiDraftWorker.on('failed', createAiDraftFailedHandler(app));
 
   app.queues.createWorker(
     QUEUE_NAMES.CALENDAR_SYNC,

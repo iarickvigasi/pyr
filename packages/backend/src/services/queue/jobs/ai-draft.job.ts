@@ -3,7 +3,8 @@
  *
  * Triggered when a new guest email arrives (enqueued by email pipeline).
  * Calls createAiModule to generate a draft reply via OpenClaw.
- * Handles deduplication (skips if pending draft already exists for the conversation).
+ * Handles deduplication (skips if draft already exists for the specific message).
+ * Exports onFailed handler that writes a failed draft record for frontend detection.
  */
 
 import type { Job } from 'bullmq';
@@ -25,16 +26,18 @@ export function createAiDraftProcessor(app: FastifyInstance) {
       aiModule = createAiModule(app);
     }
 
-    // Check for existing pending draft to avoid duplicates
+    // Check for existing draft for this specific message to avoid duplicates
+    // Scoped to messageId (not conversationId) so each inbound message gets its own draft
     const existingDraft = await app.prisma.aiDraft.findFirst({
       where: {
         conversationId,
-        status: 'pending',
+        messageId,
+        status: { in: ['pending', 'failed'] },
       },
     });
 
     if (existingDraft) {
-      logger.info({ existingDraftId: existingDraft.id }, 'Pending draft already exists, skipping');
+      logger.info({ existingDraftId: existingDraft.id }, 'Draft already exists for this message, skipping');
       return;
     }
 
@@ -57,6 +60,45 @@ export function createAiDraftProcessor(app: FastifyInstance) {
     } catch (err) {
       logger.error({ err }, 'AI draft generation failed');
       throw err; // BullMQ will retry (3 attempts, exponential backoff from 3s)
+    }
+  };
+}
+
+/**
+ * Factory for BullMQ Worker 'failed' event handler.
+ * When all retries are exhausted, writes a failed draft record to the DB
+ * so the frontend can detect and surface the failure to Ines.
+ */
+export function createAiDraftFailedHandler(app: FastifyInstance) {
+  return async (job: Job<AiDraftJobData> | undefined, error: Error): Promise<void> => {
+    if (!job) {
+      app.log.error({ error }, 'AI draft job failed with no job reference');
+      return;
+    }
+
+    const { conversationId, messageId } = job.data;
+    const logger = app.log.child({ jobId: job.id, conversationId });
+
+    logger.error({ error: error.message, messageId }, 'AI draft generation failed after all retries');
+
+    try {
+      // Write a failed draft record so the frontend can detect and show the failure notice
+      await app.prisma.aiDraft.create({
+        data: {
+          conversationId,
+          messageId: messageId ?? null,
+          content: '',
+          status: 'failed',
+          model: 'none',
+          tokensUsed: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          costEur: 0,
+        },
+      });
+      logger.info('Failed draft record created for frontend detection');
+    } catch (dbErr) {
+      logger.error({ error: dbErr }, 'Could not write failed draft record');
     }
   };
 }

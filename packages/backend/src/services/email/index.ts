@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import type { EmailModuleContract, SendEmailParams } from '@pyr/shared';
 import { QUEUE_NAMES } from '@pyr/shared';
-import type { EmailPollJobData } from '@pyr/shared';
+import type { EmailPollJobData, AiDraftJobData } from '@pyr/shared';
 import { ImapFlow } from 'imapflow';
 import { createImapService, type ImapConfig } from './imap.service.js';
 import { createSmtpService, type SmtpConfig } from './smtp.service.js';
@@ -472,7 +472,35 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           actor: 'system',
         });
 
-        // i. Update last processed UID
+        // i. Enqueue AI draft generation for guest emails
+        if (classification.category === 'guest_inquiry' && guestId) {
+          try {
+            const aiDraftQueue = app.queues?.getQueue(QUEUE_NAMES.AI_DRAFT);
+            if (aiDraftQueue) {
+              const guest = await app.prisma.guest.findUnique({
+                where: { id: guestId },
+                select: { language: true },
+              });
+              const guestLanguage = (guest?.language === 'de' ? 'de' : 'en') as 'en' | 'de';
+
+              await aiDraftQueue.add('ai-draft', {
+                conversationId,
+                messageId: message.id,
+                guestLanguage,
+              } satisfies AiDraftJobData);
+
+              app.log.info(
+                { conversationId, messageId: message.id, guestLanguage },
+                'AI draft job enqueued',
+              );
+            }
+          } catch (draftErr) {
+            // Draft enqueueing failure must NOT block email processing
+            app.log.warn({ error: draftErr, conversationId }, 'Failed to enqueue AI draft job');
+          }
+        }
+
+        // j. Update last processed UID
         await upsertLastUid(raw.uid);
 
         processed++;

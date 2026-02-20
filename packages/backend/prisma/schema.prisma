@@ -68,6 +68,7 @@ enum AiDraftStatus {
   approved
   edited
   rejected
+  failed
 
   @@map("ai_draft_status")
 }

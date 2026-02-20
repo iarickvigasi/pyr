@@ -235,7 +235,7 @@ export type ConversationWithMessages = Conversation & {
 // AI Draft Types
 // ──────────────────────────────────────────────────────────────
 
-export type AiDraftStatus = 'pending' | 'approved' | 'edited' | 'rejected';
+export type AiDraftStatus = 'pending' | 'approved' | 'edited' | 'rejected' | 'failed';
 
 export type AiDraft = {
   id: string;

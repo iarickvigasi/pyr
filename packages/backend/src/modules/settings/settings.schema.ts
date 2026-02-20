@@ -28,3 +28,39 @@ export const settingsListResponseSchema = z.object({
     }),
   ),
 });
+
+// ─── Email Provider Config Schemas ──────────────────────────
+
+export const testEmailConnectionBodySchema = z.object({
+  provider: z.string(),
+  imapHost: z.string(),
+  imapPort: z.number(),
+  smtpHost: z.string(),
+  smtpPort: z.number(),
+  email: z.string().email(),
+  password: z.string(),
+});
+
+export const testEmailConnectionResponseSchema = z.object({
+  data: z.object({
+    imap: z.boolean(),
+    smtp: z.boolean(),
+    error: z.string().optional(),
+  }),
+});
+
+export const emailProviderConfigBodySchema = z.object({
+  provider: z.enum(['gmx', 'gmail', 'outlook', 'custom']),
+  imapHost: z.string(),
+  imapPort: z.number(),
+  smtpHost: z.string(),
+  smtpPort: z.number(),
+  email: z.string().email(),
+  password: z.string(),
+  pollIntervalMinutes: z.number().min(1).max(60).default(2),
+  pollingEnabled: z.boolean().default(true),
+});
+
+export const togglePollingBodySchema = z.object({
+  enabled: z.boolean(),
+});

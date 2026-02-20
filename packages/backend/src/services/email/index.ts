@@ -11,6 +11,7 @@ import { findConversationByHeaders, isForwardedEmail } from './email-threader.js
 import { classifyEmail } from './email-classifier.js';
 import { matchOrCreateGuest } from './contact-matcher.js';
 import { getSetting } from '../../modules/settings/settings.service.js';
+import { getEmailProviderConfig } from '../../modules/settings/settings.service.js';
 import { writeAuditLog } from '../../lib/audit.js';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -20,12 +21,77 @@ export interface EmailModuleInstance extends EmailModuleContract {
   pollInbox(): Promise<number>;
 }
 
+interface ResolvedEmailConfig {
+  imapConfig: ImapConfig;
+  smtpConfig: SmtpConfig;
+  pollIntervalMs: number;
+  pollingEnabled: boolean;
+}
+
 // ─── Constants ──────────────────────────────────────────────
 
 const DEFAULT_POLL_INTERVAL_MS = 120_000; // 2 minutes
 const MIN_POLL_INTERVAL_MS = 30_000;
 const DEFAULT_SIGNATURE = 'Best regards,\nInes Brendel\nPuppy Yoga Retreat';
 const IMAP_HEALTH_TIMEOUT_MS = 10_000;
+
+// ─── Config Resolution ──────────────────────────────────────
+
+/**
+ * Read email config from the settings table (if stored), otherwise
+ * fall back to environment variables.
+ */
+async function resolveEmailConfig(app: FastifyInstance): Promise<ResolvedEmailConfig> {
+  // Try settings table first
+  try {
+    const dbConfig = await getEmailProviderConfig(app.prisma);
+    if (dbConfig && dbConfig.email) {
+      return {
+        imapConfig: {
+          host: dbConfig.imapHost,
+          port: dbConfig.imapPort,
+          user: dbConfig.email,
+          pass: dbConfig.password,
+          secure: true,
+        },
+        smtpConfig: {
+          host: dbConfig.smtpHost,
+          port: dbConfig.smtpPort,
+          user: dbConfig.email,
+          pass: dbConfig.password,
+          secure: false,
+        },
+        pollIntervalMs: Math.max(
+          dbConfig.pollIntervalMinutes * 60_000,
+          MIN_POLL_INTERVAL_MS,
+        ),
+        pollingEnabled: dbConfig.pollingEnabled,
+      };
+    }
+  } catch {
+    // Settings-based config not available -- fall back to env vars
+  }
+
+  // Fall back to environment variables
+  return {
+    imapConfig: {
+      host: process.env.IMAP_HOST ?? 'imap.gmx.net',
+      port: Number(process.env.IMAP_PORT ?? '993'),
+      user: process.env.EMAIL_USER ?? '',
+      pass: process.env.EMAIL_PASS ?? '',
+      secure: true,
+    },
+    smtpConfig: {
+      host: process.env.SMTP_HOST ?? 'mail.gmx.net',
+      port: Number(process.env.SMTP_PORT ?? '587'),
+      user: process.env.EMAIL_USER ?? '',
+      pass: process.env.EMAIL_PASS ?? '',
+      secure: false,
+    },
+    pollIntervalMs: DEFAULT_POLL_INTERVAL_MS,
+    pollingEnabled: true,
+  };
+}
 
 // ─── Factory ────────────────────────────────────────────────
 
@@ -38,27 +104,32 @@ const IMAP_HEALTH_TIMEOUT_MS = 10_000;
  * - Produces: conversations and messages in the database
  */
 export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
-  const imapConfig: ImapConfig = {
-    host: process.env.IMAP_HOST ?? 'imap.gmx.net',
-    port: Number(process.env.IMAP_PORT ?? '993'),
-    user: process.env.EMAIL_USER ?? '',
-    pass: process.env.EMAIL_PASS ?? '',
-    secure: true,
-  };
-
-  const smtpConfig: SmtpConfig = {
-    host: process.env.SMTP_HOST ?? 'mail.gmx.net',
-    port: Number(process.env.SMTP_PORT ?? '587'),
-    user: process.env.EMAIL_USER ?? '',
-    pass: process.env.EMAIL_PASS ?? '',
-    secure: false, // STARTTLS
-  };
-
   // Cast FastifyBaseLogger to pino Logger -- Fastify's logger IS pino, but the type
   // declarations diverge slightly (missing msgPrefix). Safe at runtime.
   const logger = app.log as unknown as Logger;
   const imapService = createImapService(logger);
-  const smtpService = createSmtpService(smtpConfig, logger);
+
+  // SMTP service and config are lazily resolved per-call to support dynamic config changes
+  let cachedSmtpService: ReturnType<typeof createSmtpService> | null = null;
+  let cachedSmtpConfig: SmtpConfig | null = null;
+
+  async function getSmtpService(): Promise<ReturnType<typeof createSmtpService>> {
+    const config = await resolveEmailConfig(app);
+    // Only recreate if config changed
+    if (
+      cachedSmtpService &&
+      cachedSmtpConfig &&
+      cachedSmtpConfig.host === config.smtpConfig.host &&
+      cachedSmtpConfig.port === config.smtpConfig.port &&
+      cachedSmtpConfig.user === config.smtpConfig.user &&
+      cachedSmtpConfig.pass === config.smtpConfig.pass
+    ) {
+      return cachedSmtpService;
+    }
+    cachedSmtpConfig = config.smtpConfig;
+    cachedSmtpService = createSmtpService(config.smtpConfig, logger);
+    return cachedSmtpService;
+  }
 
   /**
    * Poll inbox for new emails and process them through the full pipeline:
@@ -70,6 +141,17 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
    * @returns Count of successfully processed emails
    */
   async function pollInbox(): Promise<number> {
+    // Resolve config (settings table with env var fallback)
+    const config = await resolveEmailConfig(app);
+
+    // Check if polling is enabled
+    if (!config.pollingEnabled) {
+      app.log.debug('Email polling is disabled -- skipping');
+      return 0;
+    }
+
+    const imapConfig = config.imapConfig;
+
     // 1. Read last processed UID from settings
     let lastUid: number | undefined;
     try {
@@ -271,15 +353,24 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
   /**
    * Start the email poll scheduler via BullMQ.
    * Reads poll interval from settings table (default 2 minutes, minimum 30 seconds).
+   * Respects the pollingEnabled flag from email provider config.
    */
   async function startPolling(): Promise<void> {
+    // Check if polling is enabled
+    const config = await resolveEmailConfig(app);
+    if (!config.pollingEnabled) {
+      app.log.info('Email polling is disabled -- not starting scheduler');
+      return;
+    }
+
     const emailPollQueue = app.queues.getQueue(QUEUE_NAMES.EMAIL_POLL);
     if (!emailPollQueue) {
       app.log.warn('Email poll queue not found -- cannot start polling');
       return;
     }
 
-    let intervalMs = DEFAULT_POLL_INTERVAL_MS;
+    let intervalMs = config.pollIntervalMs;
+    // Also check the explicit setting (takes priority if set)
     try {
       const setting = await getSetting(app.prisma, 'email_poll_interval_ms');
       const parsed = Number(setting.value);
@@ -287,7 +378,7 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
         intervalMs = parsed;
       }
     } catch {
-      // Use default
+      // Use config-derived interval
     }
 
     await emailPollQueue.upsertJobScheduler('email-poll-scheduler', {
@@ -318,12 +409,27 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
    * Loads email signature from settings table with fallback default.
    */
   async function sendEmail(params: SendEmailParams): Promise<{ messageId: string }> {
+    const smtpService = await getSmtpService();
+
     // Get email signature from settings
     let signature = DEFAULT_SIGNATURE;
     try {
       const setting = await getSetting(app.prisma, 'email_signature');
       if (typeof setting.value === 'string' && setting.value.length > 0) {
         signature = setting.value;
+      } else if (
+        typeof setting.value === 'object' &&
+        setting.value !== null &&
+        'html' in (setting.value as Record<string, unknown>)
+      ) {
+        // Support HTML signatures from Tiptap editor
+        signature = (setting.value as Record<string, unknown>).html as string;
+      } else if (
+        typeof setting.value === 'object' &&
+        setting.value !== null &&
+        'text' in (setting.value as Record<string, unknown>)
+      ) {
+        signature = (setting.value as Record<string, unknown>).text as string;
       }
     } catch {
       // Use default signature
@@ -357,18 +463,19 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
    * Check if IMAP and SMTP connections are healthy.
    */
   async function healthCheck(): Promise<{ imap: boolean; smtp: boolean }> {
+    const config = await resolveEmailConfig(app);
     let imap = false;
     let smtp = false;
 
     // Test IMAP: connect and immediately disconnect
     try {
       const client = new ImapFlow({
-        host: imapConfig.host,
-        port: imapConfig.port,
-        secure: imapConfig.secure ?? true,
+        host: config.imapConfig.host,
+        port: config.imapConfig.port,
+        secure: config.imapConfig.secure ?? true,
         auth: {
-          user: imapConfig.user,
-          pass: imapConfig.pass,
+          user: config.imapConfig.user,
+          pass: config.imapConfig.pass,
         },
         logger: false,
         connectionTimeout: IMAP_HEALTH_TIMEOUT_MS,
@@ -384,6 +491,7 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
 
     // Test SMTP
     try {
+      const smtpService = await getSmtpService();
       smtp = await smtpService.verifyConnection();
     } catch (err) {
       app.log.error({ err }, 'SMTP health check failed');

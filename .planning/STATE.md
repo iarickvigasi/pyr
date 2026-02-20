@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 6 of 9 (CalDAV Calendar Sync)
-Plan: 3 of 4 in current phase
-Status: Executing Phase 06
-Last activity: 2026-02-20 -- Completed 06-03-PLAN.md (Calendar API Endpoints & CalDAV Settings UI)
+Plan: 4 of 4 in current phase
+Status: Executing Phase 06 (checkpoint pending)
+Last activity: 2026-02-20 -- Tasks 1-2 of 06-04-PLAN.md complete, awaiting human verification (Task 3)
 
 Progress: [▓▓▓▓▓▓▓▓▓░] 60%
 
@@ -32,10 +32,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 60%
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
 | 05-ai-email-integration | 4/4 | 23min | 5.8min |
-| 06-caldav-calendar-sync | 3/4 | 19min | 6.3min |
+| 06-caldav-calendar-sync | 3/4 | 22min | 5.5min |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 5min, 5min, 9min, 5min
+- Last 5 plans: 5min, 5min, 9min, 5min, 3min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -137,6 +137,9 @@ Recent decisions affecting current work:
 - [Phase 06]: [06-03]: Test connection saves config first then tests -- ensures latest credentials used for validation
 - [Phase 06]: [06-03]: Sync status banner polls /api/v1/calendar/status every 60s -- shown above settings tabs regardless of active tab
 - [Phase 06]: [06-03]: resyncAll includes all bookings (even cancelled) since cancelled need [CANCELLED] prefix in calendar
+- [Phase 06]: [06-04]: ical-generator escapes commas per RFC 5545 -- tests assert on escaped LOCATION strings
+- [Phase 06]: [06-04]: describeIf pattern for conditional integration test execution based on env var presence
+- [Phase 06]: [06-04]: Integration test cleanup via afterAll tracking created event URLs for deletion
 
 ### Pending Todos
 
@@ -151,5 +154,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 06-03-PLAN.md (Calendar API Endpoints & CalDAV Settings UI)
+Stopped at: 06-04-PLAN.md Task 3 checkpoint (human verification of end-to-end CalDAV sync)
 Resume file: .planning/phases/06-caldav-calendar-sync/06-04-PLAN.md

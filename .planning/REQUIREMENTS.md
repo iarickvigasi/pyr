@@ -67,7 +67,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **TEST-01**: Integration tests cover email ingestion pipeline (IMAP -> parse -> thread -> classify -> store)
 - [x] **TEST-02**: Integration tests cover AI draft generation (context injection -> LLM call -> draft stored)
 - [x] **TEST-03**: Email threading verified against Gmail, Outlook, and Apple Mail clients
-- [ ] **TEST-04**: CalDAV sync tested with real iCloud account (create, update, delete events)
+- [x] **TEST-04**: CalDAV sync tested with real iCloud account (create, update, delete events)
 - [ ] **TEST-05**: Excel data migration script imports real guest and booking data with validation
 - [ ] **TEST-06**: UAT sessions with Ines covering daily workflows (email -> draft -> approve -> send, assistant queries)
 - [ ] **TEST-07**: Production deployment on Hetzner with monitoring, backups, and rollback plan
@@ -156,7 +156,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAL-03 | Phase 6 | Complete |
 | CAL-04 | Phase 6 | Complete |
 | CAL-05 | Phase 6 | Complete |
-| TEST-04 | Phase 6 | Pending |
+| TEST-04 | Phase 6 | Complete |
 | ASST-01 | Phase 7 | Pending |
 | ASST-02 | Phase 7 | Pending |
 | ASST-03 | Phase 7 | Pending |

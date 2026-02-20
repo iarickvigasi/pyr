@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 5 of 9 (AI-Email Integration)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: Executing Phase 05
-Last activity: 2026-02-20 -- Completed 05-01-PLAN.md (AI Draft Pipeline Wiring)
+Last activity: 2026-02-20 -- Completed 05-02-PLAN.md (FAQ Knowledge Base)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 46%
+Progress: [▓▓▓▓▓▓▓▓▓░] 49%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 7min
-- Total execution time: 1.76 hours
+- Total execution time: 1.84 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 46%
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
-| 05-ai-email-integration | 1/4 | 9min | 9.0min |
+| 05-ai-email-integration | 2/4 | 14min | 7.0min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 7min, 5min, 3min, 9min
+- Last 5 plans: 7min, 5min, 3min, 9min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -114,6 +114,9 @@ Recent decisions affecting current work:
 - [05-01]: onFailed handler writes empty failed draft record for frontend detection
 - [05-01]: Draft enqueueing wrapped in try/catch so failures never block email processing
 - [05-01]: Regenerate rejects old draft and enqueues new job (no history kept)
+- [05-02]: Hard delete for FAQ entries -- ephemeral content, not core business data
+- [05-02]: All FAQs injected into every prompt -- LLM naturally selects relevant ones (10-50 entries within token limits)
+- [05-02]: Response schema uses z.date() for Prisma Date fields -- Fastify serializer handles Date-to-string
 
 ### Pending Todos
 
@@ -128,5 +131,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 05-01-PLAN.md (AI Draft Pipeline Wiring)
-Resume file: .planning/phases/05-ai-email-integration/05-02-PLAN.md
+Stopped at: Completed 05-02-PLAN.md (FAQ Knowledge Base)
+Resume file: .planning/phases/05-ai-email-integration/05-03-PLAN.md

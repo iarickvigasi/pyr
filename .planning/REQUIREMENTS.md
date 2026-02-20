@@ -32,7 +32,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **AI-01**: System prompt includes business context injection: guest CRM data, conversation history, current availability, pricing, upcoming events, brand voice guidelines
 - [x] **AI-02**: LLM integration supports Claude API (primary) and OpenAI (fallback) with model-agnostic abstraction layer
 - [x] **AI-03**: Every AI call logs token usage and estimated cost
-- [ ] **AI-04**: Admin can manage FAQ entries (question/answer pairs, categorized) that are injected into AI context
+- [x] **AI-04**: Admin can manage FAQ entries (question/answer pairs, categorized) that are injected into AI context
 - [x] **AI-05**: System classifies incoming messages for edge cases (complaints, medical/dietary requests, cancellations, adoption inquiries) and flags for priority manual handling
 - [x] **AI-06**: System prompt prefix is cached (Anthropic prompt caching) for cost optimization
 
@@ -149,7 +149,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ARCH-03 | Phase 4 | Complete |
 | EMAIL-09 | Phase 5 | Complete |
 | EMAIL-10 | Phase 5 | Complete |
-| AI-04 | Phase 5 | Pending |
+| AI-04 | Phase 5 | Complete |
 | TEST-02 | Phase 5 | Pending |
 | CAL-01 | Phase 6 | Pending |
 | CAL-02 | Phase 6 | Pending |

@@ -34,6 +34,14 @@ export interface AiDraft {
   status: 'pending' | 'approved' | 'edited' | 'rejected';
   model: string;
   tokensUsed: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  costEur: number;
+  provider: string;
+  durationMs: number;
+  flags: string[];
   createdAt: string;
 }
 

@@ -90,6 +90,15 @@ export function formatRelative(date: string | Date): string {
   return formatDate(d);
 }
 
+/**
+ * Format EUR microcents (EUR * 100,000) as a display string with euro sign.
+ * E.g., 1340 microcents -> "0.0134" EUR
+ */
+export function formatCostMicrocents(microcents: number): string {
+  const eur = microcents / 100_000;
+  return `\u20AC${eur.toFixed(4)}`;
+}
+
 export function nightsBetween(checkIn: string | Date, checkOut: string | Date): number {
   const from = typeof checkIn === 'string' ? new Date(checkIn) : checkIn;
   const to = typeof checkOut === 'string' ? new Date(checkOut) : checkOut;

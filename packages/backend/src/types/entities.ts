@@ -245,6 +245,14 @@ export type AiDraft = {
   status: AiDraftStatus;
   model: string;
   tokensUsed: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  costEur: number;
+  provider: string;
+  durationMs: number;
+  flags: string[];
   createdAt: Date;
   updatedAt: Date;
 };

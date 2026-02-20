@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 2 of 9 (Email Ingestion Pipeline)
-Plan: 5 of 6 in current phase
-Status: In Progress
-Last activity: 2026-02-20 -- Completed 02-05-PLAN.md (Pipeline Integration & Inbox Routes)
+Plan: 6 of 6 in current phase
+Status: Phase Complete
+Last activity: 2026-02-20 -- Completed 02-06-PLAN.md (Pipeline Integration & Threading Client Tests)
 
 Progress: [▓▓▓▓░░░░░░] 21%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 6min
-- Total execution time: 0.72 hours
+- Total execution time: 0.82 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
-| 02-email-ingestion-pipeline | 5/6 | 28min | 5.6min |
+| 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 
 **Recent Trend:**
-- Last 5 plans: 6min, 4min, 4min, 2min, 12min
-- Trend: Stable (12min plan was large integration task)
+- Last 5 plans: 4min, 4min, 2min, 12min, 6min
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -73,6 +73,8 @@ Recent decisions affecting current work:
 - [02-05]: Email module lazily initialized per job processor lifecycle -- not per-poll, avoids redundant SMTP transporter creation
 - [02-05]: updateConversation generalizes updateConversationStatus -- both status and classification updated atomically
 - [02-05]: Email signature loaded from settings table per outbound email -- configurable via admin UI
+- [02-06]: Pipeline integration tests use in-memory mock Prisma with array-backed stores -- avoids DB dependency while exercising real logic
+- [02-06]: runPipeline test harness mirrors orchestration loop with injected raw emails instead of IMAP
 
 ### Pending Todos
 
@@ -87,5 +89,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 02-05-PLAN.md (Pipeline Integration & Inbox Routes)
-Resume file: .planning/phases/02-email-ingestion-pipeline/02-05-SUMMARY.md
+Stopped at: Completed 02-06-PLAN.md (Pipeline Integration & Threading Client Tests) -- Phase 2 complete
+Resume file: .planning/phases/02-email-ingestion-pipeline/02-06-SUMMARY.md

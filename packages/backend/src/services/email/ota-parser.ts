@@ -37,9 +37,13 @@ const parsers: OtaParser[] = [];
 /**
  * Register an OTA parser in the registry.
  * Parsers are checked in registration order when processing emails.
+ * Duplicate registrations for the same platform are silently ignored.
  */
 export function registerOtaParser(parser: OtaParser): void {
-  throw new Error('Not implemented');
+  // Avoid duplicate registrations (e.g. from test setup running multiple times)
+  if (!parsers.some((p) => p.platform === parser.platform)) {
+    parsers.push(parser);
+  }
 }
 
 /**
@@ -55,5 +59,10 @@ export function parseOtaEmail(
   html: string,
   text: string,
 ): OtaBookingData | null {
-  throw new Error('Not implemented');
+  for (const parser of parsers) {
+    if (parser.canParse(fromAddress, subject)) {
+      return parser.parse(html, text, subject);
+    }
+  }
+  return null;
 }

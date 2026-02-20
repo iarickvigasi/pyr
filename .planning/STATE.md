@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 4 of 9 (AI Communication Engine) -- COMPLETE
-Plan: 3 of 3 in current phase
+Plan: 4 of 4 in current phase
 Status: Phase 04 Complete
-Last activity: 2026-02-20 -- Completed 04-03-PLAN.md (Skills & Draft Generator)
+Last activity: 2026-02-20 -- Completed 04-04-PLAN.md (Admin Visibility Gap Closure)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 41%
+Progress: [▓▓▓▓▓▓▓▓▓░] 43%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 7min
-- Total execution time: 1.56 hours
+- Total execution time: 1.61 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 41%
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
-| 04-ai-communication-engine | 3/3 | 17min | 5.7min |
+| 04-ai-communication-engine | 4/4 | 20min | 5.0min |
 
 **Recent Trend:**
-- Last 5 plans: 9min, 12min, 5min, 7min, 5min
+- Last 5 plans: 12min, 5min, 7min, 5min, 3min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -105,6 +105,9 @@ Recent decisions affecting current work:
 - [04-03]: BullMQ job processor deduplicates by checking for existing pending draft per conversation
 - [04-03]: classifyMessage uses pattern-based detection only (no LLM call) -- edge-case flags at zero cost
 - [04-03]: healthCheck treats OpenClaw Gateway reachability as proxy for both primary/fallback provider health
+- [04-04]: Backward compat: show legacy tokensUsed when inputTokens is 0 for old drafts
+- [04-04]: Destructive badge variant for complaint/cancellation flags; amber outline for medical/dietary/adoption
+- [04-04]: Euro sign (U+20AC) prefix on formatCostMicrocents output for display clarity
 
 ### Pending Todos
 
@@ -119,5 +122,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 04-03-PLAN.md (Phase 04 complete)
+Stopped at: Completed 04-04-PLAN.md (Phase 04 fully complete with gap closure)
 Resume file: Next phase

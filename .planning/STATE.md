@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 4 - AI Communication Engine (in progress)
+**Current focus:** Phase 4 - AI Communication Engine (COMPLETE)
 
 ## Current Position
 
-Phase: 4 of 9 (AI Communication Engine) -- IN PROGRESS
-Plan: 2 of 3 in current phase
-Status: Plan 04-02 Complete
-Last activity: 2026-02-20 -- Completed 04-02-PLAN.md (Context Builder & Classifier)
+Phase: 4 of 9 (AI Communication Engine) -- COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase 04 Complete
+Last activity: 2026-02-20 -- Completed 04-03-PLAN.md (Skills & Draft Generator)
 
-Progress: [▓▓▓▓▓▓▓▓░░] 38%
+Progress: [▓▓▓▓▓▓▓▓▓░] 41%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 7min
-- Total execution time: 1.48 hours
+- Total execution time: 1.56 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [▓▓▓▓▓▓▓▓░░] 38%
 | 01-queue-module-foundation | 2/2 | 15min | 7.5min |
 | 02-email-ingestion-pipeline | 6/6 | 34min | 5.7min |
 | 03-email-ui-ota-parsing | 3/3 | 32min | 10.7min |
-| 04-ai-communication-engine | 2/3 | 12min | 6min |
+| 04-ai-communication-engine | 3/3 | 17min | 5.7min |
 
 **Recent Trend:**
-- Last 5 plans: 11min, 9min, 12min, 5min, 7min
+- Last 5 plans: 9min, 12min, 5min, 7min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -100,6 +100,11 @@ Recent decisions affecting current work:
 - [04-02]: Cost stored as EUR microcents (EUR * 100,000) for 5 decimal places of precision
 - [04-02]: MODEL_PRICING prefix matching sorted longest-first to prevent gpt-4o matching gpt-4o-mini
 - [04-02]: BRAND_VOICE_PREFIX at 5449 chars exceeds Anthropic 1024-token prompt caching minimum
+- [04-03]: Draft generator calls OpenClaw via standard HTTP fetch -- no direct LLM SDK imports in backend
+- [04-03]: Provider-prefixed model names stripped before cost calculation -- OpenClaw returns 'anthropic/model-name'
+- [04-03]: BullMQ job processor deduplicates by checking for existing pending draft per conversation
+- [04-03]: classifyMessage uses pattern-based detection only (no LLM call) -- edge-case flags at zero cost
+- [04-03]: healthCheck treats OpenClaw Gateway reachability as proxy for both primary/fallback provider health
 
 ### Pending Todos
 
@@ -114,5 +119,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 04-02-PLAN.md
-Resume file: .planning/phases/04-ai-communication-engine/04-03-PLAN.md
+Stopped at: Completed 04-03-PLAN.md (Phase 04 complete)
+Resume file: Next phase

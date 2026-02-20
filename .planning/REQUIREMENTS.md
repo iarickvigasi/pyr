@@ -60,7 +60,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 
 - [x] **ARCH-01**: Each integration (email, AI, calendar, assistant) is a self-contained module with clean interfaces -- lego-block composability
 - [x] **ARCH-02**: BullMQ queue infrastructure is a shared service plugin that all background workers consume
-- [ ] **ARCH-03**: AI engine exposes a simple interface (generateDraft, classifyMessage) that email and assistant modules consume independently
+- [x] **ARCH-03**: AI engine exposes a simple interface (generateDraft, classifyMessage) that email and assistant modules consume independently
 
 ### Testing & Documentation
 
@@ -146,7 +146,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-03 | Phase 4 | Complete |
 | AI-05 | Phase 4 | Complete |
 | AI-06 | Phase 4 | Complete |
-| ARCH-03 | Phase 4 | Pending |
+| ARCH-03 | Phase 4 | Complete |
 | EMAIL-09 | Phase 5 | Pending |
 | EMAIL-10 | Phase 5 | Pending |
 | AI-04 | Phase 5 | Pending |

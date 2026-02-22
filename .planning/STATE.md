@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 6 - CalDAV Calendar Sync
+**Current focus:** Phase 7 - OpenClaw Assistant Core
 
 ## Current Position
 
-Phase: 6 of 9 (CalDAV Calendar Sync)
-Plan: 4 of 4 in current phase
-Status: Executing Phase 06 (checkpoint pending)
-Last activity: 2026-02-20 -- Tasks 1-2 of 06-04-PLAN.md complete, awaiting human verification (Task 3)
+Phase: 7 of 9 (OpenClaw Assistant Core)
+Plan: 1 of 2 in current phase (Plan 1 complete)
+Status: Executing Phase 07
+Last activity: 2026-02-22 -- 07-01-PLAN.md complete (OpenClaw plugin + workspace + Docker mount)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 60%
+Progress: [▓▓▓▓▓▓▓▓▓░] 65%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: 6min
-- Total execution time: 2.15 hours
+- Total execution time: 2.3 hours
 
 **By Phase:**
 
@@ -33,9 +33,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 60%
 | 04-ai-communication-engine | 4/4 | 20min | 5.0min |
 | 05-ai-email-integration | 4/4 | 23min | 5.8min |
 | 06-caldav-calendar-sync | 3/4 | 22min | 5.5min |
+| 07-openclaw-assistant-core | 1/2 | 9min | 9.0min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 5min, 9min, 5min, 3min
+- Last 5 plans: 5min, 9min, 5min, 3min, 9min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -140,6 +141,13 @@ Recent decisions affecting current work:
 - [Phase 06]: [06-04]: ical-generator escapes commas per RFC 5545 -- tests assert on escaped LOCATION strings
 - [Phase 06]: [06-04]: describeIf pattern for conditional integration test execution based on env var presence
 - [Phase 06]: [06-04]: Integration test cleanup via afterAll tracking created event URLs for deletion
+- [Phase 07]: [07-01]: OpenClawPluginApi from openclaw/plugin-sdk (not PluginApi from openclaw root)
+- [Phase 07]: [07-01]: pluginConfig for plugin-specific settings, not config (which is full OpenClaw config)
+- [Phase 07]: [07-01]: AgentTool requires label field for UI display alongside name/description
+- [Phase 07]: [07-01]: 16 tools total: guests(3) + bookings(2) + rooms(3) + events(3) + conversations(2) + dashboard(2) + settings(1)
+- [Phase 07]: [07-01]: Koda as assistant persona name -- short, friendly, works in EN/DE, evokes a puppy name
+- [Phase 07]: [07-01]: SAFE_KEYS allowlist in settings tool to prevent sensitive credential exposure
+- [Phase 07]: [07-01]: Plugin mounted as separate Docker volume since source lives in packages/ not openclaw/
 
 ### Pending Todos
 
@@ -153,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-20
-Stopped at: 06-04-PLAN.md Task 3 checkpoint (human verification of end-to-end CalDAV sync)
-Resume file: .planning/phases/06-caldav-calendar-sync/06-04-PLAN.md
+Last session: 2026-02-22
+Stopped at: Completed 07-01-PLAN.md
+Resume file: .planning/phases/07-openclaw-assistant-core/07-02-PLAN.md

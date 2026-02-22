@@ -46,10 +46,10 @@ Requirements for MVP completion. Each maps to roadmap phases.
 
 ### AI Assistant (OpenClaw)
 
-- [ ] **ASST-01**: OpenClaw is integrated as the AI assistant runtime, running self-hosted on the same server
+- [x] **ASST-01**: OpenClaw is integrated as the AI assistant runtime, running self-hosted on the same server
 - [ ] **ASST-02**: Chat interface is available in the admin dashboard (WebChat channel)
-- [ ] **ASST-03**: WhatsApp connectivity via OpenClaw messaging integration
-- [ ] **ASST-04**: Assistant uses Claude tool-use to query business data (bookings, guests, availability, revenue, today's schedule)
+- [x] **ASST-03**: WhatsApp connectivity via OpenClaw messaging integration
+- [x] **ASST-04**: Assistant uses Claude tool-use to query business data (bookings, guests, availability, revenue, today's schedule)
 - [ ] **ASST-05**: Assistant can take actions with confirmation flow (create bookings, create events, send payment reminders) -- Ines confirms before execution
 - [ ] **ASST-06**: Morning briefing delivered at configurable time (default 7:30 AM): today's check-ins/outs, events, pending inquiries, yesterday's revenue
 - [ ] **ASST-07**: Proactive alerts sent via assistant: new booking received, payment confirmed, guest arriving tomorrow, overdue invoice
@@ -157,10 +157,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAL-04 | Phase 6 | Complete |
 | CAL-05 | Phase 6 | Complete |
 | TEST-04 | Phase 6 | Complete |
-| ASST-01 | Phase 7 | Pending |
+| ASST-01 | Phase 7 | Complete |
 | ASST-02 | Phase 7 | Pending |
-| ASST-03 | Phase 7 | Pending |
-| ASST-04 | Phase 7 | Pending |
+| ASST-03 | Phase 7 | Complete |
+| ASST-04 | Phase 7 | Complete |
 | ASST-05 | Phase 8 | Pending |
 | ASST-06 | Phase 8 | Pending |
 | ASST-07 | Phase 8 | Pending |

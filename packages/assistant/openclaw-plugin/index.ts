@@ -7,6 +7,7 @@ import { registerEventTools } from './tools/events.js';
 import { registerConversationTools } from './tools/conversations.js';
 import { registerDashboardTools } from './tools/dashboard.js';
 import { registerSettingsTools } from './tools/settings.js';
+import { registerActionTools } from './tools/actions.js';
 
 export default {
   id: 'pyr-assistant',
@@ -30,7 +31,8 @@ export default {
     registerConversationTools(api, client);
     registerDashboardTools(api, client);
     registerSettingsTools(api, client);
+    registerActionTools(api, client);
 
-    api.logger.info('PYR Assistant plugin loaded: 16 business query tools registered');
+    api.logger.info('PYR Assistant plugin loaded: 22 tools registered (16 read + 6 action)');
   },
 };

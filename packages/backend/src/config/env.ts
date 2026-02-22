@@ -32,6 +32,7 @@ const envSchema = z.object({
   TELEGRAM_ALLOWED_USER_ID: z.string().default(''),
 
   OPENCLAW_GATEWAY_URL: z.string().default('http://localhost:18789'),
+  OPENCLAW_GATEWAY_WS_URL: z.string().default('ws://localhost:18789'),
   OPENCLAW_HOOK_TOKEN: z.string().default(''),
   OPENCLAW_GATEWAY_TOKEN: z.string().default(''),
 });

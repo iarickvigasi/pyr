@@ -13,6 +13,7 @@ import authPlugin from './plugins/auth.js';
 import redisPlugin from './plugins/redis.js';
 import swaggerPlugin from './plugins/swagger.js';
 import queuePlugin from './plugins/queue.js';
+import gatewayPlugin from './plugins/gateway.js';
 import { registerQueues } from './services/queue/queue.js';
 import { registerWorkers, setupSchedulers } from './services/queue/worker.js';
 import authRoutes from './modules/auth/auth.routes.js';
@@ -85,7 +86,12 @@ export async function buildApp() {
     await app.register(queuePlugin);
   }
 
-  // Health check — verifies DB and Redis connectivity
+  // Gateway WebSocket connection (requires auth plugin for token config)
+  if (env.NODE_ENV !== 'test') {
+    await app.register(gatewayPlugin);
+  }
+
+  // Health check — verifies DB, Redis, and Gateway connectivity
   app.get('/health', async (_request, reply) => {
     const checks: Record<string, string> = {};
 
@@ -103,7 +109,13 @@ export async function buildApp() {
       checks.redis = 'error';
     }
 
-    const healthy = Object.values(checks).every((v) => v === 'ok');
+    // Gateway check is informational -- not blocking overall health
+    // (gateway may be unavailable during restarts)
+    if (app.gateway) {
+      checks.gateway = app.gateway.isConnected ? 'ok' : 'disconnected';
+    }
+
+    const healthy = checks.database === 'ok' && checks.redis === 'ok';
     const httpStatus = healthy ? 200 : 503;
     return reply.code(httpStatus).send({
       status: healthy ? 'ok' : 'degraded',

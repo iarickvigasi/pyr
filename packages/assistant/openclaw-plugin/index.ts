@@ -8,6 +8,7 @@ import { registerConversationTools } from './tools/conversations.js';
 import { registerDashboardTools } from './tools/dashboard.js';
 import { registerSettingsTools } from './tools/settings.js';
 import { registerActionTools } from './tools/actions.js';
+import { registerDraftTools } from './tools/drafts.js';
 
 export default {
   id: 'pyr-assistant',
@@ -32,7 +33,8 @@ export default {
     registerDashboardTools(api, client);
     registerSettingsTools(api, client);
     registerActionTools(api, client);
+    registerDraftTools(api, client);
 
-    api.logger.info('PYR Assistant plugin loaded: 22 tools registered (16 read + 6 action)');
+    api.logger.info('PYR Assistant plugin loaded: 26 tools registered (16 read + 6 action + 4 draft)');
   },
 };

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 8 - Assistant Actions & Automation
+**Current focus:** Phase 8.1 - Integration Fixes & Verification Closure
 
 ## Current Position
 
-Phase: 8 of 9 (Assistant Actions & Automation) -- COMPLETE
-Plan: 2 of 2 in current phase (Phase 8 complete)
-Status: Phase 08 complete, ready for Phase 09
-Last activity: 2026-02-22 -- 08-02-PLAN.md complete (notification infrastructure + briefing scheduler + alert wiring)
+Phase: 8.1 (Integration Fixes & Verification Closure)
+Plan: 1 of 2 in current phase
+Status: Plan 01 complete (bug fixes + tests + traceability), Plan 02 pending
+Last activity: 2026-02-22 -- 08.1-01-PLAN.md complete (OTA calendar sync + check_availability param fixes + traceability)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 75%
+Progress: [▓▓▓▓▓▓▓▓▓░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24
+- Total plans completed: 25
 - Average duration: 6min
-- Total execution time: 2.5 hours
+- Total execution time: 2.6 hours
 
 **By Phase:**
 
@@ -35,9 +35,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 75%
 | 06-caldav-calendar-sync | 3/4 | 22min | 5.5min |
 | 07-openclaw-assistant-core | 1/2 | 9min | 9.0min |
 | 08-assistant-actions-automation | 2/2 | 9min | 4.5min |
+| 08.1-integration-fixes-verification-closure | 1/2 | 5min | 5.0min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 3min, 9min, 5min, 4min
+- Last 5 plans: 3min, 9min, 5min, 4min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -159,6 +160,8 @@ Recent decisions affecting current work:
 - [Phase 08]: [08-02]: Overdue invoice heuristic: checked_out + totalPrice > 0 + checkOut > 7 days ago (no payment queries for MVP)
 - [Phase 08]: [08-02]: Dynamic import for notification service in job processors to avoid circular dependency
 - [Phase 08]: [08-02]: Best-effort hook delivery pattern: sendViaHook logs errors but never throws
+- [Phase 08.1]: [08.1-01]: Shared mock IMAP instance (module-level vi.fn) for email pipeline tests -- ensures createImapService mock returns consistent pollNewEmails spy
+- [Phase 08.1]: [08.1-01]: vitest added as devDep to openclaw-plugin for standalone test execution
 
 ### Pending Todos
 
@@ -173,5 +176,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 08-02-PLAN.md (Phase 08 complete)
-Resume file: .planning/phases/09-testing-migration-launch/09-01-PLAN.md
+Stopped at: Completed 08.1-01-PLAN.md
+Resume file: .planning/phases/08.1-integration-fixes-verification-closure/08.1-02-PLAN.md

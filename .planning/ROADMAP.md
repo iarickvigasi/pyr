@@ -13,13 +13,14 @@ The existing PYR platform has a working database, REST API, CRM, and admin dashb
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Queue & Module Foundation** - BullMQ infrastructure and modular architecture patterns for all background workers (completed 2026-02-19)
-- [ ] **Phase 2: Email Ingestion Pipeline** - IMAP polling, parsing, threading, contact matching, classification, SMTP sending, and integration tests verifying the full pipeline
-- [ ] **Phase 3: Email UI & OTA Parsing** - Wire live email data into inbox UI, email provider settings, and OTA booking email extraction
+- [x] **Phase 2: Email Ingestion Pipeline** - IMAP polling, parsing, threading, contact matching, classification, SMTP sending, and integration tests verifying the full pipeline (completed 2026-02-20)
+- [x] **Phase 3: Email UI & OTA Parsing** - Wire live email data into inbox UI, email provider settings, and OTA booking email extraction (completed 2026-02-20)
 - [x] **Phase 4: AI Communication Engine** - LLM abstraction layer, context-rich system prompts, message classification, and cost tracking (completed 2026-02-20)
-- [ ] **Phase 5: AI-Email Integration** - Auto-generate AI drafts on inbound emails, approve/edit/send workflow, FAQ management, and AI draft integration tests
-- [ ] **Phase 6: CalDAV Calendar Sync** - One-way push of bookings and events to Apple Calendar via CalDAV, verified with real iCloud account tests
-- [ ] **Phase 7: OpenClaw Assistant Core** - OpenClaw runtime setup, dashboard chat UI, WhatsApp channel, and read-only query tools
-- [ ] **Phase 8: Assistant Actions & Automation** - Write actions with confirmation, morning briefings, proactive alerts, draft approval via chat
+- [x] **Phase 5: AI-Email Integration** - Auto-generate AI drafts on inbound emails, approve/edit/send workflow, FAQ management, and AI draft integration tests (completed 2026-02-20)
+- [x] **Phase 6: CalDAV Calendar Sync** - One-way push of bookings and events to Apple Calendar via CalDAV, verified with real iCloud account tests (completed 2026-02-21)
+- [x] **Phase 7: OpenClaw Assistant Core** - OpenClaw runtime setup, dashboard chat UI, WhatsApp channel, and read-only query tools (completed 2026-02-21)
+- [x] **Phase 8: Assistant Actions & Automation** - Write actions with confirmation, morning briefings, proactive alerts, draft approval via chat (completed 2026-02-22)
+- [ ] **Phase 8.1: Integration Fixes & Verification Closure** - INSERTED: Fix OTA→calendar sync wiring, check_availability params, run retroactive verifiers on Phases 6 & 7, fix traceability
 - [ ] **Phase 9: Migration, UAT & Launch** - Excel data import, UAT with Ines, documentation, production deployment
 
 ## Phase Details
@@ -36,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01: BullMQ queue plugin, typed job payloads, worker registration, Bull Board, health-check job, graceful shutdown
-- [ ] 01-02: Module contract interfaces, integration plugin boundaries, Queues dashboard page with Bull Board embed
+- [x] 01-02: Module contract interfaces, integration plugin boundaries, Queues dashboard page with Bull Board embed
 
 ### Phase 2: Email Ingestion Pipeline
 **Goal**: Inbound emails arrive in the system automatically -- parsed, threaded into conversations, and matched to CRM guests -- with automated tests proving the pipeline works end-to-end
@@ -52,12 +53,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 02-01: Schema migration + dependencies + IMAP connection service (Wave 1)
-- [ ] 02-02: Email parser with mailparser/sanitize-html + threading engine (Wave 2, TDD)
-- [ ] 02-03: Contact matching + email classification + language detection (Wave 2, TDD)
-- [ ] 02-04: SMTP sending service with threading headers (Wave 2)
-- [ ] 02-05: Pipeline orchestration — wire all services + email poll processor + inbox SMTP (Wave 3)
-- [ ] 02-06: Integration tests + Gmail/Outlook/Apple Mail threading verification (Wave 4, TDD)
+- [x] 02-01: Schema migration + dependencies + IMAP connection service (Wave 1)
+- [x] 02-02: Email parser with mailparser/sanitize-html + threading engine (Wave 2, TDD)
+- [x] 02-03: Contact matching + email classification + language detection (Wave 2, TDD)
+- [x] 02-04: SMTP sending service with threading headers (Wave 2)
+- [x] 02-05: Pipeline orchestration — wire all services + email poll processor + inbox SMTP (Wave 3)
+- [x] 02-06: Integration tests + Gmail/Outlook/Apple Mail threading verification (Wave 4, TDD)
 
 ### Phase 3: Email UI & OTA Parsing
 **Goal**: Ines sees live emails in the dashboard inbox and OTA booking notifications are auto-extracted into bookings
@@ -70,9 +71,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Gmail-style inbox UI rewrite with schema extensions, HTML email rendering, attachments, unread tracking, classification badges, auto-refresh (Wave 1)
-- [ ] 03-02: Email provider settings with encrypted credentials, connection testing, polling control, Tiptap signature editor (Wave 1)
-- [ ] 03-03: OTA email parser with Tripaneer/BookYogaRetreats extraction, auto-booking creation, bidirectional UI links (Wave 2, TDD)
+- [x] 03-01: Gmail-style inbox UI rewrite with schema extensions, HTML email rendering, attachments, unread tracking, classification badges, auto-refresh (Wave 1)
+- [x] 03-02: Email provider settings with encrypted credentials, connection testing, polling control, Tiptap signature editor (Wave 1)
+- [x] 03-03: OTA email parser with Tripaneer/BookYogaRetreats extraction, auto-booking creation, bidirectional UI links (Wave 2, TDD)
 
 ### Phase 4: AI Communication Engine
 **Goal**: The system can generate context-rich, brand-appropriate message drafts using LLM APIs with full business context
@@ -90,7 +91,7 @@ Plans:
 - [x] 04-01-PLAN.md — OpenClaw Docker Compose service, Gateway config (Claude primary/OpenAI fallback), SOUL.md persona, AiDraft schema migration, agent API endpoints
 - [x] 04-02-PLAN.md — Context builder with system prompts and brand voice, edge-case classifier with bilingual detection, cost calculator (TDD)
 - [x] 04-03-PLAN.md — SKILL.md files per business domain, draft generator via OpenClaw HTTP API, AiModuleContract implementation, BullMQ job processor wiring
-- [ ] 04-04-PLAN.md — Gap closure: surface AI token usage, EUR cost, and edge-case flags in admin inbox UI (AI-03)
+- [x] 04-04-PLAN.md — Gap closure: surface AI token usage, EUR cost, and edge-case flags in admin inbox UI (AI-03)
 
 ### Phase 5: AI-Email Integration
 **Goal**: Inbound guest emails automatically get AI-drafted replies that Ines can approve, edit, or reject from the inbox -- with automated tests verifying the draft pipeline
@@ -104,10 +105,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Email pipeline AI draft trigger + approve/reject/regenerate backend endpoints (Wave 1)
-- [ ] 05-02-PLAN.md — FAQ Prisma model, CRUD API, context builder + system prompt injection (Wave 1)
-- [ ] 05-03-PLAN.md — Draft review UI (two-step approve, reject+regenerate, inline display) + FAQ settings tab (Wave 2)
-- [ ] 05-04-PLAN.md — AI draft pipeline integration tests + draft workflow tests with mocked LLM (Wave 3, TDD)
+- [x] 05-01-PLAN.md — Email pipeline AI draft trigger + approve/reject/regenerate backend endpoints (Wave 1)
+- [x] 05-02-PLAN.md — FAQ Prisma model, CRUD API, context builder + system prompt injection (Wave 1)
+- [x] 05-03-PLAN.md — Draft review UI (two-step approve, reject+regenerate, inline display) + FAQ settings tab (Wave 2)
+- [x] 05-04-PLAN.md — AI draft pipeline integration tests + draft workflow tests with mocked LLM (Wave 3, TDD)
 
 ### Phase 6: CalDAV Calendar Sync
 **Goal**: Ines's Apple Calendar automatically reflects all bookings and events from the system -- always up to date, verified with real iCloud account tests
@@ -125,7 +126,7 @@ Plans:
 - [x] 06-01-PLAN.md — Schema migration + CalDAV client (tsdav) + iCalendar builder (ical-generator)
 - [x] 06-02-PLAN.md — CalDAV sync engine + job processor + booking/event mutation hooks
 - [x] 06-03-PLAN.md — Calendar API endpoints + CalDAV settings UI + sync status banner
-- [ ] 06-04-PLAN.md — iCalendar builder unit tests + CalDAV integration tests (real iCloud) + end-to-end verification
+- [x] 06-04-PLAN.md — iCalendar builder unit tests + CalDAV integration tests (real iCloud) + end-to-end verification
 
 ### Phase 7: OpenClaw Assistant Core
 **Goal**: Ines can ask her AI assistant business questions from the dashboard or WhatsApp and get accurate answers
@@ -139,8 +140,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — OpenClaw plugin with ~15 query tools, workspace persona (Koda), WhatsApp channel config, Docker Compose plugin mount
-- [ ] 07-02-PLAN.md — Backend SSE proxy, dashboard chat UI (streaming, markdown, tool indicators, quick actions), sidebar nav, end-to-end verification
+- [x] 07-01-PLAN.md — OpenClaw plugin with ~15 query tools, workspace persona (Koda), WhatsApp channel config, Docker Compose plugin mount
+- [x] 07-02-PLAN.md — Backend SSE proxy, dashboard chat UI (streaming, markdown, tool indicators, quick actions), sidebar nav, end-to-end verification
 
 ### Phase 8: Assistant Actions & Automation
 **Goal**: The assistant can take actions on Ines's behalf (with confirmation) and proactively delivers briefings and alerts
@@ -155,8 +156,25 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Plugin write tools (prepare/confirm booking & event), draft approval tools, invoice reminder, confirmation state machine, workspace docs update
-- [ ] 08-02-PLAN.md — Backend notification service, scheduled processor (morning briefing, guest arrival, overdue invoice), alert wiring in mutations, OpenClaw hook config
+- [x] 08-01-PLAN.md — Plugin write tools (prepare/confirm booking & event), draft approval tools, invoice reminder, confirmation state machine, workspace docs update
+- [x] 08-02-PLAN.md — Backend notification service, scheduled processor (morning briefing, guest arrival, overdue invoice), alert wiring in mutations, OpenClaw hook config
+
+### Phase 8.1: Integration Fixes & Verification Closure
+**Goal**: All audit gaps are closed -- cross-phase wiring issues fixed, missing verifications produced, and traceability updated
+**Depends on**: Phase 8
+**Requirements**: OTA-03, CAL-01, ASST-04 (integration fixes); CAL-01..05, TEST-04, ASST-01..04 (retroactive verification)
+**Gap Closure**: Closes gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. OTA auto-created bookings trigger CalDAV calendar sync (enqueueCalendarSync called after OTA booking creation in email pipeline)
+  2. The assistant's check_availability tool returns real availability data (query params match backend schema)
+  3. Phase 6 has a VERIFICATION.md with all CAL-01..05 and TEST-04 requirements verified
+  4. Phase 7 has a VERIFICATION.md with all ASST-01..04 requirements verified
+  5. REQUIREMENTS.md traceability table is accurate (ASST-02 checkbox fixed, all statuses current)
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08.1-01-PLAN.md — Fix OTA->calendar sync wiring, check_availability param mismatch, integration tests, traceability table update
+- [ ] 08.1-02-PLAN.md — Retroactive VERIFICATION.md for Phase 6 (CAL-01..05, TEST-04) and Phase 7 (ASST-01..04)
 
 ### Phase 9: Migration, UAT & Launch
 **Goal**: Real data is imported, Ines validates the system works for her daily workflows, and the platform goes live on production
@@ -190,7 +208,8 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 | 3. Email UI & OTA Parsing | 3/3 | Complete    | 2026-02-20 |
 | 4. AI Communication Engine | 4/4 | Complete    | 2026-02-20 |
 | 5. AI-Email Integration | 4/4 | Complete    | 2026-02-20 |
-| 6. CalDAV Calendar Sync | 3/4 | In Progress | - |
-| 7. OpenClaw Assistant Core | 1/2 | In Progress | - |
-| 8. Assistant Actions & Automation | 0/2 | Not started | - |
+| 6. CalDAV Calendar Sync | 4/4 | Complete    | 2026-02-21 |
+| 7. OpenClaw Assistant Core | 2/2 | Complete    | 2026-02-21 |
+| 8. Assistant Actions & Automation | 2/2 | Complete    | 2026-02-22 |
+| 8.1. Integration Fixes & Verification Closure | 0/2 | Not started | - |
 | 9. Migration, UAT & Launch | 0/4 | Not started | - |

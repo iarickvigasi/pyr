@@ -213,3 +213,21 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 | 8. Assistant Actions & Automation | 2/2 | Complete    | 2026-02-22 |
 | 8.1. Integration Fixes & Verification Closure | 0/2 | Not started | - |
 | 9. Migration, UAT & Launch | 0/4 | Not started | - |
+
+### Phase 10: Switch the backend to use the gateway's WebSocket API
+
+**Goal:** All backend communication with the OpenClaw Gateway uses a single persistent WebSocket connection instead of three separate HTTP integration points (chat completions, hooks, health check)
+**Depends on:** Phase 9
+**Requirements:** (architectural improvement -- no formal requirement IDs)
+**Success Criteria** (what must be TRUE):
+  1. A persistent WebSocket connection to the OpenClaw Gateway is established at backend startup with auto-reconnect
+  2. Dashboard chat messages are sent via WebSocket `chat.send` and streamed back as SSE (frontend unchanged)
+  3. Notifications (briefings, alerts, draft-ready) are sent via WebSocket `agent` method instead of HTTP webhooks
+  4. AI draft generation uses WebSocket `agent` method with `extraSystemPrompt` for business context injection
+  5. No HTTP calls to the OpenClaw Gateway remain in the backend
+**Plans:** 3 plans
+
+Plans:
+- [ ] 10-01-PLAN.md -- GatewayWsClient service, protocol types, Fastify plugin (app.gateway decorator)
+- [ ] 10-02-PLAN.md -- Migrate dashboard chat SSE proxy and notification hook delivery to WebSocket
+- [ ] 10-03-PLAN.md -- Migrate draft generation to WebSocket, unit tests, HTTP cleanup

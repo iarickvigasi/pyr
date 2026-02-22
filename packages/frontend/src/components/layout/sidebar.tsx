@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Calendar,
   Mail,
+  Bot,
   Settings,
   Layers,
   LogOut,
@@ -27,6 +28,7 @@ const navItems = [
   { href: '/events', label: 'Events', icon: Calendar },
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/inbox', label: 'Inbox', icon: Mail },
+  { href: '/assistant', label: 'Assistant', icon: Bot },
   { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/queues', label: 'Queues', icon: Layers },
 ];

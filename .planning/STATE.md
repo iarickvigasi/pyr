@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 9 - Migration, UAT & Launch
+**Current focus:** Phase 10 - Switch the backend to use the gateway's WebSocket API
 
 ## Current Position
 
-Phase: 9 (Migration, UAT & Launch)
-Plan: 0 of N in current phase
-Status: Phase 8.1 complete, ready for Phase 9
-Last activity: 2026-02-22 -- 08.1-02-PLAN.md complete (retroactive VERIFICATION.md for Phases 6 and 7)
+Phase: 10 (Switch the backend to use the gateway's WebSocket API)
+Plan: 1 of 3 in current phase
+Status: Plan 10-01 complete (Gateway WebSocket Client Foundation)
+Last activity: 2026-02-22 -- 10-01-PLAN.md complete (GatewayWsClient, protocol types, Fastify plugin)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 90%
+Progress: [▓▓▓▓▓▓▓▓▓░] 91%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: 6min
-- Total execution time: 2.7 hours
+- Total execution time: 2.8 hours
 
 **By Phase:**
 
@@ -36,9 +36,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 90%
 | 07-openclaw-assistant-core | 1/2 | 9min | 9.0min |
 | 08-assistant-actions-automation | 2/2 | 9min | 4.5min |
 | 08.1-integration-fixes-verification-closure | 2/2 | 12min | 6.0min |
+| 10-switch-the-backend-to-use-the-gateway-s-websocket-api | 1/3 | 4min | 4.0min |
 
 **Recent Trend:**
-- Last 5 plans: 9min, 5min, 4min, 5min, 7min
+- Last 5 plans: 5min, 4min, 5min, 7min, 4min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -166,9 +167,18 @@ Recent decisions affecting current work:
 - [Phase 08.1]: [08.1-02]: Phase 6 verification includes 13 truths covering CalDAV wiring, settings UI, sync status, and OTA fix
 - [Phase 08.1]: [08.1-02]: Phase 7 verification includes 14 truths covering both plugin tools (16) and dashboard chat UI (7 components)
 
+- [Phase 10]: [10-01]: FastifyBaseLogger over pino Logger for GatewayWsClient constructor type compatibility
+- [Phase 10]: [10-01]: Non-blocking gateway startup -- start() resolves even if gateway unreachable, reconnect handles retry
+- [Phase 10]: [10-01]: Gateway health check is informational (disconnected), not blocking overall health status
+- [Phase 10]: [10-01]: Tick timeout at 2x tickIntervalMs triggers reconnect for dead connection detection
+
 ### Pending Todos
 
 None yet.
+
+### Roadmap Evolution
+
+- Phase 10 added: Switch the backend to use the gateway's WebSocket API
 
 ### Blockers/Concerns
 
@@ -179,5 +189,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 08.1-02-PLAN.md (Phase 8.1 complete)
-Resume file: Phase 9 planning needed
+Stopped at: Completed 10-01-PLAN.md (Gateway WebSocket Client Foundation)
+Resume file: 10-02-PLAN.md

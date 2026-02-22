@@ -225,7 +225,7 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
   3. Notifications (briefings, alerts, draft-ready) are sent via WebSocket `agent` method instead of HTTP webhooks
   4. AI draft generation uses WebSocket `agent` method with `extraSystemPrompt` for business context injection
   5. No HTTP calls to the OpenClaw Gateway remain in the backend
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 10-01-PLAN.md -- GatewayWsClient service, protocol types, Fastify plugin (app.gateway decorator)

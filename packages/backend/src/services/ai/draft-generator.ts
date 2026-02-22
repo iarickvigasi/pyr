@@ -1,15 +1,16 @@
 /**
- * AI draft generator -- orchestrates context building, OpenClaw HTTP API call,
+ * AI draft generator -- orchestrates context building, WebSocket agent call,
  * edge-case classification, cost calculation, and DB write.
  *
- * The draft generator calls OpenClaw's OpenAI-compatible HTTP API at
- * POST /v1/chat/completions. OpenClaw handles model selection (Claude primary,
- * OpenAI fallback), prompt caching, and provider failover. The backend only
- * reads the usage data from the response.
+ * The draft generator uses the persistent WebSocket connection to the OpenClaw
+ * Gateway via gateway.request('agent', ...) with extraSystemPrompt for business
+ * context injection. Chat events are accumulated until the final state to
+ * extract content, usage, and model.
  *
- * No direct LLM SDK imports -- all AI calls go through OpenClaw.
+ * No direct LLM SDK imports -- all AI calls go through the OpenClaw Gateway.
  */
 
+import crypto from 'crypto';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyBaseLogger } from 'fastify';
 import { buildDraftContext } from './context-builder.js';
@@ -17,6 +18,8 @@ import { buildSystemPrompt } from './prompts/system.js';
 import { classifyEdgeCases } from './classifier.js';
 import { calculateCost } from './cost-calculator.js';
 import { writeAuditLog } from '../../lib/audit.js';
+import type { GatewayWsClient } from '../gateway/gateway-ws-client.js';
+import type { ChatEvent } from '../gateway/types.js';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -36,30 +39,11 @@ export interface GenerateDraftResult {
 
 export interface GenerateDraftParams {
   prisma: PrismaClient;
-  config: {
-    openclawGatewayUrl: string;
-    openclawGatewayToken: string;
-  };
+  gateway: GatewayWsClient;
   conversationId: string;
   messageId: string;
   guestLanguage: 'en' | 'de';
   logger: FastifyBaseLogger;
-}
-
-/** OpenAI-compatible chat completion response from OpenClaw Gateway */
-interface ChatCompletionResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-  model: string;
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    cache_read_input_tokens?: number;
-    cache_creation_input_tokens?: number;
-  };
 }
 
 // ─── Constants ──────────────────────────────────────────
@@ -84,7 +68,7 @@ const MAX_MESSAGES = 20;
  * @throws If conversation/message not found or OpenClaw API returns non-2xx
  */
 export async function generateDraft(params: GenerateDraftParams): Promise<GenerateDraftResult> {
-  const { prisma, config, conversationId, messageId, guestLanguage, logger } = params;
+  const { prisma, gateway, conversationId, messageId, guestLanguage, logger } = params;
 
   // 1. Build business context
   const context = await buildDraftContext(prisma, conversationId);
@@ -109,40 +93,63 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
     content: m.content,
   }));
 
-  // 6. Call OpenClaw's HTTP API
+  // 6. Call OpenClaw Gateway via WebSocket agent method
   const startTime = Date.now();
-  const response = await fetch(`${config.openclawGatewayUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${config.openclawGatewayToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'openclaw:main',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...chatMessages,
-      ],
-      max_tokens: 2048,
-      temperature: 0.5,
-    }),
+
+  // Use a unique session key per draft to isolate concurrent jobs
+  const draftSessionKey = `draft:${conversationId}:${Date.now()}`;
+
+  // Accumulate response via chat events
+  const result = await new Promise<{ content: string; usage: ChatEvent['usage']; model: string }>((resolve, reject) => {
+    let content = '';
+    let usage: ChatEvent['usage'] = undefined;
+    let model = 'unknown';
+
+    const unsub = gateway.onChatEvent((evt) => {
+      if (evt.sessionKey !== draftSessionKey) return;
+
+      if (evt.state === 'delta' && evt.message) {
+        // Extract delta content from message
+        const msg = evt.message as { content?: string };
+        if (msg.content) content += msg.content;
+      }
+      if (evt.state === 'final') {
+        usage = evt.usage;
+        model = evt.model ?? 'unknown';
+        unsub();
+        resolve({ content, usage, model });
+      }
+      if (evt.state === 'error') {
+        unsub();
+        reject(new Error(evt.errorMessage ?? 'Agent error during draft generation'));
+      }
+      if (evt.state === 'aborted') {
+        unsub();
+        reject(new Error('Draft generation aborted'));
+      }
+    });
+
+    // The last user message is the latest inbound email
+    const lastUserMessage = chatMessages[chatMessages.length - 1]?.content ?? messageContent;
+
+    gateway.request('agent', {
+      message: lastUserMessage,
+      agentId: 'main',
+      sessionKey: draftSessionKey,
+      deliver: false, // Draft generation does NOT deliver to WhatsApp
+      idempotencyKey: crypto.randomUUID(),
+      extraSystemPrompt: systemPrompt, // Full business context injected here
+    }).catch((err) => { unsub(); reject(err); });
   });
   const durationMs = Date.now() - startTime;
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => 'Unable to read response body');
-    throw new Error(`OpenClaw API error: ${response.status} ${response.statusText} - ${body}`);
-  }
-
-  const completion = (await response.json()) as ChatCompletionResponse;
-
-  const draftContent = completion.choices[0]?.message?.content;
+  const draftContent = result.content;
   if (!draftContent) {
-    throw new Error('OpenClaw API returned empty response (no choices or content)');
+    throw new Error('Gateway returned empty response (no content from agent)');
   }
 
-  const model = completion.model ?? 'unknown';
-  const usage = completion.usage;
+  const model = result.model;
+  const usage = result.usage;
   const inputTokens = usage?.prompt_tokens ?? 0;
   const outputTokens = usage?.completion_tokens ?? 0;
   const cacheReadTokens = usage?.cache_read_input_tokens ?? 0;

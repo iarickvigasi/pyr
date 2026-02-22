@@ -3,13 +3,14 @@
  * draft storage, FAQ inclusion, edge-case flags, dedup, onFailed handler, and
  * language selection.
  *
- * All tests use mocked LLM responses (no real API calls) and mocked Prisma
+ * All tests use mocked gateway responses (no real API calls) and mocked Prisma
  * (no real database).
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateDraft } from '../draft-generator.js';
 import { createAiDraftFailedHandler } from '../../queue/jobs/ai-draft.job.js';
+import type { ChatEvent } from '../../gateway/types.js';
 
 // ---- Mock audit module ------------------------------------------------
 
@@ -71,34 +72,58 @@ function makeBookings() {
   ];
 }
 
-function makeOpenClawResponse(overrides?: {
-  content?: string;
-  model?: string;
-  promptTokens?: number;
-  completionTokens?: number;
-}) {
-  return {
-    choices: [
-      {
-        message: {
-          content: overrides?.content
-            ?? 'Dear Maria, thank you for your interest in our retreat! We would love to welcome you in April. Warm regards, Ines',
-        },
-      },
-    ],
-    model: overrides?.model ?? 'anthropic/claude-sonnet-4-5-20250929',
-    usage: {
-      prompt_tokens: overrides?.promptTokens ?? 2000,
-      completion_tokens: overrides?.completionTokens ?? 500,
-    },
-  };
-}
-
 function makeFaqEntries() {
   return [
     { question: 'What time is check-in?', answer: 'Check-in is at 3 PM.' },
     { question: 'Are dogs included?', answer: 'Rescue puppies join every yoga session.' },
   ];
+}
+
+/**
+ * Create a mock GatewayWsClient that simulates the WebSocket agent flow.
+ */
+function makeGateway(opts?: {
+  content?: string;
+  model?: string;
+  usage?: ChatEvent['usage'];
+  error?: string;
+}) {
+  const chatListeners: Array<(evt: ChatEvent) => void> = [];
+
+  return {
+    request: vi.fn().mockImplementation(async (_method: string, params: unknown) => {
+      const sessionKey = (params as { sessionKey: string }).sessionKey;
+      setTimeout(() => {
+        for (const listener of chatListeners) {
+          if (opts?.error) {
+            listener({ runId: 'run-1', sessionKey, seq: 1, state: 'error', errorMessage: opts.error });
+          } else {
+            listener({
+              runId: 'run-1',
+              sessionKey,
+              seq: 1,
+              state: 'delta',
+              message: { content: opts?.content ?? 'Dear Maria, thank you for your interest in our retreat! We would love to welcome you in April. Warm regards, Ines' },
+            });
+            listener({
+              runId: 'run-1',
+              sessionKey,
+              seq: 2,
+              state: 'final',
+              usage: opts?.usage ?? { prompt_tokens: 2000, completion_tokens: 500 },
+              model: opts?.model ?? 'anthropic/claude-sonnet-4-5-20250929',
+            });
+          }
+        }
+      }, 0);
+      return { ok: true };
+    }),
+    onChatEvent: vi.fn().mockImplementation((handler: (evt: ChatEvent) => void) => {
+      chatListeners.push(handler);
+      return () => { chatListeners.splice(chatListeners.indexOf(handler), 1); };
+    }),
+    isConnected: true,
+  };
 }
 
 /** Build a mock Prisma client. */
@@ -192,40 +217,21 @@ function makeLogger() {
   };
 }
 
-function makeConfig() {
-  return {
-    openclawGatewayUrl: 'http://localhost:18789',
-    openclawGatewayToken: 'test-token',
-  };
-}
-
 // ---- Tests -----------------------------------------------------------
 
 describe('draft pipeline integration', () => {
-  let originalFetch: typeof global.fetch;
-
   beforeEach(() => {
-    originalFetch = global.fetch;
-  });
-
-  afterEach(() => {
-    global.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
   it('generates draft for guest inquiry email with full context', async () => {
-    const mockResponse = makeOpenClawResponse();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-    }));
-
+    const gateway = makeGateway();
     const prisma = makePrisma({});
     const logger = makeLogger();
 
     const result = await generateDraft({
       prisma: prisma as never,
-      config: makeConfig(),
+      gateway: gateway as never,
       conversationId: 'conv-1',
       messageId: 'msg-1',
       guestLanguage: 'en',
@@ -241,37 +247,29 @@ describe('draft pipeline integration', () => {
     // Draft stored via transaction
     expect(prisma.$transaction).toHaveBeenCalledOnce();
 
-    // System prompt includes guest name, availability, and booking history
-    const body = JSON.parse((vi.mocked(fetch).mock.calls[0]![1] as RequestInit).body as string);
-    const systemPrompt: string = body.messages[0].content;
+    // extraSystemPrompt includes guest name, availability, and booking history
+    const [, params] = gateway.request.mock.calls[0]!;
+    const systemPrompt = (params as { extraSystemPrompt: string }).extraSystemPrompt;
     expect(systemPrompt).toContain('Maria Schmidt');
     expect(systemPrompt).toContain('Standard Double');
-    // Conversation messages are sent as chat messages (not in system prompt)
-    const chatMessages = body.messages.slice(1);
-    expect(chatMessages.length).toBeGreaterThan(0);
   });
 
   it('includes FAQ entries in system prompt', async () => {
-    const mockResponse = makeOpenClawResponse();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-    }));
-
+    const gateway = makeGateway();
     const prisma = makePrisma({ faqs: makeFaqEntries() });
     const logger = makeLogger();
 
     await generateDraft({
       prisma: prisma as never,
-      config: makeConfig(),
+      gateway: gateway as never,
       conversationId: 'conv-1',
       messageId: 'msg-1',
       guestLanguage: 'en',
       logger: logger as never,
     });
 
-    const body = JSON.parse((vi.mocked(fetch).mock.calls[0]![1] as RequestInit).body as string);
-    const systemPrompt: string = body.messages[0].content;
+    const [, params] = gateway.request.mock.calls[0]!;
+    const systemPrompt = (params as { extraSystemPrompt: string }).extraSystemPrompt;
     expect(systemPrompt).toContain('Frequently Asked Questions');
     expect(systemPrompt).toContain('What time is check-in?');
     expect(systemPrompt).toContain('Check-in is at 3 PM.');
@@ -279,18 +277,13 @@ describe('draft pipeline integration', () => {
   });
 
   it('handles empty FAQ list gracefully', async () => {
-    const mockResponse = makeOpenClawResponse();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-    }));
-
+    const gateway = makeGateway();
     const prisma = makePrisma({ faqs: [] });
     const logger = makeLogger();
 
     const result = await generateDraft({
       prisma: prisma as never,
-      config: makeConfig(),
+      gateway: gateway as never,
       conversationId: 'conv-1',
       messageId: 'msg-1',
       guestLanguage: 'en',
@@ -302,8 +295,8 @@ describe('draft pipeline integration', () => {
     expect(result.content).toBeTruthy();
 
     // System prompt includes the fallback text for empty FAQs
-    const body = JSON.parse((vi.mocked(fetch).mock.calls[0]![1] as RequestInit).body as string);
-    const systemPrompt: string = body.messages[0].content;
+    const [, params] = gateway.request.mock.calls[0]!;
+    const systemPrompt = (params as { extraSystemPrompt: string }).extraSystemPrompt;
     expect(systemPrompt).toContain('No FAQ entries available');
   });
 
@@ -311,18 +304,13 @@ describe('draft pipeline integration', () => {
     const conversation = makeConversation({
       latestContent: 'I need to cancel my booking',
     });
-    const mockResponse = makeOpenClawResponse();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-    }));
-
+    const gateway = makeGateway();
     const prisma = makePrisma({ conversation });
     const logger = makeLogger();
 
     const result = await generateDraft({
       prisma: prisma as never,
-      config: makeConfig(),
+      gateway: gateway as never,
       conversationId: 'conv-1',
       messageId: 'msg-1',
       guestLanguage: 'en',
@@ -338,46 +326,34 @@ describe('draft pipeline integration', () => {
     );
   });
 
-  it('handles OpenClaw API failure gracefully', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      text: () => Promise.resolve('Gateway timeout'),
-    }));
-
+  it('handles gateway agent error gracefully', async () => {
+    const gateway = makeGateway({ error: 'Gateway timeout' });
     const prisma = makePrisma({});
     const logger = makeLogger();
 
     await expect(
       generateDraft({
         prisma: prisma as never,
-        config: makeConfig(),
+        gateway: gateway as never,
         conversationId: 'conv-1',
         messageId: 'msg-1',
         guestLanguage: 'en',
         logger: logger as never,
       }),
-    ).rejects.toThrow('OpenClaw API error: 500 Internal Server Error');
+    ).rejects.toThrow('Gateway timeout');
   });
 
   it('two messages in the same conversation each generate separate drafts', async () => {
     // Verify that dedup checks are scoped to messageId, not just conversationId
     const conversation = makeConversation({ messageCount: 4 });
-    const mockResponse = makeOpenClawResponse();
-
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-    }));
-
+    const gateway = makeGateway();
     const prisma = makePrisma({ conversation });
     const logger = makeLogger();
 
     // First call -- msg-1 gets a draft
     await generateDraft({
       prisma: prisma as never,
-      config: makeConfig(),
+      gateway: gateway as never,
       conversationId: 'conv-1',
       messageId: 'msg-1',
       guestLanguage: 'en',
@@ -409,7 +385,7 @@ describe('draft pipeline integration', () => {
     // Second call -- msg-2 gets its own draft
     const result2 = await generateDraft({
       prisma: prisma as never,
-      config: makeConfig(),
+      gateway: gateway as never,
       conversationId: 'conv-1',
       messageId: 'msg-2',
       guestLanguage: 'en',
@@ -505,26 +481,21 @@ describe('draft pipeline integration', () => {
   });
 
   it('generates draft in German when guest language is de', async () => {
-    const mockResponse = makeOpenClawResponse();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-    }));
-
+    const gateway = makeGateway();
     const prisma = makePrisma({});
     const logger = makeLogger();
 
     await generateDraft({
       prisma: prisma as never,
-      config: makeConfig(),
+      gateway: gateway as never,
       conversationId: 'conv-1',
       messageId: 'msg-1',
       guestLanguage: 'de',
       logger: logger as never,
     });
 
-    const body = JSON.parse((vi.mocked(fetch).mock.calls[0]![1] as RequestInit).body as string);
-    const systemPrompt: string = body.messages[0].content;
+    const [, params] = gateway.request.mock.calls[0]!;
+    const systemPrompt = (params as { extraSystemPrompt: string }).extraSystemPrompt;
     expect(systemPrompt).toContain('Respond in German');
   });
 });

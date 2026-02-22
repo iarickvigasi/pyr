@@ -13,17 +13,13 @@ import { classifyEdgeCases } from './classifier.js';
 import { generateDraft } from './draft-generator.js';
 
 export function createAiModule(app: FastifyInstance): AiModuleContract {
-  const config = app.config;
   const logger = app.log.child({ module: 'ai' });
 
   return {
     async generateDraft(params) {
       const result = await generateDraft({
         prisma: app.prisma,
-        config: {
-          openclawGatewayUrl: config.OPENCLAW_GATEWAY_URL,
-          openclawGatewayToken: config.OPENCLAW_GATEWAY_TOKEN,
-        },
+        gateway: app.gateway,
         conversationId: params.conversationId,
         messageId: params.messageId,
         guestLanguage: params.guestLanguage,

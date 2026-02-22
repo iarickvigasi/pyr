@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 10 (Switch the backend to use the gateway's WebSocket API)
-Plan: 2 of 3 in current phase
-Status: Plan 10-02 complete (Chat SSE & Notification Migration to WebSocket)
-Last activity: 2026-02-22 -- 10-02-PLAN.md complete (WS chat.send SSE bridge, sendViaGateway, WS health check)
+Plan: 3 of 3 in current phase -- PHASE COMPLETE
+Status: Plan 10-03 complete (Draft Generation Migration & Gateway Tests)
+Last activity: 2026-02-22 -- 10-03-PLAN.md complete (WS agent draft generation, GatewayWsClient tests, HTTP cleanup)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 93%
+Progress: [▓▓▓▓▓▓▓▓▓▓] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28
+- Total plans completed: 29
 - Average duration: 6min
-- Total execution time: 2.8 hours
+- Total execution time: 2.9 hours
 
 **By Phase:**
 
@@ -36,10 +36,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 93%
 | 07-openclaw-assistant-core | 1/2 | 9min | 9.0min |
 | 08-assistant-actions-automation | 2/2 | 9min | 4.5min |
 | 08.1-integration-fixes-verification-closure | 2/2 | 12min | 6.0min |
-| 10-switch-the-backend-to-use-the-gateway-s-websocket-api | 2/3 | 6min | 3.0min |
+| 10-switch-the-backend-to-use-the-gateway-s-websocket-api | 3/3 | 11min | 3.7min |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 5min, 7min, 4min, 2min
+- Last 5 plans: 5min, 7min, 4min, 2min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -175,6 +175,10 @@ Recent decisions affecting current work:
 - [Phase 10]: [10-02]: SSE format preserved exactly as OpenAI-compatible (choices[0].delta.content/tool_calls) for zero frontend changes
 - [Phase 10]: [10-02]: Hook mapping replicated from openclaw.json: briefing/alert deliver=true, draft deliver=false with timestamped sessionKey
 - [Phase 10]: [10-02]: HookPayload type removed since HTTP hook delivery is fully replaced by WebSocket agent RPC
+- [Phase 10]: [10-03]: Unique session key per draft (draft:{conversationId}:{timestamp}) isolates concurrent draft generation jobs
+- [Phase 10]: [10-03]: extraSystemPrompt injects full business context into agent RPC (replaces HTTP system prompt message)
+- [Phase 10]: [10-03]: deliver: false on agent RPC ensures drafts are never auto-sent to WhatsApp
+- [Phase 10]: [10-03]: OPENCLAW_HOOK_TOKEN removed from backend env schema (HTTP hooks fully replaced)
 
 ### Pending Todos
 
@@ -193,5 +197,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 10-02-PLAN.md (Chat SSE & Notification Migration to WebSocket)
-Resume file: 10-03-PLAN.md
+Stopped at: Completed 10-03-PLAN.md (Draft Generation Migration & Gateway Tests) -- Phase 10 COMPLETE
+Resume file: None -- all phases complete

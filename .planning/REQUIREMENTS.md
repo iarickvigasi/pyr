@@ -47,7 +47,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 ### AI Assistant (OpenClaw)
 
 - [x] **ASST-01**: OpenClaw is integrated as the AI assistant runtime, running self-hosted on the same server
-- [ ] **ASST-02**: Chat interface is available in the admin dashboard (WebChat channel)
+- [x] **ASST-02**: Chat interface is available in the admin dashboard (WebChat channel)
 - [x] **ASST-03**: WhatsApp connectivity via OpenClaw messaging integration
 - [x] **ASST-04**: Assistant uses Claude tool-use to query business data (bookings, guests, availability, revenue, today's schedule)
 - [x] **ASST-05**: Assistant can take actions with confirmation flow (create bookings, create events, send payment reminders) -- Ines confirms before execution
@@ -158,7 +158,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAL-05 | Phase 6 | Complete |
 | TEST-04 | Phase 6 | Complete |
 | ASST-01 | Phase 7 | Complete |
-| ASST-02 | Phase 7 | Pending |
+| ASST-02 | Phase 7 | Complete |
 | ASST-03 | Phase 7 | Complete |
 | ASST-04 | Phase 7 | Complete |
 | ASST-05 | Phase 8 | Complete |
@@ -172,12 +172,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-01 | Phase 9 | Pending |
 | DOC-02 | Phase 9 | Pending |
 | DOC-03 | Phase 9 | Pending |
+| MSG-01 | -- | Deferred (v2) |
+| MSG-02 | -- | Deferred (v2) |
+| MSG-03 | -- | Deferred (v2) |
+| ADV-00 | -- | Deferred (v2) |
+| ADV-01 | -- | Deferred (v2) |
+| ADV-02 | -- | Deferred (v2) |
+| ADV-03 | -- | Deferred (v2) |
+| BOOK-01 | -- | Deferred (v2) |
+| BOOK-02 | -- | Deferred (v2) |
+| BOOK-03 | -- | Deferred (v2) |
+| BOOK-04 | -- | Deferred (v2) |
+| ACCT-01 | -- | Deferred (v2) |
+| ACCT-02 | -- | Deferred (v2) |
+| ACCT-03 | -- | Deferred (v2) |
 
 **Coverage:**
-- v1 requirements: 47 total
-- Mapped to phases: 47
+- v1 requirements: 47 total (41 complete, 6 pending Phase 9)
+- v2 requirements: 14 total (all deferred)
+- Total tracked: 61
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-19 -- testing requirements distributed into feature phases, Phase 9 (Integration Testing) removed, Phase 10 renumbered to Phase 9*
+*Last updated: 2026-02-22 -- added v2 requirements to traceability table as Deferred (v2), verified all v1 statuses accurate*

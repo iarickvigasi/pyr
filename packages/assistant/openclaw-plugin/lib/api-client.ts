@@ -6,6 +6,8 @@
 export interface ApiClient {
   get<T = unknown>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T>;
   post<T = unknown>(path: string, body?: unknown): Promise<T>;
+  patch<T = unknown>(path: string, body?: unknown): Promise<T>;
+  del<T = unknown>(path: string): Promise<T>;
 }
 
 const DEFAULT_LIMIT = 20;
@@ -53,6 +55,12 @@ export function createApiClient(baseUrl: string, apiKey: string): ApiClient {
     },
     post<T = unknown>(path: string, body?: unknown): Promise<T> {
       return request<T>('POST', path, body);
+    },
+    patch<T = unknown>(path: string, body?: unknown): Promise<T> {
+      return request<T>('PATCH', path, body);
+    },
+    del<T = unknown>(path: string): Promise<T> {
+      return request<T>('DELETE', path);
     },
   };
 }

@@ -62,6 +62,16 @@ export function formatEventType(type: string): string {
 }
 
 /**
+ * Calculate the number of nights between two ISO date strings.
+ */
+export function formatNights(checkIn: string, checkOut: string): number {
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  return Math.max(1, Math.round((end.getTime() - start.getTime()) / msPerDay));
+}
+
+/**
  * Build a relative dashboard URL for an entity.
  */
 export function dashboardUrl(path: string): string {

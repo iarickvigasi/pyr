@@ -26,6 +26,7 @@ import settingsRoutes from './modules/settings/settings.routes.js';
 import agentRoutes from './modules/agent/agent.routes.js';
 import faqRoutes from './modules/settings/faq.routes.js';
 import calendarRoutes from './modules/calendar/calendar.routes.js';
+import assistantRoutes from './modules/assistant/assistant.routes.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -123,6 +124,7 @@ export async function buildApp() {
   await app.register(agentRoutes, { prefix: '/api/v1/agent' });
   await app.register(faqRoutes, { prefix: '/api/v1/faqs' });
   await app.register(calendarRoutes, { prefix: '/api/v1/calendar' });
+  await app.register(assistantRoutes, { prefix: '/api/v1/assistant' });
 
   // Queue setup: register queues, workers, and schedulers (after all plugins + routes)
   if (env.NODE_ENV !== 'test') {

@@ -1,0 +1,337 @@
+/**
+ * Notification service -- hook delivery, morning briefing builder, and alert formatters.
+ *
+ * All notifications are delivered via OpenClaw hooks to WhatsApp.
+ * Delivery is best-effort: failures are logged but never throw,
+ * so primary operations (booking creation, draft generation, etc.) are never blocked.
+ */
+
+import type { FastifyInstance } from 'fastify';
+import type { AlertType, BriefingData, HookPayload } from './notification.types.js';
+import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
+
+// ---------------------------------------------------------------------------
+// Hook Delivery
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a message to the OpenClaw Gateway via hooks endpoint.
+ * Best-effort: logs errors but never throws.
+ */
+export async function sendViaHook(
+  app: FastifyInstance,
+  hookPath: string,
+  message: string,
+): Promise<void> {
+  const url = `${app.config.OPENCLAW_GATEWAY_URL}/hooks/${hookPath}`;
+  const payload: HookPayload = { message };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${app.config.OPENCLAW_HOOK_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      app.log.error(
+        { hookPath, status: response.status, statusText: response.statusText },
+        'Hook delivery returned non-OK status',
+      );
+      return;
+    }
+
+    app.log.info({ hookPath }, 'Hook delivered successfully');
+  } catch (err) {
+    app.log.error({ err, hookPath }, 'Hook delivery failed');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Briefing Formatter
+// ---------------------------------------------------------------------------
+
+/**
+ * Format a briefing message for WhatsApp delivery.
+ * Returns a friendly "nothing scheduled" message on empty days.
+ */
+export function formatBriefing(data: BriefingData): string {
+  if (data.isEmpty) {
+    return "Good morning, Ines! Nothing scheduled today -- enjoy the quiet. \u{1F43E}";
+  }
+
+  const lines: string[] = [];
+  lines.push("Good morning, Ines! Here's your daily update:");
+  lines.push('');
+  lines.push(`Check-ins today: ${data.checkInsCount}`);
+  lines.push(`Check-outs today: ${data.checkOutsCount}`);
+
+  if (data.events.length > 0) {
+    lines.push('');
+    lines.push('Events today:');
+    for (const e of data.events) {
+      lines.push(`  ${e.time} -- ${e.title} (${e.registered}/${e.capacity})`);
+    }
+  } else {
+    lines.push('');
+    lines.push('No events scheduled today.');
+  }
+
+  lines.push('');
+  lines.push(`Pending inquiries: ${data.pendingInquiries}`);
+  lines.push(`Yesterday's revenue: EUR ${formatEurCents(data.yesterdayRevenue)}`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Format integer cents as a EUR string (e.g., 12050 -> "120.50").
+ */
+function formatEurCents(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+// ---------------------------------------------------------------------------
+// Alert Formatters
+// ---------------------------------------------------------------------------
+
+/**
+ * Format an alert message by type.
+ * Each alert type produces a short, informative message for WhatsApp delivery.
+ */
+export function formatAlert(alertType: AlertType, details: Record<string, unknown>): string {
+  switch (alertType) {
+    case 'new-booking':
+      return `New booking received! ${details.guestName} -- ${details.roomName}, ${details.checkIn} to ${details.checkOut} (${details.nights} nights, EUR ${formatEurCents(details.price as number)}).`;
+
+    case 'payment-confirmed':
+      return `Payment confirmed: EUR ${formatEurCents(details.amount as number)} from ${details.guestName} for booking ${details.bookingId}.`;
+
+    case 'guest-arriving':
+      return `Guest arriving today: ${details.guestName} -- ${details.roomName}, checking in for ${details.nights} nights.`;
+
+    case 'overdue-invoice':
+      return `Overdue booking: ${details.guestName} checked out on ${details.checkOutDate}, EUR ${formatEurCents(details.amount as number)} outstanding.`;
+
+    case 'draft-ready':
+      return `New draft ready for ${details.guestName}'s inquiry. Reply 'Show' to review.`;
+
+    default:
+      return `Alert: ${JSON.stringify(details)}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Morning Briefing Processor
+// ---------------------------------------------------------------------------
+
+/**
+ * Process the morning briefing job.
+ * Queries dashboard stats and today's schedule, formats the briefing, and delivers via hook.
+ */
+export async function processMorningBriefing(app: FastifyInstance): Promise<void> {
+  const { getStats, getToday } = await import('../dashboard/dashboard.service.js');
+
+  const [stats, today] = await Promise.all([
+    getStats(app.prisma),
+    getToday(app.prisma),
+  ]);
+
+  // Calculate yesterday's revenue
+  const todayStr = nicosiaToday();
+  const todayDate = new Date(todayStr);
+  todayDate.setDate(todayDate.getDate() - 1);
+  const yesterdayStr = todayDate.toISOString().slice(0, 10);
+  const yesterdayStart = utcMidnight(yesterdayStr);
+  const yesterdayEnd = utcMidnight(todayStr);
+
+  const yesterdayRevenueResult = await app.prisma.booking.aggregate({
+    _sum: { totalPrice: true },
+    where: {
+      checkIn: { gte: yesterdayStart, lt: yesterdayEnd },
+      status: { in: ['confirmed', 'checked_in', 'checked_out'] },
+      deletedAt: null,
+    },
+  });
+  const yesterdayRevenue = yesterdayRevenueResult._sum.totalPrice ?? 0;
+
+  const isEmpty =
+    today.checkIns.length === 0 &&
+    today.checkOuts.length === 0 &&
+    today.events.length === 0 &&
+    stats.pendingInquiries === 0;
+
+  const briefingData: BriefingData = {
+    checkInsCount: today.checkIns.length,
+    checkOutsCount: today.checkOuts.length,
+    events: today.events.map((e) => ({
+      time: e.time,
+      title: e.title,
+      registered: e.registeredCount,
+      capacity: e.capacity,
+    })),
+    pendingInquiries: stats.pendingInquiries,
+    yesterdayRevenue,
+    isEmpty,
+  };
+
+  const message = formatBriefing(briefingData);
+  await sendViaHook(app, 'briefing', message);
+}
+
+// ---------------------------------------------------------------------------
+// Guest Arrival Alert Processor
+// ---------------------------------------------------------------------------
+
+/**
+ * Process guest arrival alerts.
+ * Queries bookings checking in today and sends an alert for each arriving guest.
+ */
+export async function processGuestArrivalAlert(app: FastifyInstance): Promise<void> {
+  const todayStr = nicosiaToday();
+  const todayMidnight = utcMidnight(todayStr);
+
+  const arrivingBookings = await app.prisma.booking.findMany({
+    where: {
+      checkIn: todayMidnight,
+      status: { in: ['confirmed'] },
+      deletedAt: null,
+    },
+    include: {
+      guest: { select: { name: true } },
+      room: { select: { name: true } },
+    },
+  });
+
+  if (arrivingBookings.length === 0) {
+    app.log.info('No guest arrivals today, skipping arrival alerts');
+    return;
+  }
+
+  for (const booking of arrivingBookings) {
+    const checkInDate = booking.checkIn.toISOString().slice(0, 10);
+    const checkOutDate = booking.checkOut.toISOString().slice(0, 10);
+    const nights = Math.round(
+      (booking.checkOut.getTime() - booking.checkIn.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    const message = formatAlert('guest-arriving', {
+      guestName: booking.guest.name,
+      roomName: booking.room.name,
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+      nights,
+    });
+
+    await sendViaHook(app, 'alert', message);
+  }
+
+  app.log.info({ count: arrivingBookings.length }, 'Guest arrival alerts sent');
+}
+
+// ---------------------------------------------------------------------------
+// Overdue Invoice Alert Processor
+// ---------------------------------------------------------------------------
+
+/**
+ * Process overdue invoice alerts.
+ * Identifies bookings that checked out more than 7 days ago with a positive price
+ * and no payment records (simplified heuristic -- full payment system is Phase 2).
+ */
+export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<void> {
+  const todayStr = nicosiaToday();
+  const todayDate = new Date(todayStr);
+  todayDate.setDate(todayDate.getDate() - 7);
+  const overdueThresholdStr = todayDate.toISOString().slice(0, 10);
+  const overdueThreshold = utcMidnight(overdueThresholdStr);
+
+  const overdueBookings = await app.prisma.booking.findMany({
+    where: {
+      status: 'checked_out',
+      totalPrice: { gt: 0 },
+      checkOut: { lt: overdueThreshold },
+      deletedAt: null,
+    },
+    include: {
+      guest: { select: { name: true } },
+    },
+  });
+
+  if (overdueBookings.length === 0) {
+    app.log.info('No overdue bookings found');
+    return;
+  }
+
+  for (const booking of overdueBookings) {
+    const checkOutDate = booking.checkOut.toISOString().slice(0, 10);
+
+    const message = formatAlert('overdue-invoice', {
+      guestName: booking.guest.name,
+      checkOutDate,
+      amount: booking.totalPrice,
+    });
+
+    await sendViaHook(app, 'alert', message);
+  }
+
+  app.log.info({ count: overdueBookings.length }, 'Overdue invoice alerts sent');
+}
+
+// ---------------------------------------------------------------------------
+// Event-Driven Alert Triggers
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a new booking alert via WhatsApp.
+ * Called after booking creation (fire-and-forget from route handler).
+ */
+export async function sendNewBookingAlert(
+  app: FastifyInstance,
+  bookingId: string,
+): Promise<void> {
+  const booking = await app.prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      guest: { select: { name: true } },
+      room: { select: { name: true } },
+    },
+  });
+
+  if (!booking) {
+    app.log.warn({ bookingId }, 'Booking not found for new-booking alert');
+    return;
+  }
+
+  const checkInDate = booking.checkIn.toISOString().slice(0, 10);
+  const checkOutDate = booking.checkOut.toISOString().slice(0, 10);
+  const nights = Math.round(
+    (booking.checkOut.getTime() - booking.checkIn.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  const message = formatAlert('new-booking', {
+    guestName: booking.guest.name,
+    roomName: booking.room.name,
+    checkIn: checkInDate,
+    checkOut: checkOutDate,
+    nights,
+    price: booking.totalPrice,
+  });
+
+  await sendViaHook(app, 'alert', message);
+}
+
+/**
+ * Send a draft-ready notification via WhatsApp.
+ * Called after AI draft generation completes (fire-and-forget from job processor).
+ */
+export async function sendDraftReadyNotification(
+  app: FastifyInstance,
+  conversationId: string,
+  guestName: string,
+): Promise<void> {
+  const message = formatAlert('draft-ready', { guestName });
+  await sendViaHook(app, 'alert', message);
+}

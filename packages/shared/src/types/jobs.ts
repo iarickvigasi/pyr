@@ -20,7 +20,7 @@ export interface CalendarSyncJobData {
 
 /** Scheduled task job -- cron-based daily briefing, reminders */
 export interface ScheduledJobData {
-  taskType: 'morning-briefing' | 'pre-arrival-reminder' | 'overdue-invoice-alert';
+  taskType: 'morning-briefing' | 'guest-arrival-alert' | 'overdue-invoice-alert';
 }
 
 /** Health check job -- verifies queue infrastructure is working */

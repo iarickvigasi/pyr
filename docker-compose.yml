@@ -40,6 +40,7 @@ services:
     volumes:
       - ./openclaw:/home/node/.openclaw
       - ./openclaw/workspace:/home/node/.openclaw/workspace
+      - ./packages/assistant/openclaw-plugin:/home/node/.openclaw/plugins/pyr-assistant
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}

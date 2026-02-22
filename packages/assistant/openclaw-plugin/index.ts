@@ -31,6 +31,6 @@ export default {
     registerDashboardTools(api, client);
     registerSettingsTools(api, client);
 
-    api.logger.info('PYR Assistant plugin loaded: 15 business query tools registered');
+    api.logger.info('PYR Assistant plugin loaded: 16 business query tools registered');
   },
 };

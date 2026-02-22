@@ -51,8 +51,8 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **ASST-03**: WhatsApp connectivity via OpenClaw messaging integration
 - [x] **ASST-04**: Assistant uses Claude tool-use to query business data (bookings, guests, availability, revenue, today's schedule)
 - [x] **ASST-05**: Assistant can take actions with confirmation flow (create bookings, create events, send payment reminders) -- Ines confirms before execution
-- [ ] **ASST-06**: Morning briefing delivered at configurable time (default 7:30 AM): today's check-ins/outs, events, pending inquiries, yesterday's revenue
-- [ ] **ASST-07**: Proactive alerts sent via assistant: new booking received, payment confirmed, guest arriving tomorrow, overdue invoice
+- [x] **ASST-06**: Morning briefing delivered at configurable time (default 7:30 AM): today's check-ins/outs, events, pending inquiries, yesterday's revenue
+- [x] **ASST-07**: Proactive alerts sent via assistant: new booking received, payment confirmed, guest arriving tomorrow, overdue invoice
 - [x] **ASST-08**: AI email drafts can be reviewed and approved directly from the assistant chat ("Reply OK to send")
 - [x] **ASST-09**: Assistant can trigger overdue invoice reminders on request
 
@@ -162,8 +162,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASST-03 | Phase 7 | Complete |
 | ASST-04 | Phase 7 | Complete |
 | ASST-05 | Phase 8 | Complete |
-| ASST-06 | Phase 8 | Pending |
-| ASST-07 | Phase 8 | Pending |
+| ASST-06 | Phase 8 | Complete |
+| ASST-07 | Phase 8 | Complete |
 | ASST-08 | Phase 8 | Complete |
 | ASST-09 | Phase 8 | Complete |
 | TEST-05 | Phase 9 | Pending |

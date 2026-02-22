@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 ## Current Position
 
-Phase: 8 of 9 (Assistant Actions & Automation)
-Plan: 1 of 2 in current phase (Plan 1 complete)
-Status: Executing Phase 08
-Last activity: 2026-02-22 -- 08-01-PLAN.md complete (write action tools + draft approval + confirmation flow)
+Phase: 8 of 9 (Assistant Actions & Automation) -- COMPLETE
+Plan: 2 of 2 in current phase (Phase 8 complete)
+Status: Phase 08 complete, ready for Phase 09
+Last activity: 2026-02-22 -- 08-02-PLAN.md complete (notification infrastructure + briefing scheduler + alert wiring)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 70%
+Progress: [▓▓▓▓▓▓▓▓▓░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: 6min
-- Total execution time: 2.4 hours
+- Total execution time: 2.5 hours
 
 **By Phase:**
 
@@ -34,10 +34,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 70%
 | 05-ai-email-integration | 4/4 | 23min | 5.8min |
 | 06-caldav-calendar-sync | 3/4 | 22min | 5.5min |
 | 07-openclaw-assistant-core | 1/2 | 9min | 9.0min |
-| 08-assistant-actions-automation | 1/2 | 5min | 5.0min |
+| 08-assistant-actions-automation | 2/2 | 9min | 4.5min |
 
 **Recent Trend:**
-- Last 5 plans: 9min, 5min, 3min, 9min, 5min
+- Last 5 plans: 5min, 3min, 9min, 5min, 4min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -154,6 +154,11 @@ Recent decisions affecting current work:
 - [Phase 08]: [08-01]: Rejection bypasses confirmation -- reject_draft calls backend directly (no pending action)
 - [Phase 08]: [08-01]: Invoice reminder surfaces overdue booking data for manual follow-up (Phase 2 builds full automation)
 - [Phase 08]: [08-01]: 26 tools total: guests(3) + bookings(2) + rooms(3) + events(3) + conversations(2) + dashboard(2) + settings(1) + actions(6) + drafts(4)
+- [Phase 08]: [08-02]: BullMQ tz option for cron timezone instead of manual UTC conversion -- handles DST automatically
+- [Phase 08]: [08-02]: Guest arrival scheduler runs 5 minutes after morning briefing for natural morning flow
+- [Phase 08]: [08-02]: Overdue invoice heuristic: checked_out + totalPrice > 0 + checkOut > 7 days ago (no payment queries for MVP)
+- [Phase 08]: [08-02]: Dynamic import for notification service in job processors to avoid circular dependency
+- [Phase 08]: [08-02]: Best-effort hook delivery pattern: sendViaHook logs errors but never throws
 
 ### Pending Todos
 
@@ -168,5 +173,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 08-01-PLAN.md
-Resume file: .planning/phases/08-assistant-actions-automation/08-02-PLAN.md
+Stopped at: Completed 08-02-PLAN.md (Phase 08 complete)
+Resume file: .planning/phases/09-testing-migration-launch/09-01-PLAN.md

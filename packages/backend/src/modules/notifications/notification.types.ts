@@ -21,7 +21,3 @@ export interface BriefingData {
   isEmpty: boolean;
 }
 
-/** Payload sent to OpenClaw hooks */
-export interface HookPayload {
-  message: string;
-}

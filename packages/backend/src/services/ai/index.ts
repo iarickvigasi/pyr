@@ -47,23 +47,11 @@ export function createAiModule(app: FastifyInstance): AiModuleContract {
     },
 
     async healthCheck() {
-      try {
-        const response = await fetch(`${config.OPENCLAW_GATEWAY_URL}/v1/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${config.OPENCLAW_GATEWAY_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'openclaw:main',
-            messages: [{ role: 'user', content: 'health check' }],
-            max_tokens: 1,
-          }),
-        });
-        return { primary: response.ok, fallback: response.ok };
-      } catch {
-        return { primary: false, fallback: false };
-      }
+      // WebSocket connection state is the health indicator.
+      // OpenClaw Gateway handles provider failover internally --
+      // if connected, both primary and fallback are considered available.
+      const connected = app.gateway?.isConnected ?? false;
+      return { primary: connected, fallback: connected };
     },
   };
 }

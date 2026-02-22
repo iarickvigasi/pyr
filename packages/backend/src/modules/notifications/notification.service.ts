@@ -1,52 +1,50 @@
 /**
- * Notification service -- hook delivery, morning briefing builder, and alert formatters.
+ * Notification service -- gateway delivery, morning briefing builder, and alert formatters.
  *
- * All notifications are delivered via OpenClaw hooks to WhatsApp.
+ * All notifications are delivered via the persistent WebSocket connection to OpenClaw Gateway.
  * Delivery is best-effort: failures are logged but never throw,
  * so primary operations (booking creation, draft generation, etc.) are never blocked.
  */
 
+import crypto from 'crypto';
 import type { FastifyInstance } from 'fastify';
-import type { AlertType, BriefingData, HookPayload } from './notification.types.js';
+import type { AlertType, BriefingData } from './notification.types.js';
 import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
 
 // ---------------------------------------------------------------------------
-// Hook Delivery
+// Gateway Delivery
 // ---------------------------------------------------------------------------
 
 /**
- * Send a message to the OpenClaw Gateway via hooks endpoint.
+ * Send a message to the OpenClaw Gateway via WebSocket agent RPC.
+ * Replicates the hook mapping behavior from openclaw.json:
+ * - briefing: deliver=true, sessionKey=hook:briefing
+ * - alert:    deliver=true, sessionKey=hook:alert
+ * - draft:    deliver=false, sessionKey=hook:draft:<timestamp>
+ *
  * Best-effort: logs errors but never throws.
  */
-export async function sendViaHook(
+export async function sendViaGateway(
   app: FastifyInstance,
   hookPath: string,
   message: string,
 ): Promise<void> {
-  const url = `${app.config.OPENCLAW_GATEWAY_URL}/hooks/${hookPath}`;
-  const payload: HookPayload = { message };
-
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${app.config.OPENCLAW_HOOK_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+    const deliver = hookPath !== 'draft';
+    const sessionKey = hookPath === 'draft'
+      ? `hook:draft:${Date.now()}`
+      : `hook:${hookPath}`;
+
+    await app.gateway.request('agent', {
+      message,
+      agentId: 'main',
+      sessionKey,
+      deliver,
+      idempotencyKey: crypto.randomUUID(),
     });
-
-    if (!response.ok) {
-      app.log.error(
-        { hookPath, status: response.status, statusText: response.statusText },
-        'Hook delivery returned non-OK status',
-      );
-      return;
-    }
-
-    app.log.info({ hookPath }, 'Hook delivered successfully');
+    app.log.info({ hookPath }, 'Gateway agent request sent');
   } catch (err) {
-    app.log.error({ err, hookPath }, 'Hook delivery failed');
+    app.log.error({ err, hookPath }, 'Gateway agent request failed');
   }
 }
 
@@ -179,7 +177,7 @@ export async function processMorningBriefing(app: FastifyInstance): Promise<void
   };
 
   const message = formatBriefing(briefingData);
-  await sendViaHook(app, 'briefing', message);
+  await sendViaGateway(app, 'briefing', message);
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +224,7 @@ export async function processGuestArrivalAlert(app: FastifyInstance): Promise<vo
       nights,
     });
 
-    await sendViaHook(app, 'alert', message);
+    await sendViaGateway(app, 'alert', message);
   }
 
   app.log.info({ count: arrivingBookings.length }, 'Guest arrival alerts sent');
@@ -274,7 +272,7 @@ export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<
       amount: booking.totalPrice,
     });
 
-    await sendViaHook(app, 'alert', message);
+    await sendViaGateway(app, 'alert', message);
   }
 
   app.log.info({ count: overdueBookings.length }, 'Overdue invoice alerts sent');
@@ -320,7 +318,7 @@ export async function sendNewBookingAlert(
     price: booking.totalPrice,
   });
 
-  await sendViaHook(app, 'alert', message);
+  await sendViaGateway(app, 'alert', message);
 }
 
 /**
@@ -333,5 +331,5 @@ export async function sendDraftReadyNotification(
   guestName: string,
 ): Promise<void> {
   const message = formatAlert('draft-ready', { guestName });
-  await sendViaHook(app, 'alert', message);
+  await sendViaGateway(app, 'alert', message);
 }

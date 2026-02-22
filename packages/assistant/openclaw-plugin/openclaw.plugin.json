@@ -1,0 +1,28 @@
+{
+  "id": "pyr-assistant",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiUrl": {
+        "type": "string",
+        "description": "PYR backend API URL"
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "PYR API key for authentication"
+      }
+    },
+    "required": ["apiUrl", "apiKey"]
+  },
+  "uiHints": {
+    "apiUrl": {
+      "label": "PYR API URL",
+      "placeholder": "http://host.docker.internal:3001"
+    },
+    "apiKey": {
+      "label": "PYR API Key",
+      "sensitive": true
+    }
+  }
+}

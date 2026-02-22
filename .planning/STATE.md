@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 8.1 - Integration Fixes & Verification Closure
+**Current focus:** Phase 9 - Migration, UAT & Launch
 
 ## Current Position
 
-Phase: 8.1 (Integration Fixes & Verification Closure)
-Plan: 1 of 2 in current phase
-Status: Plan 01 complete (bug fixes + tests + traceability), Plan 02 pending
-Last activity: 2026-02-22 -- 08.1-01-PLAN.md complete (OTA calendar sync + check_availability param fixes + traceability)
+Phase: 9 (Migration, UAT & Launch)
+Plan: 0 of N in current phase
+Status: Phase 8.1 complete, ready for Phase 9
+Last activity: 2026-02-22 -- 08.1-02-PLAN.md complete (retroactive VERIFICATION.md for Phases 6 and 7)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 80%
+Progress: [▓▓▓▓▓▓▓▓▓░] 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25
+- Total plans completed: 26
 - Average duration: 6min
-- Total execution time: 2.6 hours
+- Total execution time: 2.7 hours
 
 **By Phase:**
 
@@ -35,10 +35,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 80%
 | 06-caldav-calendar-sync | 3/4 | 22min | 5.5min |
 | 07-openclaw-assistant-core | 1/2 | 9min | 9.0min |
 | 08-assistant-actions-automation | 2/2 | 9min | 4.5min |
-| 08.1-integration-fixes-verification-closure | 1/2 | 5min | 5.0min |
+| 08.1-integration-fixes-verification-closure | 2/2 | 12min | 6.0min |
 
 **Recent Trend:**
-- Last 5 plans: 3min, 9min, 5min, 4min, 5min
+- Last 5 plans: 9min, 5min, 4min, 5min, 7min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -162,6 +162,9 @@ Recent decisions affecting current work:
 - [Phase 08]: [08-02]: Best-effort hook delivery pattern: sendViaHook logs errors but never throws
 - [Phase 08.1]: [08.1-01]: Shared mock IMAP instance (module-level vi.fn) for email pipeline tests -- ensures createImapService mock returns consistent pollNewEmails spy
 - [Phase 08.1]: [08.1-01]: vitest added as devDep to openclaw-plugin for standalone test execution
+- [Phase 08.1]: [08.1-02]: Retroactive verification via code review with real line numbers from source files
+- [Phase 08.1]: [08.1-02]: Phase 6 verification includes 13 truths covering CalDAV wiring, settings UI, sync status, and OTA fix
+- [Phase 08.1]: [08.1-02]: Phase 7 verification includes 14 truths covering both plugin tools (16) and dashboard chat UI (7 components)
 
 ### Pending Todos
 
@@ -176,5 +179,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 08.1-01-PLAN.md
-Resume file: .planning/phases/08.1-integration-fixes-verification-closure/08.1-02-PLAN.md
+Stopped at: Completed 08.1-02-PLAN.md (Phase 8.1 complete)
+Resume file: Phase 9 planning needed

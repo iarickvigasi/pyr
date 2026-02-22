@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: CalDAV Calendar Sync** - One-way push of bookings and events to Apple Calendar via CalDAV, verified with real iCloud account tests (completed 2026-02-21)
 - [x] **Phase 7: OpenClaw Assistant Core** - OpenClaw runtime setup, dashboard chat UI, WhatsApp channel, and read-only query tools (completed 2026-02-21)
 - [x] **Phase 8: Assistant Actions & Automation** - Write actions with confirmation, morning briefings, proactive alerts, draft approval via chat (completed 2026-02-22)
-- [ ] **Phase 8.1: Integration Fixes & Verification Closure** - INSERTED: Fix OTA→calendar sync wiring, check_availability params, run retroactive verifiers on Phases 6 & 7, fix traceability
+- [x] **Phase 8.1: Integration Fixes & Verification Closure** - INSERTED: Fix OTA→calendar sync wiring, check_availability params, run retroactive verifiers on Phases 6 & 7, fix traceability (completed 2026-02-22)
 - [ ] **Phase 9: Migration, UAT & Launch** - Excel data import, UAT with Ines, documentation, production deployment
 
 ## Phase Details
@@ -173,8 +173,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08.1-01-PLAN.md — Fix OTA->calendar sync wiring, check_availability param mismatch, integration tests, traceability table update
-- [ ] 08.1-02-PLAN.md — Retroactive VERIFICATION.md for Phase 6 (CAL-01..05, TEST-04) and Phase 7 (ASST-01..04)
+- [x] 08.1-01-PLAN.md — Fix OTA->calendar sync wiring, check_availability param mismatch, integration tests, traceability table update
+- [x] 08.1-02-PLAN.md — Retroactive VERIFICATION.md for Phase 6 (CAL-01..05, TEST-04) and Phase 7 (ASST-01..04)
 
 ### Phase 9: Migration, UAT & Launch
 **Goal**: Real data is imported, Ines validates the system works for her daily workflows, and the platform goes live on production

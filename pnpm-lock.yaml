@@ -151,6 +151,9 @@ importers:
       tsdav:
         specifier: ^2.1.8
         version: 2.1.8
+      ws:
+        specifier: ^8.19.0
+        version: 8.19.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -170,6 +173,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       copyfiles:
         specifier: ^2.4.1
         version: 2.4.1

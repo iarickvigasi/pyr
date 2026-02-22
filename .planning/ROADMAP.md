@@ -136,13 +136,11 @@ Plans:
   2. Ines can open a chat panel in the admin dashboard and ask questions like "Who's checking in tomorrow?" or "What's the revenue this month?" -- and get correct answers
   3. The same assistant is reachable via WhatsApp on Ines's phone with the same capabilities
   4. The assistant uses Claude tool-use to query real business data (bookings, guests, availability, revenue, today's schedule) -- not hallucinated answers
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: OpenClaw runtime setup (self-hosted deployment, configuration, API connection to PYR backend)
-- [ ] 07-02: Dashboard WebChat integration (chat panel component, message history, streaming responses)
-- [ ] 07-03: WhatsApp channel configuration (OpenClaw WhatsApp connector, message routing)
-- [ ] 07-04: Query tools (Claude tool-use definitions for bookings, guests, availability, revenue, schedule lookups)
+- [ ] 07-01-PLAN.md — OpenClaw plugin with ~15 query tools, workspace persona (Koda), WhatsApp channel config, Docker Compose plugin mount
+- [ ] 07-02-PLAN.md — Backend SSE proxy, dashboard chat UI (streaming, markdown, tool indicators, quick actions), sidebar nav, end-to-end verification
 
 ### Phase 8: Assistant Actions & Automation
 **Goal**: The assistant can take actions on Ines's behalf (with confirmation) and proactively delivers briefings and alerts
@@ -195,6 +193,6 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 | 4. AI Communication Engine | 4/4 | Complete    | 2026-02-20 |
 | 5. AI-Email Integration | 4/4 | Complete    | 2026-02-20 |
 | 6. CalDAV Calendar Sync | 3/4 | In Progress | - |
-| 7. OpenClaw Assistant Core | 0/4 | Not started | - |
+| 7. OpenClaw Assistant Core | 0/2 | Not started | - |
 | 8. Assistant Actions & Automation | 0/4 | Not started | - |
 | 9. Migration, UAT & Launch | 0/4 | Not started | - |

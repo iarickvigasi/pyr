@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 7 - OpenClaw Assistant Core
+**Current focus:** Phase 8 - Assistant Actions & Automation
 
 ## Current Position
 
-Phase: 7 of 9 (OpenClaw Assistant Core)
+Phase: 8 of 9 (Assistant Actions & Automation)
 Plan: 1 of 2 in current phase (Plan 1 complete)
-Status: Executing Phase 07
-Last activity: 2026-02-22 -- 07-01-PLAN.md complete (OpenClaw plugin + workspace + Docker mount)
+Status: Executing Phase 08
+Last activity: 2026-02-22 -- 08-01-PLAN.md complete (write action tools + draft approval + confirmation flow)
 
-Progress: [▓▓▓▓▓▓▓▓▓░] 65%
+Progress: [▓▓▓▓▓▓▓▓▓░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
+- Total plans completed: 23
 - Average duration: 6min
-- Total execution time: 2.3 hours
+- Total execution time: 2.4 hours
 
 **By Phase:**
 
@@ -34,9 +34,10 @@ Progress: [▓▓▓▓▓▓▓▓▓░] 65%
 | 05-ai-email-integration | 4/4 | 23min | 5.8min |
 | 06-caldav-calendar-sync | 3/4 | 22min | 5.5min |
 | 07-openclaw-assistant-core | 1/2 | 9min | 9.0min |
+| 08-assistant-actions-automation | 1/2 | 5min | 5.0min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 9min, 5min, 3min, 9min
+- Last 5 plans: 9min, 5min, 3min, 9min, 5min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -148,6 +149,11 @@ Recent decisions affecting current work:
 - [Phase 07]: [07-01]: Koda as assistant persona name -- short, friendly, works in EN/DE, evokes a puppy name
 - [Phase 07]: [07-01]: SAFE_KEYS allowlist in settings tool to prevent sensitive credential exposure
 - [Phase 07]: [07-01]: Plugin mounted as separate Docker volume since source lives in packages/ not openclaw/
+- [Phase 08]: [08-01]: In-memory Map for pending actions -- ephemeral, single-user, single-instance, lost on restart
+- [Phase 08]: [08-01]: Draft approval uses same two-step confirmation flow as bookings/events for UX consistency
+- [Phase 08]: [08-01]: Rejection bypasses confirmation -- reject_draft calls backend directly (no pending action)
+- [Phase 08]: [08-01]: Invoice reminder surfaces overdue booking data for manual follow-up (Phase 2 builds full automation)
+- [Phase 08]: [08-01]: 26 tools total: guests(3) + bookings(2) + rooms(3) + events(3) + conversations(2) + dashboard(2) + settings(1) + actions(6) + drafts(4)
 
 ### Pending Todos
 
@@ -162,5 +168,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 07-01-PLAN.md
-Resume file: .planning/phases/07-openclaw-assistant-core/07-02-PLAN.md
+Stopped at: Completed 08-01-PLAN.md
+Resume file: .planning/phases/08-assistant-actions-automation/08-02-PLAN.md

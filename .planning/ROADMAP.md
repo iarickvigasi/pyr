@@ -152,13 +152,11 @@ Plans:
   3. The assistant proactively notifies Ines of new bookings, payment confirmations, arriving guests, and overdue invoices
   4. Ines can review and approve AI email drafts directly from the assistant chat ("Reply OK to send")
   5. Ines can ask the assistant to send overdue invoice reminders on request
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: Write action tools with confirmation flow (create booking, create event, send reminder -- confirm before execute)
-- [ ] 08-02: Morning briefing scheduler (configurable time, today's agenda, pending items, revenue summary)
-- [ ] 08-03: Proactive alert system (new booking, payment confirmed, guest arriving, overdue invoice notifications)
-- [ ] 08-04: Draft approval via chat and invoice reminder tool
+- [ ] 08-01-PLAN.md — Plugin write tools (prepare/confirm booking & event), draft approval tools, invoice reminder, confirmation state machine, workspace docs update
+- [ ] 08-02-PLAN.md — Backend notification service, scheduled processor (morning briefing, guest arrival, overdue invoice), alert wiring in mutations, OpenClaw hook config
 
 ### Phase 9: Migration, UAT & Launch
 **Goal**: Real data is imported, Ines validates the system works for her daily workflows, and the platform goes live on production
@@ -194,5 +192,5 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 | 5. AI-Email Integration | 4/4 | Complete    | 2026-02-20 |
 | 6. CalDAV Calendar Sync | 3/4 | In Progress | - |
 | 7. OpenClaw Assistant Core | 1/2 | In Progress | - |
-| 8. Assistant Actions & Automation | 0/4 | Not started | - |
+| 8. Assistant Actions & Automation | 0/2 | Not started | - |
 | 9. Migration, UAT & Launch | 0/4 | Not started | - |

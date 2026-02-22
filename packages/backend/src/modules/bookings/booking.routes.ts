@@ -14,6 +14,7 @@ import {
   updateBooking,
   cancelBooking,
 } from './booking.service.js';
+import { sendNewBookingAlert } from '../notifications/notification.service.js';
 
 /**
  * Enqueue a calendar sync job for a booking mutation.
@@ -60,6 +61,10 @@ export default async function bookingRoutes(app: FastifyInstance): Promise<void>
   }, async (request, reply) => {
     const booking = await createBooking(app.prisma, request.body, request.user?.sub);
     await enqueueCalendarSync(app, booking.id, 'create');
+    // Fire-and-forget WhatsApp alert (never blocks the booking response)
+    sendNewBookingAlert(app, booking.id).catch(err =>
+      app.log.error({ err }, 'Failed to send new booking alert'),
+    );
     return reply.status(201).send({ data: booking });
   });
 

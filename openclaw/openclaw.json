@@ -1,45 +1,98 @@
 {
+  "env": {
+    "vars": {
+      "PYR_API_URL": "http://host.docker.internal:3001",
+      "PYR_API_KEY": "${API_KEY}"
+    }
+  },
+  "logging": {
+    "level": "info"
+  },
   "agents": {
     "defaults": {
       "model": {
         "primary": "anthropic/claude-sonnet-4-5-20250929",
-        "fallbacks": ["openai/gpt-4o"]
+        "fallbacks": [
+          "openai/gpt-4o"
+        ]
       },
       "contextTokens": 200000,
       "timeoutSeconds": 120
     }
   },
-  "plugins": {
-    "load": {
-      "paths": ["/home/node/.openclaw/plugins/pyr-assistant"]
-    }
-  },
-  "channels": {
-    "whatsapp": {
-      "dmPolicy": "allowlist",
-      "allowFrom": ["INES_PHONE_NUMBER_PLACEHOLDER"],
-      "sendReadReceipts": true,
-      "textChunkLimit": 4000,
-      "chunkMode": "newline",
-      "mediaMaxMb": 10
-    }
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto"
   },
   "hooks": {
     "enabled": true,
-    "token": "${OPENCLAW_HOOK_TOKEN}",
     "path": "/hooks",
+    "token": "${OPENCLAW_HOOK_TOKEN}",
     "defaultSessionKey": "hook:pyr",
-    "allowedAgentIds": ["hooks", "main"],
+    "allowedAgentIds": [
+      "hooks",
+      "main"
+    ],
     "maxBodyBytes": 262144,
     "mappings": [
       {
-        "match": { "path": "draft" },
+        "match": {
+          "path": "draft"
+        },
         "action": "agent",
         "agentId": "main",
         "sessionKey": "hook:draft:{{message}}",
         "deliver": false
+      },
+      {
+        "match": {
+          "path": "briefing"
+        },
+        "action": "agent",
+        "agentId": "main",
+        "sessionKey": "hook:briefing",
+        "deliver": {
+          "channel": "whatsapp"
+        }
+      },
+      {
+        "match": {
+          "path": "alert"
+        },
+        "action": "agent",
+        "agentId": "main",
+        "sessionKey": "hook:alert",
+        "deliver": {
+          "channel": "whatsapp"
+        }
       }
     ]
+  },
+  "channels": {
+    "whatsapp": {
+      "sendReadReceipts": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "INES_PHONE_NUMBER_PLACEHOLDER"
+      ],
+      "groupPolicy": "allowlist",
+      "textChunkLimit": 4000,
+      "chunkMode": "newline",
+      "debounceMs": 0,
+      "mediaMaxMb": 10
+    }
+  },
+  "gateway": {
+    "auth": {
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    }
   },
   "skills": {
     "load": {
@@ -47,25 +100,26 @@
     },
     "entries": {}
   },
-  "gateway": {
-    "http": {
-      "endpoints": {
-        "chatCompletions": {
-          "enabled": true
-        }
-      }
+  "plugins": {
+    "load": {
+      "paths": [
+        "/home/node/.openclaw/plugins/pyr-assistant"
+      ]
     },
-    "auth": {
-      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    "entries": {
+      "pyr-assistant": {
+        "config": {
+          "apiUrl": "http://host.docker.internal:3001",
+          "apiKey": "${API_KEY}"
+        }
+      },
+      "whatsapp": {
+        "enabled": true
+      }
     }
   },
-  "logging": {
-    "level": "info"
-  },
-  "env": {
-    "vars": {
-      "PYR_API_URL": "http://host.docker.internal:3001",
-      "PYR_API_KEY": "${API_KEY}"
-    }
+  "meta": {
+    "lastTouchedVersion": "2026.2.17",
+    "lastTouchedAt": "2026-02-22T14:04:34.374Z"
   }
 }

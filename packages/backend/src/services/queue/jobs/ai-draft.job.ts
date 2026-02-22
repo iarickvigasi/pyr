@@ -57,6 +57,21 @@ export function createAiDraftProcessor(app: FastifyInstance) {
         },
         'AI draft generated successfully',
       );
+
+      // Send WhatsApp notification about the new draft (best-effort, never blocks draft job)
+      try {
+        const conversation = await app.prisma.conversation.findUnique({
+          where: { id: conversationId },
+          include: { guest: { select: { name: true } } },
+        });
+        if (conversation?.guest?.name) {
+          const { sendDraftReadyNotification } =
+            await import('../../../modules/notifications/notification.service.js');
+          await sendDraftReadyNotification(app, conversationId, conversation.guest.name);
+        }
+      } catch (notifErr) {
+        logger.error({ err: notifErr }, 'Failed to send draft-ready notification');
+      }
     } catch (err) {
       logger.error({ err }, 'AI draft generation failed');
       throw err; // BullMQ will retry (3 attempts, exponential backoff from 3s)

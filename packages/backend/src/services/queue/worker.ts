@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { QUEUE_NAMES } from '@pyr/shared';
-import type { HealthCheckJobData, EmailPollJobData } from '@pyr/shared';
+import type { HealthCheckJobData, EmailPollJobData, ScheduledJobData } from '@pyr/shared';
 import { createHealthCheckProcessor } from './jobs/health-check.job.js';
 import { createEmailPollProcessor } from './jobs/email-poll.job.js';
 import { createAiDraftProcessor, createAiDraftFailedHandler } from './jobs/ai-draft.job.js';
@@ -101,5 +101,56 @@ export async function setupSchedulers(app: FastifyInstance): Promise<void> {
       data: {} satisfies EmailPollJobData,
     });
     app.log.info({ intervalMs: emailPollIntervalMs }, 'Email poll scheduler registered');
+  }
+
+  // --- Scheduled task schedulers (morning briefing, guest arrival, overdue invoice) ---
+
+  const scheduledQueue = app.queues.getQueue(QUEUE_NAMES.SCHEDULED);
+  if (scheduledQueue) {
+    // Morning briefing -- configurable time, default 07:30 Cyprus time
+    let briefingTime = '07:30';
+    try {
+      const setting = await getSetting(app.prisma, 'morning_briefing_time');
+      if (typeof setting.value === 'string' && /^\d{2}:\d{2}$/.test(setting.value)) {
+        briefingTime = setting.value;
+      }
+    } catch {
+      app.log.info('morning_briefing_time setting not found, using default (07:30)');
+    }
+
+    const [briefingHours, briefingMinutes] = briefingTime.split(':').map(Number) as [number, number];
+
+    await scheduledQueue.upsertJobScheduler('morning-briefing-scheduler', {
+      pattern: `${briefingMinutes} ${briefingHours} * * *`,
+      tz: 'Europe/Nicosia',
+    }, {
+      name: 'scheduled',
+      data: { taskType: 'morning-briefing' } satisfies ScheduledJobData,
+    });
+    app.log.info({ time: briefingTime, tz: 'Europe/Nicosia' }, 'Morning briefing scheduler registered');
+
+    // Guest arrival alert -- 5 minutes after morning briefing
+    const arrivalMinutes = briefingMinutes + 5;
+    const arrivalHours = arrivalMinutes >= 60 ? briefingHours + 1 : briefingHours;
+    const arrivalMin = arrivalMinutes >= 60 ? arrivalMinutes - 60 : arrivalMinutes;
+
+    await scheduledQueue.upsertJobScheduler('guest-arrival-scheduler', {
+      pattern: `${arrivalMin} ${arrivalHours} * * *`,
+      tz: 'Europe/Nicosia',
+    }, {
+      name: 'scheduled',
+      data: { taskType: 'guest-arrival-alert' } satisfies ScheduledJobData,
+    });
+    app.log.info({ time: `${String(arrivalHours).padStart(2, '0')}:${String(arrivalMin).padStart(2, '0')}` }, 'Guest arrival scheduler registered');
+
+    // Overdue invoice check -- daily at 9:00 AM Cyprus time
+    await scheduledQueue.upsertJobScheduler('overdue-invoice-scheduler', {
+      pattern: '0 9 * * *',
+      tz: 'Europe/Nicosia',
+    }, {
+      name: 'scheduled',
+      data: { taskType: 'overdue-invoice-alert' } satisfies ScheduledJobData,
+    });
+    app.log.info('Overdue invoice scheduler registered (09:00 Europe/Nicosia)');
   }
 }

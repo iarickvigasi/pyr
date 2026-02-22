@@ -9,6 +9,21 @@
       "timeoutSeconds": 120
     }
   },
+  "plugins": {
+    "load": {
+      "paths": ["/home/node/.openclaw/plugins/pyr-assistant"]
+    }
+  },
+  "channels": {
+    "whatsapp": {
+      "dmPolicy": "allowlist",
+      "allowFrom": ["INES_PHONE_NUMBER_PLACEHOLDER"],
+      "sendReadReceipts": true,
+      "textChunkLimit": 4000,
+      "chunkMode": "newline",
+      "mediaMaxMb": 10
+    }
+  },
   "hooks": {
     "enabled": true,
     "token": "${OPENCLAW_HOOK_TOKEN}",

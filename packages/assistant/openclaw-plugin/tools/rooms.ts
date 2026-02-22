@@ -1,4 +1,3 @@
-import { Type } from '@sinclair/typebox';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import type { ApiClient } from '../lib/api-client.js';
 import { formatEurCents } from '../lib/formatters.js';
@@ -31,7 +30,7 @@ export function registerRoomTools(api: OpenClawPluginApi, client: ApiClient): vo
     label: 'List Rooms',
     description:
       'List all physical rooms at the villa with their current status and room type. Useful for seeing which rooms exist and their status.',
-    parameters: Type.Object({}),
+    parameters: { type: 'object' as const, properties: {}, required: [] },
     async execute() {
       const data = await client.get<Room[]>('/api/v1/rooms');
       const rooms = (data as unknown as Room[]).map(r => ({
@@ -50,7 +49,7 @@ export function registerRoomTools(api: OpenClawPluginApi, client: ApiClient): vo
     label: 'List Room Types',
     description:
       'List all room type categories with pricing and capacity. Shows base price per night and maximum occupancy for each type (Suite, Standard, etc.).',
-    parameters: Type.Object({}),
+    parameters: { type: 'object' as const, properties: {}, required: [] },
     async execute() {
       const data = await client.get<RoomType[]>('/api/v1/room-types');
       const roomTypes = (data as unknown as RoomType[]).map(rt => ({
@@ -68,14 +67,18 @@ export function registerRoomTools(api: OpenClawPluginApi, client: ApiClient): vo
     label: 'Check Room Availability',
     description:
       'Check room availability for a specific date range. Returns which rooms are available and their pricing for the given dates. Use for "Is anything available March 15-19?" or "Which rooms are free next week?".',
-    parameters: Type.Object({
-      from: Type.String({ description: 'Check-in date (ISO format, e.g., 2026-03-15)' }),
-      to: Type.String({ description: 'Check-out date (ISO format, e.g., 2026-03-19)' }),
-    }),
-    async execute(_id: string, params: { from: string; to: string }) {
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        checkIn: { type: 'string', description: 'Check-in date (ISO format, e.g., 2026-03-15)' },
+        checkOut: { type: 'string', description: 'Check-out date (ISO format, e.g., 2026-03-19)' },
+      },
+      required: ['checkIn', 'checkOut'],
+    },
+    async execute(_id: string, params: { checkIn: string; checkOut: string }) {
       const data = await client.get<AvailableRoom[]>('/api/v1/availability', {
-        from: params.from,
-        to: params.to,
+        checkIn: params.checkIn,
+        checkOut: params.checkOut,
       });
       const available = (data as unknown as AvailableRoom[]).map(r => ({
         roomName: r.name,
@@ -88,7 +91,7 @@ export function registerRoomTools(api: OpenClawPluginApi, client: ApiClient): vo
         content: [{
           type: 'text' as const,
           text: JSON.stringify({
-            dateRange: { from: params.from, to: params.to },
+            dateRange: { checkIn: params.checkIn, checkOut: params.checkOut },
             availableRooms: available,
             totalAvailable: available.length,
           }, null, 2),

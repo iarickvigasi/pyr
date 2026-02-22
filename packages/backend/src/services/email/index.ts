@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import type { EmailModuleContract, SendEmailParams } from '@pyr/shared';
 import { QUEUE_NAMES } from '@pyr/shared';
-import type { EmailPollJobData, AiDraftJobData } from '@pyr/shared';
+import type { EmailPollJobData, AiDraftJobData, CalendarSyncJobData } from '@pyr/shared';
 import { ImapFlow } from 'imapflow';
 import { createImapService, type ImapConfig } from './imap.service.js';
 import { createSmtpService, type SmtpConfig } from './smtp.service.js';
@@ -439,6 +439,20 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
                     },
                     'OTA booking auto-created from email',
                   );
+
+                  // Enqueue calendar sync for OTA-created booking
+                  const calQueue = app.queues?.getQueue(QUEUE_NAMES.CALENDAR_SYNC);
+                  if (calQueue) {
+                    try {
+                      await calQueue.add('calendar-sync', {
+                        entityType: 'booking',
+                        entityId: booking.id,
+                        action: 'create',
+                      } satisfies CalendarSyncJobData);
+                    } catch (syncErr) {
+                      app.log.error({ err: syncErr, bookingId: booking.id }, 'Failed to enqueue calendar sync for OTA booking');
+                    }
+                  }
                 } else {
                   app.log.warn(
                     { conversationId, otaPlatform: otaData.otaPlatform },

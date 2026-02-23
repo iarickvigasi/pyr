@@ -35,6 +35,6 @@ export default {
     registerActionTools(api, client);
     registerDraftTools(api, client);
 
-    api.logger.info('PYR Assistant plugin loaded: 26 tools registered (16 read + 6 action + 4 draft)');
+    api.logger.info('PYR Assistant plugin loaded: 37 tools registered (17 read + 16 action + 4 draft)');
   },
 };

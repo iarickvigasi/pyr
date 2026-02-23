@@ -455,6 +455,53 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
               details: {},
             };
           }
+
+          case 'update_event': {
+            const { eventId, ...changes } = action.payload as { eventId: string; [key: string]: unknown };
+            const event = await client.patch<Record<string, unknown>>(`/api/v1/events/${eventId}`, changes);
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: 'Event updated successfully!',
+                event,
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
+          case 'delete_event': {
+            const { eventId } = action.payload as { eventId: string };
+            await client.del(`/api/v1/events/${eventId}`);
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: 'Event deleted permanently. All registrations have been removed.',
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
+          case 'register_guest_for_event': {
+            const { eventId, guestId } = action.payload as { eventId: string; guestId: string };
+            await client.post(`/api/v1/events/${eventId}/book`, { guestId });
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: 'Guest registered for the event successfully!',
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
+          default: {
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                error: true,
+                message: `Unknown action type: ${String(action.type)}`,
+              }, null, 2) }],
+              details: {},
+            };
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -483,8 +530,6 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
         };
       }
 
-      // Remaining action types (update_event, delete_event, register_guest_for_event, update_conversation) will be added by subsequent plans
-      return { content: [{ type: 'text' as const, text: '{}' }], details: {} };
     },
   });
 

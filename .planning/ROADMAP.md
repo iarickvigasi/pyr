@@ -231,3 +231,20 @@ Plans:
 - [ ] 10-01-PLAN.md -- GatewayWsClient service, protocol types, Fastify plugin (app.gateway decorator)
 - [ ] 10-02-PLAN.md -- Migrate dashboard chat SSE proxy and notification hook delivery to WebSocket
 - [ ] 10-03-PLAN.md -- Migrate draft generation to WebSocket, unit tests, HTTP cleanup
+
+### Phase 11: Add database update/migration tools for the AI assistant
+
+**Goal:** The AI assistant can fully manage all business entities -- update, delete, cancel, merge guests/bookings/events, register guests for events, and update settings -- all through natural language with confirmation flow where appropriate
+**Depends on:** Phase 10
+**Requirements:** ASST-10, ASST-11, ASST-12, ASST-13
+**Success Criteria** (what must be TRUE):
+  1. Ines can tell the assistant "Update Anna's email to anna@new.com" and it shows a diff of changes for confirmation before applying
+  2. Ines can cancel bookings, archive guests, and delete events through the assistant with a confirmation step
+  3. Ines can merge duplicate guests and register guests for events through the assistant
+  4. Ines can update safe application settings (briefing time, business name, timezone) directly through the assistant
+  5. Delete operations on 204 No Content responses work without JSON parse errors
+**Plans:** 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md -- ApiClient 204 fix, PendingAction type extension, guest CRUD tools (update/delete/merge), booking tools (update/cancel)
+- [ ] 11-02-PLAN.md -- Event tools (update/delete/register), conversation update, settings update, index.ts tool count, verification

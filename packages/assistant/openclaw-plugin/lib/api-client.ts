@@ -45,6 +45,10 @@ export function createApiClient(baseUrl: string, apiKey: string): ApiClient {
       throw new Error(`PYR API ${method} ${path} failed (${response.status}): ${text}`);
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     const json = await response.json() as { data: T };
     return json.data;
   }

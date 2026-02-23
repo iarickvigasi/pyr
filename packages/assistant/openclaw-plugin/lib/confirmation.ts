@@ -10,7 +10,11 @@
 
 export interface PendingAction {
   id: string;
-  type: 'create_booking' | 'create_event' | 'send_reminder' | 'approve_draft';
+  type: 'create_guest' | 'create_booking' | 'create_event' | 'send_reminder' | 'approve_draft'
+    | 'update_guest' | 'delete_guest' | 'merge_guests'
+    | 'update_booking' | 'cancel_booking'
+    | 'update_event' | 'delete_event' | 'register_guest_for_event'
+    | 'update_conversation';
   summary: string;
   payload: Record<string, unknown>;
   createdAt: number;

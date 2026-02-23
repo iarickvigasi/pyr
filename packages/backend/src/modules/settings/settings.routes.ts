@@ -20,6 +20,7 @@ import {
   toggleEmailPolling,
 } from './settings.service.js';
 import { getActor } from '../../lib/audit.js';
+import { errorResponseSchema } from '../../lib/error-response.schema.js';
 
 export default async function settingsRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -42,7 +43,7 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
       tags: ['Settings'],
       summary: 'Get a single setting by key',
       params: settingKeyParamSchema,
-      response: { 200: settingResponseSchema },
+      response: { 200: settingResponseSchema, 404: errorResponseSchema },
     },
   }, async (request) => {
     const { key } = request.params as { key: string };
@@ -55,7 +56,7 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
       tags: ['Settings'],
       summary: 'Create or update a setting (key in body)',
       body: upsertSettingByKeyBodySchema,
-      response: { 200: settingResponseSchema },
+      response: { 200: settingResponseSchema, 400: errorResponseSchema },
     },
   }, async (request) => {
     const { key, value } = request.body as { key: string; value: unknown };
@@ -69,7 +70,7 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
       summary: 'Create or update a setting',
       params: settingKeyParamSchema,
       body: upsertSettingBodySchema,
-      response: { 200: settingResponseSchema },
+      response: { 200: settingResponseSchema, 400: errorResponseSchema },
     },
   }, async (request) => {
     const { key } = request.params as { key: string };
@@ -90,7 +91,7 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
       tags: ['Settings'],
       summary: 'Test IMAP and SMTP email connection',
       body: testEmailConnectionBodySchema,
-      response: { 200: testEmailConnectionResponseSchema },
+      response: { 200: testEmailConnectionResponseSchema, 400: errorResponseSchema },
     },
   }, async (request) => {
     const body = request.body as {

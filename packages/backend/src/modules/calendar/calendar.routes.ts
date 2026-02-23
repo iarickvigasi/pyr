@@ -23,6 +23,7 @@ import {
   testCaldavConnection,
 } from './calendar.service.js';
 import { getActor } from '../../lib/audit.js';
+import { errorResponseSchema } from '../../lib/error-response.schema.js';
 
 export default async function calendarRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -71,7 +72,7 @@ export default async function calendarRoutes(app: FastifyInstance): Promise<void
       tags: ['Calendar'],
       summary: 'Save CalDAV provider configuration (encrypted)',
       body: caldavConfigBodySchema,
-      response: { 200: caldavConfigSavedResponseSchema },
+      response: { 200: caldavConfigSavedResponseSchema, 400: errorResponseSchema },
     },
   }, async (request) => {
     const body = request.body as {

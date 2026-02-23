@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { loginBodySchema, loginResponseSchema, meResponseSchema } from './auth.schema.js';
 import { login, getMe } from './auth.service.js';
+import { errorResponseSchema } from '../../lib/error-response.schema.js';
 
 export default async function authRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -11,7 +12,11 @@ export default async function authRoutes(app: FastifyInstance): Promise<void> {
       tags: ['Auth'],
       summary: 'Login with email and password',
       body: loginBodySchema,
-      response: { 200: loginResponseSchema },
+      response: {
+        200: loginResponseSchema,
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+      },
     },
     config: {
       rateLimit: { max: 5, timeWindow: '1 minute' },
@@ -31,7 +36,10 @@ export default async function authRoutes(app: FastifyInstance): Promise<void> {
     schema: {
       tags: ['Auth'],
       summary: 'Get current authenticated user',
-      response: { 200: meResponseSchema },
+      response: {
+        200: meResponseSchema,
+        401: errorResponseSchema,
+      },
     },
   }, async (request, reply) => {
     const user = await getMe(app.prisma, request.user.sub);

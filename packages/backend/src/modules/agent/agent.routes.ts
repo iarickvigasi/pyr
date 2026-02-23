@@ -14,6 +14,7 @@ import {
   getAvailabilitySummary,
   getUpcomingEvents,
 } from './agent.service.js';
+import { errorResponseSchema } from '../../lib/error-response.schema.js';
 
 export default async function agentRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -25,7 +26,7 @@ export default async function agentRoutes(app: FastifyInstance): Promise<void> {
       tags: ['Agent'],
       summary: 'Get full conversation context for AI draft generation',
       params: conversationContextParamsSchema,
-      response: { 200: conversationContextResponseSchema },
+      response: { 200: conversationContextResponseSchema, 404: errorResponseSchema },
     },
   }, async (request) => {
     const { conversationId } = request.params;
@@ -38,7 +39,7 @@ export default async function agentRoutes(app: FastifyInstance): Promise<void> {
       tags: ['Agent'],
       summary: 'Get guest CRM profile with booking and conversation history',
       params: guestContextParamsSchema,
-      response: { 200: guestContextResponseSchema },
+      response: { 200: guestContextResponseSchema, 404: errorResponseSchema },
     },
   }, async (request) => {
     const { guestId } = request.params;

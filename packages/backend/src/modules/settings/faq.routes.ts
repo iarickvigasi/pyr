@@ -15,6 +15,7 @@ import {
   updateFaq,
   deleteFaq,
 } from './faq.service.js';
+import { errorResponseSchema } from '../../lib/error-response.schema.js';
 
 export default async function faqRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -27,7 +28,7 @@ export default async function faqRoutes(app: FastifyInstance): Promise<void> {
       tags: ['FAQ'],
       summary: 'List all FAQ entries',
       querystring: listFaqsQuerySchema,
-      response: { 200: faqListResponseSchema },
+      response: { 200: faqListResponseSchema, 400: errorResponseSchema },
     },
   }, async (request) => {
     const query = request.query as { tag?: string };
@@ -41,7 +42,7 @@ export default async function faqRoutes(app: FastifyInstance): Promise<void> {
       tags: ['FAQ'],
       summary: 'Get a single FAQ entry',
       params: faqIdParamSchema,
-      response: { 200: faqResponseSchema },
+      response: { 200: faqResponseSchema, 404: errorResponseSchema },
     },
   }, async (request) => {
     const { id } = request.params as { id: string };
@@ -55,7 +56,7 @@ export default async function faqRoutes(app: FastifyInstance): Promise<void> {
       tags: ['FAQ'],
       summary: 'Create a new FAQ entry',
       body: createFaqSchema,
-      response: { 201: faqResponseSchema },
+      response: { 201: faqResponseSchema, 400: errorResponseSchema },
     },
   }, async (request, reply) => {
     const body = request.body as { question: string; answer: string; tags: string[] };
@@ -70,7 +71,7 @@ export default async function faqRoutes(app: FastifyInstance): Promise<void> {
       summary: 'Update an existing FAQ entry',
       params: faqIdParamSchema,
       body: updateFaqSchema,
-      response: { 200: faqResponseSchema },
+      response: { 200: faqResponseSchema, 400: errorResponseSchema, 404: errorResponseSchema },
     },
   }, async (request) => {
     const { id } = request.params as { id: string };

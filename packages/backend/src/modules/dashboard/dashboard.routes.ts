@@ -5,6 +5,7 @@ import {
   dashboardTodayResponseSchema,
 } from './dashboard.schema.js';
 import { getStats, getToday } from './dashboard.service.js';
+import { errorResponseSchema } from '../../lib/error-response.schema.js';
 
 export default async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -15,7 +16,7 @@ export default async function dashboardRoutes(app: FastifyInstance): Promise<voi
     schema: {
       tags: ['Dashboard'],
       summary: 'Get dashboard KPIs (bookings count, revenue, pending inquiries)',
-      response: { 200: dashboardStatsResponseSchema },
+      response: { 200: dashboardStatsResponseSchema, 400: errorResponseSchema },
     },
   }, async () => {
     const stats = await getStats(app.prisma);
@@ -26,7 +27,7 @@ export default async function dashboardRoutes(app: FastifyInstance): Promise<voi
     schema: {
       tags: ['Dashboard'],
       summary: 'Get today\'s check-ins, check-outs, and events',
-      response: { 200: dashboardTodayResponseSchema },
+      response: { 200: dashboardTodayResponseSchema, 400: errorResponseSchema },
     },
   }, async () => {
     const today = await getToday(app.prisma);

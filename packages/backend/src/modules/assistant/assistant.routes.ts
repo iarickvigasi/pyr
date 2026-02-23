@@ -4,13 +4,39 @@
  * POST /chat       -- Proxy message to gateway /v1/chat/completions (streaming SSE)
  * POST /chat/reset -- Generate a new session key for a fresh conversation
  */
+import { readFile } from 'fs/promises';
+import { resolve } from 'path';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { chatRequestSchema, resetResponseSchema } from './assistant.schema.js';
 import { toolActivityBus, type ToolCallEvent } from '../../lib/tool-activity.js';
 
+/** Path to the agent's soul/identity file relative to project root */
+const SOUL_PATH = resolve(import.meta.dirname, '../../../../../openclaw/workspace/SOUL.md');
+
+/**
+ * Load the agent system prompt from SOUL.md at startup.
+ * Falls back to a minimal prompt if the file is missing.
+ */
+async function loadSystemPrompt(log: FastifyInstance['log']): Promise<string> {
+  try {
+    const content = await readFile(SOUL_PATH, 'utf-8');
+    log.info({ path: SOUL_PATH }, 'Loaded agent system prompt from SOUL.md');
+    return content;
+  } catch {
+    log.warn({ path: SOUL_PATH }, 'SOUL.md not found, using minimal system prompt');
+    return [
+      'You are Koda, the Puppy Yoga Retreat business assistant.',
+      'You help Ines Brendel manage her wellness retreat in Peyia, Cyprus.',
+      'Be casual and friendly. Auto-detect language (English/German).',
+      'All write actions require confirmation before executing.',
+    ].join('\n');
+  }
+}
+
 export default async function assistantRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
+  const systemPrompt = await loadSystemPrompt(app.log);
 
   server.addHook('onRequest', app.authenticate);
 
@@ -42,7 +68,10 @@ export default async function assistantRoutes(app: FastifyInstance): Promise<voi
         },
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4-5-20250929',
-          messages: [{ role: 'user', content: message }],
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message },
+          ],
           stream: true,
           user: sessionKey,
         }),

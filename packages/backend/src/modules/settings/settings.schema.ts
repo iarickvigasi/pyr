@@ -1,16 +1,17 @@
+import 'zod-openapi/extend';
 import { z } from 'zod';
 
 export const settingKeyParamSchema = z.object({
-  key: z.string().min(1),
+  key: z.string().min(1).openapi({ example: 'briefing_time' }),
 });
 
 export const upsertSettingBodySchema = z.object({
-  value: z.unknown(),
+  value: z.unknown().openapi({ example: '07:30' }),
 });
 
 export const upsertSettingByKeyBodySchema = z.object({
-  key: z.string().min(1),
-  value: z.unknown(),
+  key: z.string().min(1).openapi({ example: 'business_name' }),
+  value: z.unknown().openapi({ example: 'Puppy Yoga Retreat' }),
 });
 
 export const settingResponseSchema = z.object({
@@ -32,13 +33,13 @@ export const settingsListResponseSchema = z.object({
 // ─── Email Provider Config Schemas ──────────────────────────
 
 export const testEmailConnectionBodySchema = z.object({
-  provider: z.string(),
-  imapHost: z.string(),
-  imapPort: z.number(),
-  smtpHost: z.string(),
-  smtpPort: z.number(),
-  email: z.string().email(),
-  password: z.string(),
+  provider: z.string().openapi({ example: 'gmx' }),
+  imapHost: z.string().openapi({ example: 'imap.gmx.net' }),
+  imapPort: z.number().openapi({ example: 993 }),
+  smtpHost: z.string().openapi({ example: 'mail.gmx.net' }),
+  smtpPort: z.number().openapi({ example: 587 }),
+  email: z.string().email().openapi({ example: 'puppyyogaretreat@gmx.de' }),
+  password: z.string().openapi({ example: '********' }),
 });
 
 export const testEmailConnectionResponseSchema = z.object({
@@ -50,17 +51,17 @@ export const testEmailConnectionResponseSchema = z.object({
 });
 
 export const emailProviderConfigBodySchema = z.object({
-  provider: z.enum(['gmx', 'gmail', 'outlook', 'custom']),
-  imapHost: z.string(),
-  imapPort: z.number(),
-  smtpHost: z.string(),
-  smtpPort: z.number(),
-  email: z.string().email(),
-  password: z.string(),
-  pollIntervalMinutes: z.number().min(1).max(60).default(2),
-  pollingEnabled: z.boolean().default(true),
+  provider: z.enum(['gmx', 'gmail', 'outlook', 'custom']).openapi({ example: 'gmx' }),
+  imapHost: z.string().openapi({ example: 'imap.gmx.net' }),
+  imapPort: z.number().openapi({ example: 993 }),
+  smtpHost: z.string().openapi({ example: 'mail.gmx.net' }),
+  smtpPort: z.number().openapi({ example: 587 }),
+  email: z.string().email().openapi({ example: 'puppyyogaretreat@gmx.de' }),
+  password: z.string().openapi({ example: '********' }),
+  pollIntervalMinutes: z.number().min(1).max(60).default(2).openapi({ example: 2 }),
+  pollingEnabled: z.boolean().default(true).openapi({ example: true }),
 });
 
 export const togglePollingBodySchema = z.object({
-  enabled: z.boolean(),
+  enabled: z.boolean().openapi({ example: true }),
 });

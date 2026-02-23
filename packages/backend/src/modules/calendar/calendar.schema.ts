@@ -1,3 +1,4 @@
+import 'zod-openapi/extend';
 import { z } from 'zod';
 
 // ─── Response Schemas ──────────────────────────────────────
@@ -28,10 +29,10 @@ export const caldavConfigResponseSchema = z.object({
 });
 
 export const caldavConfigBodySchema = z.object({
-  serverUrl: z.string().url().default('https://caldav.icloud.com'),
-  username: z.string().min(1),
-  password: z.string().min(1),
-  calendarName: z.string().default('Puppy Yoga Retreat'),
+  serverUrl: z.string().url().default('https://caldav.icloud.com').openapi({ example: 'https://caldav.icloud.com' }),
+  username: z.string().min(1).openapi({ example: 'ines@icloud.com' }),
+  password: z.string().min(1).openapi({ example: '********' }),
+  calendarName: z.string().default('Puppy Yoga Retreat').openapi({ example: 'Puppy Yoga Retreat' }),
 });
 
 export const caldavConfigSavedResponseSchema = z.object({

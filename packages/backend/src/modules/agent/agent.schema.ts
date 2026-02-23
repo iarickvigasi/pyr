@@ -1,13 +1,14 @@
+import 'zod-openapi/extend';
 import { z } from 'zod';
 
 // ─── Params ─────────────────────────────────────────────
 
 export const conversationContextParamsSchema = z.object({
-  conversationId: z.string(),
+  conversationId: z.string().openapi({ example: 'cm4x7abc00030' }),
 });
 
 export const guestContextParamsSchema = z.object({
-  guestId: z.string(),
+  guestId: z.string().openapi({ example: 'cm4x7abc00001' }),
 });
 
 // ─── Shared sub-schemas ─────────────────────────────────

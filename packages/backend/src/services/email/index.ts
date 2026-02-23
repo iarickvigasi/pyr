@@ -14,6 +14,7 @@ import { getSetting } from '../../modules/settings/settings.service.js';
 import { getEmailProviderConfig } from '../../modules/settings/settings.service.js';
 import { writeAuditLog } from '../../lib/audit.js';
 import { parseOtaEmail } from './ota-parsers/index.js';
+import { sendNewBookingAlert } from '../../modules/notifications/notification.service.js';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -438,6 +439,11 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
                       conversationId,
                     },
                     'OTA booking auto-created from email',
+                  );
+
+                  // Fire-and-forget alert (best-effort, never blocks email processing)
+                  sendNewBookingAlert(app, booking.id).catch(err =>
+                    app.log.error({ err }, 'Failed to send OTA new booking alert'),
                   );
 
                   // Enqueue calendar sync for OTA-created booking

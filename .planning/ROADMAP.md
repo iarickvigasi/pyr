@@ -12,16 +12,15 @@ The existing PYR platform has a working database, REST API, CRM, and admin dashb
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Queue & Module Foundation** - BullMQ infrastructure and modular architecture patterns for all background workers (completed 2026-02-19)
-- [x] **Phase 2: Email Ingestion Pipeline** - IMAP polling, parsing, threading, contact matching, classification, SMTP sending, and integration tests verifying the full pipeline (completed 2026-02-20)
-- [x] **Phase 3: Email UI & OTA Parsing** - Wire live email data into inbox UI, email provider settings, and OTA booking email extraction (completed 2026-02-20)
-- [x] **Phase 4: AI Communication Engine** - LLM abstraction layer, context-rich system prompts, message classification, and cost tracking (completed 2026-02-20)
-- [x] **Phase 5: AI-Email Integration** - Auto-generate AI drafts on inbound emails, approve/edit/send workflow, FAQ management, and AI draft integration tests (completed 2026-02-20)
-- [x] **Phase 6: CalDAV Calendar Sync** - One-way push of bookings and events to Apple Calendar via CalDAV, verified with real iCloud account tests (completed 2026-02-21)
-- [x] **Phase 7: OpenClaw Assistant Core** - OpenClaw runtime setup, dashboard chat UI, WhatsApp channel, and read-only query tools (completed 2026-02-21)
-- [x] **Phase 8: Assistant Actions & Automation** - Write actions with confirmation, morning briefings, proactive alerts, draft approval via chat (completed 2026-02-22)
-- [x] **Phase 8.1: Integration Fixes & Verification Closure** - INSERTED: Fix OTA→calendar sync wiring, check_availability params, run retroactive verifiers on Phases 6 & 7, fix traceability (completed 2026-02-22)
-- [ ] **Phase 9: Migration, UAT & Launch** - Excel data import, UAT with Ines, documentation, production deployment
+- [x] **Phase 1: Queue & Module Foundation** - BullMQ infrastructure and modular architecture patterns for all background workers (completed 2009-02-19)
+- [x] **Phase 2: Email Ingestion Pipeline** - IMAP polling, parsing, threading, contact matching, classification, SMTP sending, and integration tests verifying the full pipeline (completed 2009-02-20)
+- [x] **Phase 3: Email UI & OTA Parsing** - Wire live email data into inbox UI, email provider settings, and OTA booking email extraction (completed 2009-02-20)
+- [x] **Phase 4: AI Communication Engine** - LLM abstraction layer, context-rich system prompts, message classification, and cost tracking (completed 2009-02-20)
+- [x] **Phase 5: AI-Email Integration** - Auto-generate AI drafts on inbound emails, approve/edit/send workflow, FAQ management, and AI draft integration tests (completed 2009-02-20)
+- [x] **Phase 6: CalDAV Calendar Sync** - One-way push of bookings and events to Apple Calendar via CalDAV, verified with real iCloud account tests (completed 2009-02-21)
+- [x] **Phase 7: OpenClaw Assistant Core** - OpenClaw runtime setup, dashboard chat UI, WhatsApp channel, and read-only query tools (completed 2009-02-21)
+- [x] **Phase 8: Assistant Actions & Automation** - Write actions with confirmation, morning briefings, proactive alerts, draft approval via chat (completed 2009-02-22)
+- [x] **Phase 8.1: Integration Fixes & Verification Closure** - INSERTED: Fix OTA→calendar sync wiring, check_availability params, run retroactive verifiers on Phases 6 & 7, fix traceability (completed 2009-02-22)
 
 ## Phase Details
 
@@ -148,7 +147,7 @@ Plans:
 **Depends on**: Phase 7, Phase 5
 **Requirements**: ASST-05, ASST-06, ASST-07, ASST-08, ASST-09
 **Success Criteria** (what must be TRUE):
-  1. Ines can tell the assistant "Create a booking for Anna, Suite room, March 15-19" -- the assistant shows a summary and waits for confirmation before creating it
+  1. Ines can tell the assistant "Create a booking for Anna, Suite room, March 09-19" -- the assistant shows a summary and waits for confirmation before creating it
   2. Every morning at 7:30 AM, the assistant sends a briefing with today's check-ins, check-outs, events, pending inquiries, and yesterday's revenue
   3. The assistant proactively notifies Ines of new bookings, payment confirmations, arriving guests, and overdue invoices
   4. Ines can review and approve AI email drafts directly from the assistant chat ("Reply OK to send")
@@ -176,45 +175,7 @@ Plans:
 - [x] 08.1-01-PLAN.md — Fix OTA->calendar sync wiring, check_availability param mismatch, integration tests, traceability table update
 - [x] 08.1-02-PLAN.md — Retroactive VERIFICATION.md for Phase 6 (CAL-01..05, TEST-04) and Phase 7 (ASST-01..04)
 
-### Phase 9: Migration, UAT & Launch
-**Goal**: Real data is imported, Ines validates the system works for her daily workflows, and the platform goes live on production
-**Depends on**: Phase 8
-**Requirements**: TEST-05, TEST-06, TEST-07, DOC-01, DOC-02, DOC-03
-**Success Criteria** (what must be TRUE):
-  1. Excel data migration imports all existing guest and booking records with validation -- no data loss, duplicates detected
-  2. Ines completes UAT covering her daily workflows: email arrives, AI draft appears, she approves and sends, assistant answers questions, calendar stays in sync
-  3. Each new module (email, AI, calendar, assistant) has documentation covering its purpose, interfaces, and configuration
-  4. New API endpoints are documented in Swagger with request/response examples
-  5. Production deployment on Hetzner is operational with monitoring, automated backups, and a rollback plan
-**Plans**: TBD
-
-Plans:
-- [ ] 09-01: Excel data migration (import script, validation, duplicate detection, dry-run mode)
-- [ ] 09-02: Module documentation and Swagger updates (ARCHITECTURE.md per module, API docs, OpenClaw setup guide)
-- [ ] 09-03: UAT sessions with Ines (daily workflow testing, prompt tuning, feedback incorporation)
-- [ ] 09-04: Production deployment (Hetzner setup, monitoring, backups, SSL, rollback plan, go-live)
-
-## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
-
-Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, sequential execution is configured, so phases run in order regardless.
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Queue & Module Foundation | 2/2 | Complete    | 2026-02-19 |
-| 2. Email Ingestion Pipeline | 6/6 | Complete    | 2026-02-20 |
-| 3. Email UI & OTA Parsing | 3/3 | Complete    | 2026-02-20 |
-| 4. AI Communication Engine | 4/4 | Complete    | 2026-02-20 |
-| 5. AI-Email Integration | 4/4 | Complete    | 2026-02-20 |
-| 6. CalDAV Calendar Sync | 4/4 | Complete    | 2026-02-21 |
-| 7. OpenClaw Assistant Core | 2/2 | Complete    | 2026-02-21 |
-| 8. Assistant Actions & Automation | 2/2 | Complete    | 2026-02-22 |
-| 8.1. Integration Fixes & Verification Closure | 0/2 | Not started | - |
-| 9. Migration, UAT & Launch | 0/4 | Not started | - |
-
-### Phase 10: Switch the backend to use the gateway's WebSocket API
+### Phase 9: Switch the backend to use the gateway's WebSocket API
 
 **Goal:** All backend communication with the OpenClaw Gateway uses a single persistent WebSocket connection instead of three separate HTTP integration points (chat completions, hooks, health check)
 **Depends on:** Phase 9
@@ -228,14 +189,14 @@ Note: Phase 4 (AI Engine) depends only on Phase 1, not on Phases 2-3. However, s
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 10-01-PLAN.md -- GatewayWsClient service, protocol types, Fastify plugin (app.gateway decorator)
-- [ ] 10-02-PLAN.md -- Migrate dashboard chat SSE proxy and notification hook delivery to WebSocket
-- [ ] 10-03-PLAN.md -- Migrate draft generation to WebSocket, unit tests, HTTP cleanup
+- [ ] 09-01-PLAN.md -- GatewayWsClient service, protocol types, Fastify plugin (app.gateway decorator)
+- [ ] 09-02-PLAN.md -- Migrate dashboard chat SSE proxy and notification hook delivery to WebSocket
+- [ ] 09-03-PLAN.md -- Migrate draft generation to WebSocket, unit tests, HTTP cleanup
 
-### Phase 11: Add database update/migration tools for the AI assistant
+### Phase 9: Add database update/migration tools for the AI assistant
 
 **Goal:** The AI assistant can fully manage all business entities -- update, delete, cancel, merge guests/bookings/events, register guests for events, and update settings -- all through natural language with confirmation flow where appropriate
-**Depends on:** Phase 10
+**Depends on:** Phase 9
 **Requirements:** ASST-10, ASST-11, ASST-12, ASST-13
 **Success Criteria** (what must be TRUE):
   1. Ines can tell the assistant "Update Anna's email to anna@new.com" and it shows a diff of changes for confirmation before applying
@@ -246,5 +207,5 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 11-01-PLAN.md -- ApiClient 204 fix, PendingAction type extension, guest CRUD tools (update/delete/merge), booking tools (update/cancel)
-- [ ] 11-02-PLAN.md -- Event tools (update/delete/register), conversation update, settings update, index.ts tool count, verification
+- [ ] 09-01-PLAN.md -- ApiClient 204 fix, PendingAction type extension, guest CRUD tools (update/delete/merge), booking tools (update/cancel)
+- [ ] 09-02-PLAN.md -- Event tools (update/delete/register), conversation update, settings update, index.ts tool count, verification

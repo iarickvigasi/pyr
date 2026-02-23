@@ -102,8 +102,10 @@ function formatEurCents(cents: number): string {
  */
 export function formatAlert(alertType: AlertType, details: Record<string, unknown>): string {
   switch (alertType) {
-    case 'new-booking':
-      return `New booking received! ${details.guestName} -- ${details.roomName}, ${details.checkIn} to ${details.checkOut} (${details.nights} nights, EUR ${formatEurCents(details.price as number)}).`;
+    case 'new-booking': {
+      const sourceSuffix = details.source ? ` (via ${details.source})` : '';
+      return `New booking received${sourceSuffix}! ${details.guestName} -- ${details.roomName}, ${details.checkIn} to ${details.checkOut} (${details.nights} nights, EUR ${formatEurCents(details.price as number)}).`;
+    }
 
     case 'payment-confirmed':
       return `Payment confirmed: EUR ${formatEurCents(details.amount as number)} from ${details.guestName} for booking ${details.bookingId}.`;
@@ -316,6 +318,7 @@ export async function sendNewBookingAlert(
     checkOut: checkOutDate,
     nights,
     price: booking.totalPrice,
+    source: booking.source,
   });
 
   await sendViaGateway(app, 'alert', message);

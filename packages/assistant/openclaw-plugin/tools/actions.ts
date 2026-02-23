@@ -305,6 +305,22 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
 
       try {
         switch (action.type) {
+          case 'create_guest': {
+            const guest = await client.post<{ id: string; name: string; email: string | null }>('/api/v1/guests', action.payload);
+            const g = guest as unknown as { id: string; name: string; email: string | null };
+            return {
+              content: [{
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: true,
+                  message: `Guest "${g.name}" created successfully!`,
+                  guest: { id: g.id, name: g.name, email: g.email },
+                }, null, 2),
+              }],
+              details: {},
+            };
+          }
+
           case 'create_booking': {
             const booking = await client.post<Booking>('/api/v1/bookings', action.payload);
             const b = booking as unknown as Booking;
@@ -370,6 +386,75 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
               details: {},
             };
           }
+
+          case 'update_guest': {
+            const { guestId, ...changes } = action.payload as { guestId: string; [key: string]: unknown };
+            const guest = await client.patch<{ id: string; name: string }>(`/api/v1/guests/${guestId}`, changes);
+            const g = guest as unknown as { id: string; name: string };
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: `Guest "${g.name}" updated successfully!`,
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
+          case 'delete_guest': {
+            const { guestId } = action.payload as { guestId: string };
+            await client.del(`/api/v1/guests/${guestId}`);
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: 'Guest archived successfully. Their bookings and conversations are preserved.',
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
+          case 'merge_guests': {
+            const { primaryId, secondaryId } = action.payload as { primaryId: string; secondaryId: string };
+            const result = await client.post<{ id: string; name: string }>('/api/v1/guests/merge', { primaryId, secondaryId });
+            const merged = result as unknown as { id: string; name: string };
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: `Guests merged successfully! "${merged.name}" is the primary record.`,
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
+          case 'update_booking': {
+            const { bookingId, ...changes } = action.payload as { bookingId: string; [key: string]: unknown };
+            const booking = await client.patch<Booking>(`/api/v1/bookings/${bookingId}`, changes);
+            const b = booking as unknown as Booking;
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: `Booking updated successfully!`,
+                booking: {
+                  id: b.id,
+                  status: b.status,
+                  checkIn: b.checkIn,
+                  checkOut: b.checkOut,
+                },
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
+          case 'cancel_booking': {
+            const { bookingId } = action.payload as { bookingId: string };
+            await client.del(`/api/v1/bookings/${bookingId}`);
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: 'Booking cancelled successfully. Calendar has been updated.',
+              }, null, 2) }],
+              details: {},
+            };
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -398,7 +483,7 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
         };
       }
 
-      // Fallback (unreachable, but satisfies type checker)
+      // Remaining action types (update_event, delete_event, register_guest_for_event, update_conversation) will be added by subsequent plans
       return { content: [{ type: 'text' as const, text: '{}' }], details: {} };
     },
   });

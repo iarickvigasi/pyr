@@ -14,6 +14,7 @@ import redisPlugin from './plugins/redis.js';
 import swaggerPlugin from './plugins/swagger.js';
 import queuePlugin from './plugins/queue.js';
 import gatewayPlugin from './plugins/gateway.js';
+import toolActivityPlugin from './plugins/tool-activity.js';
 import { registerQueues } from './services/queue/queue.js';
 import { registerWorkers, setupSchedulers } from './services/queue/worker.js';
 import authRoutes from './modules/auth/auth.routes.js';
@@ -90,6 +91,9 @@ export async function buildApp() {
   if (env.NODE_ENV !== 'test') {
     await app.register(gatewayPlugin);
   }
+
+  // Tool activity detection (emits events when OpenClaw plugin calls API)
+  await app.register(toolActivityPlugin);
 
   // Health check — verifies DB, Redis, and Gateway connectivity
   app.get('/health', async (_request, reply) => {

@@ -7,6 +7,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { chatRequestSchema, resetResponseSchema } from './assistant.schema.js';
+import { toolActivityBus, type ToolCallEvent } from '../../lib/tool-activity.js';
 
 export default async function assistantRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -83,6 +84,23 @@ export default async function assistantRoutes(app: FastifyInstance): Promise<voi
       'Access-Control-Allow-Credentials': 'true',
     });
 
+    // Subscribe to tool activity events from the tool-activity plugin.
+    // When the OpenClaw plugin calls backend API endpoints (X-API-Key auth),
+    // those are detected and emitted here as synthetic SSE tool_calls chunks.
+    // This gives the frontend real-time "Searching guests..." indicators.
+    const unsubscribe = toolActivityBus.onToolCall((event: ToolCallEvent) => {
+      if (reply.raw.writableEnded) return;
+      const chunk = {
+        choices: [{
+          index: 0,
+          delta: {
+            tool_calls: [{ function: { name: event.toolName } }],
+          },
+        }],
+      };
+      reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    });
+
     const reader = gatewayResponse.body.getReader();
     try {
       while (true) {
@@ -93,6 +111,7 @@ export default async function assistantRoutes(app: FastifyInstance): Promise<voi
     } catch (err) {
       app.log.error({ err }, 'Error streaming gateway response');
     } finally {
+      unsubscribe();
       if (!reply.raw.writableEnded) {
         reply.raw.end();
       }

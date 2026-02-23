@@ -72,9 +72,9 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **TEST-02**: Integration tests cover AI draft generation (context injection -> LLM call -> draft stored)
 - [x] **TEST-03**: Email threading verified against Gmail, Outlook, and Apple Mail clients
 - [x] **TEST-04**: CalDAV sync tested with real iCloud account (create, update, delete events)
-- [ ] **DOC-01**: Each new module has an ARCHITECTURE.md or README documenting its purpose, interfaces, and configuration
+- [x] **DOC-01**: Each new module has an ARCHITECTURE.md or README documenting its purpose, interfaces, and configuration
 - [x] **DOC-02**: API endpoints for new modules are documented in Swagger with examples
-- [ ] **DOC-03**: OpenClaw integration documented with setup instructions and skill definitions
+- [x] **DOC-03**: OpenClaw integration documented with setup instructions and skill definitions
 
 ## v2 Requirements
 
@@ -167,9 +167,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASST-07 | Phase 8 | Complete |
 | ASST-08 | Phase 8 | Complete |
 | ASST-09 | Phase 8 | Complete |
-| DOC-01 | Phase 11 | Pending |
+| DOC-01 | Phase 11 | Complete |
 | DOC-02 | Phase 11 | Complete |
-| DOC-03 | Phase 11 | Pending |
+| DOC-03 | Phase 11 | Complete |
 | ASST-10 | Phase 11 | Complete |
 | ASST-11 | Phase 11 | Complete |
 | ASST-12 | Phase 11 | Complete |

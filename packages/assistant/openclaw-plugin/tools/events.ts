@@ -1,7 +1,7 @@
-import { Type } from '@sinclair/typebox';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import type { ApiClient } from '../lib/api-client.js';
 import { formatDate, formatEventType, dashboardUrl } from '../lib/formatters.js';
+import { storePendingAction } from '../lib/confirmation.js';
 
 interface EventRecord {
   id: string;
@@ -49,11 +49,15 @@ export function registerEventTools(api: OpenClawPluginApi, client: ApiClient): v
     label: 'List Events',
     description:
       'List scheduled events (puppy yoga classes, beach walks, coffee & cuddle sessions). Can filter by date range. Shows capacity and how many spots are taken.',
-    parameters: Type.Object({
-      from: Type.Optional(Type.String({ description: 'Start date filter (ISO format)' })),
-      to: Type.Optional(Type.String({ description: 'End date filter (ISO format)' })),
-      limit: Type.Optional(Type.Number({ description: 'Max results (default 20)', default: 20 })),
-    }),
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        from: { type: 'string', description: 'Start date filter (ISO format)' },
+        to: { type: 'string', description: 'End date filter (ISO format)' },
+        limit: { type: 'number', description: 'Max results (default 20)', default: 20 },
+      },
+      required: [],
+    },
     async execute(_id: string, params: { from?: string; to?: string; limit?: number }) {
       const data = await client.get<EventRecord[]>('/api/v1/events', {
         from: params.from,
@@ -74,9 +78,13 @@ export function registerEventTools(api: OpenClawPluginApi, client: ApiClient): v
     label: 'Get Event Details',
     description:
       'Get full details of a specific event including description, location, and capacity info.',
-    parameters: Type.Object({
-      eventId: Type.String({ description: 'The event ID (UUID)' }),
-    }),
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        eventId: { type: 'string', description: 'The event ID (UUID)' },
+      },
+      required: ['eventId'],
+    },
     async execute(_id: string, params: { eventId: string }) {
       const data = await client.get<EventRecord>(`/api/v1/events/${params.eventId}`);
       return { content: [{ type: 'text' as const, text: JSON.stringify(formatEventDetail(data as unknown as EventRecord), null, 2) }], details: {} };
@@ -88,9 +96,13 @@ export function registerEventTools(api: OpenClawPluginApi, client: ApiClient): v
     label: 'List Event Registrations',
     description:
       'List guests registered for a specific event. Shows who signed up and their contact details.',
-    parameters: Type.Object({
-      eventId: Type.String({ description: 'The event ID (UUID)' }),
-    }),
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        eventId: { type: 'string', description: 'The event ID (UUID)' },
+      },
+      required: ['eventId'],
+    },
     async execute(_id: string, params: { eventId: string }) {
       const data = await client.get<EventRegistration[]>(`/api/v1/events/${params.eventId}/registrations`);
       const registrations = (data as unknown as EventRegistration[]).map(r => ({
@@ -101,6 +113,261 @@ export function registerEventTools(api: OpenClawPluginApi, client: ApiClient): v
         guestDashboardUrl: dashboardUrl(`/guests/${r.guest.id}`),
       }));
       return { content: [{ type: 'text' as const, text: JSON.stringify({ registrations }, null, 2) }], details: {} };
+    },
+  });
+
+  // ── 4. Prepare Update Event ──────────────────────────
+
+  api.registerTool({
+    name: 'prepare_update_event',
+    label: 'Update Event',
+    description:
+      'Prepare an update to an existing event. Shows what will change and asks for confirmation. Can update type, title, date, time, capacity, location, or description.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        eventId: { type: 'string', description: 'The event ID (UUID)' },
+        type: { type: 'string', description: 'Event type: puppy_yoga, beach_walk, or coffee_cake_cuddles' },
+        title: { type: 'string', description: 'Updated event title' },
+        date: { type: 'string', description: 'Updated event date (YYYY-MM-DD)' },
+        time: { type: 'string', description: 'Updated event time (HH:MM, 24-hour format)' },
+        capacity: { type: 'number', description: 'Updated maximum participants' },
+        location: { type: 'string', description: 'Updated event location' },
+        description: { type: 'string', description: 'Updated event description' },
+      },
+      required: ['eventId'],
+    },
+    async execute(
+      _id: string,
+      params: {
+        eventId: string;
+        type?: string;
+        title?: string;
+        date?: string;
+        time?: string;
+        capacity?: number;
+        location?: string;
+        description?: string;
+      },
+    ) {
+      // Validate event type if provided
+      if (params.type) {
+        const validTypes = ['puppy_yoga', 'beach_walk', 'coffee_cake_cuddles'];
+        if (!validTypes.includes(params.type)) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: true,
+                message: `Invalid event type "${params.type}". Must be one of: ${validTypes.join(', ')}.`,
+              }, null, 2),
+            }],
+            details: {},
+          };
+        }
+      }
+
+      // Fetch current event
+      const current = await client.get<EventRecord>(`/api/v1/events/${params.eventId}`);
+      const e = current as unknown as EventRecord;
+
+      // Build diff of changed fields
+      const diff: Record<string, { from: unknown; to: unknown }> = {};
+      const changes: Record<string, unknown> = {};
+
+      const fields: Array<{ key: keyof typeof params; currentVal: unknown }> = [
+        { key: 'type', currentVal: e.type },
+        { key: 'title', currentVal: e.title },
+        { key: 'date', currentVal: e.date },
+        { key: 'time', currentVal: e.time },
+        { key: 'capacity', currentVal: e.capacity },
+        { key: 'location', currentVal: e.location },
+        { key: 'description', currentVal: e.description },
+      ];
+
+      for (const { key, currentVal } of fields) {
+        if (params[key] !== undefined && params[key] !== currentVal) {
+          diff[key] = { from: currentVal, to: params[key] };
+          changes[key] = params[key];
+        }
+      }
+
+      if (Object.keys(diff).length === 0) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              message: `No changes detected for event "${e.title}". The provided values match the current event.`,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const actionId = crypto.randomUUID();
+
+      storePendingAction({
+        id: actionId,
+        type: 'update_event',
+        summary: `Update event "${e.title}": ${Object.keys(diff).join(', ')}`,
+        payload: { eventId: params.eventId, ...changes },
+        createdAt: Date.now(),
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            actionId,
+            event: e.title,
+            changes: diff,
+            instruction: 'Show Ines the before/after diff and ask her to reply OK to confirm or Cancel to reject.',
+          }, null, 2),
+        }],
+        details: {},
+      };
+    },
+  });
+
+  // ── 5. Prepare Delete Event ──────────────────────────
+
+  api.registerTool({
+    name: 'prepare_delete_event',
+    label: 'Delete Event',
+    description:
+      'Prepare permanent deletion of an event. Shows event details for Ines to confirm. WARNING: This is a hard delete -- the event and all guest registrations will be permanently removed.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        eventId: { type: 'string', description: 'The event ID (UUID) to delete' },
+      },
+      required: ['eventId'],
+    },
+    async execute(_id: string, params: { eventId: string }) {
+      const current = await client.get<EventRecord>(`/api/v1/events/${params.eventId}`);
+      const e = current as unknown as EventRecord;
+
+      const actionId = crypto.randomUUID();
+      const registered = e._count?.eventBookings ?? 0;
+
+      storePendingAction({
+        id: actionId,
+        type: 'delete_event',
+        summary: `Delete event "${e.title}" on ${formatDate(e.date)}`,
+        payload: { eventId: params.eventId },
+        createdAt: Date.now(),
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            actionId,
+            summary: {
+              action: 'Permanently delete event',
+              type: formatEventType(e.type),
+              title: e.title,
+              date: formatDate(e.date),
+              time: e.time,
+              capacity: e.capacity,
+              registered,
+              location: e.location,
+              warning: 'This will PERMANENTLY delete the event and all registrations. This cannot be undone.',
+            },
+            instruction: 'Present this summary and ask Ines to reply OK to confirm or Cancel to reject.',
+          }, null, 2),
+        }],
+        details: {},
+      };
+    },
+  });
+
+  // ── 6. Prepare Register Guest for Event ──────────────
+
+  api.registerTool({
+    name: 'prepare_register_guest',
+    label: 'Register Guest for Event',
+    description:
+      'Register a guest for an event. Searches for the guest by name, checks event capacity, and shows a summary for confirmation.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        eventId: { type: 'string', description: 'The event ID (UUID)' },
+        guestName: { type: 'string', description: 'Guest name to search for' },
+      },
+      required: ['eventId', 'guestName'],
+    },
+    async execute(_id: string, params: { eventId: string; guestName: string }) {
+      // 1. Search for the guest
+      interface GuestResult { id: string; name: string; email: string | null }
+      const guests = await client.get<GuestResult[]>('/api/v1/guests', { search: params.guestName });
+      const guestList = guests as unknown as GuestResult[];
+
+      if (guestList.length === 0) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: `No guest found matching "${params.guestName}". Please verify the name or create the guest first.`,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const guest = guestList[0]!;
+      const disambiguationNote = guestList.length > 1
+        ? `Found ${guestList.length} guests matching "${params.guestName}". Using "${guest.name}" (${guest.email ?? 'no email'}). If this is wrong, specify the full name.`
+        : undefined;
+
+      // 2. Fetch event details
+      const current = await client.get<EventRecord>(`/api/v1/events/${params.eventId}`);
+      const e = current as unknown as EventRecord;
+
+      const registered = e._count?.eventBookings ?? 0;
+      const spotsLeft = e.capacity - registered;
+
+      // 3. Check capacity
+      let capacityWarning: string | undefined;
+      if (spotsLeft <= 0) {
+        capacityWarning = `Warning: This event is at full capacity (${e.capacity}/${e.capacity}). The registration may be added to a waitlist or rejected by the backend.`;
+      }
+
+      // 4. Store pending action
+      const actionId = crypto.randomUUID();
+
+      storePendingAction({
+        id: actionId,
+        type: 'register_guest_for_event',
+        summary: `Register ${guest.name} for ${e.title} on ${formatDate(e.date)} (${spotsLeft} spots remaining)`,
+        payload: { eventId: params.eventId, guestId: guest.id },
+        createdAt: Date.now(),
+      });
+
+      const result: Record<string, unknown> = {
+        actionId,
+        summary: {
+          guest: guest.name,
+          guestEmail: guest.email,
+          event: e.title,
+          eventType: formatEventType(e.type),
+          date: formatDate(e.date),
+          time: e.time,
+          spotsLeft,
+          capacity: e.capacity,
+          registered,
+        },
+        instruction: 'Present this as a structured summary and ask Ines to reply OK to confirm or Cancel to reject.',
+      };
+      if (disambiguationNote) {
+        result['disambiguationNote'] = disambiguationNote;
+      }
+      if (capacityWarning) {
+        result['capacityWarning'] = capacityWarning;
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], details: {} };
     },
   });
 }

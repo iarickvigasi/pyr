@@ -1,4 +1,3 @@
-import { Type } from '@sinclair/typebox';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import type { ApiClient } from '../lib/api-client.js';
 import { formatDateTime, dashboardUrl } from '../lib/formatters.js';
@@ -69,10 +68,14 @@ export function registerConversationTools(api: OpenClawPluginApi, client: ApiCli
     label: 'List Conversations',
     description:
       'List email conversations (inbox). Can filter by status (open, closed, archived). Shows guest name, subject, and a preview of the latest message. Use for "any new messages?" or "show me open conversations".',
-    parameters: Type.Object({
-      status: Type.Optional(Type.String({ description: 'Filter by status: open, closed, archived' })),
-      limit: Type.Optional(Type.Number({ description: 'Max results (default 20)', default: 20 })),
-    }),
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        status: { type: 'string', description: 'Filter by status: open, closed, archived' },
+        limit: { type: 'number', description: 'Max results (default 20)', default: 20 },
+      },
+      required: [],
+    },
     async execute(_id: string, params: { status?: string; limit?: number }) {
       const data = await client.get<Conversation[]>('/api/v1/conversations', {
         status: params.status,
@@ -92,12 +95,72 @@ export function registerConversationTools(api: OpenClawPluginApi, client: ApiCli
     label: 'Get Conversation Details',
     description:
       'Get a specific conversation with its full message thread. Shows all messages exchanged with the guest in chronological order.',
-    parameters: Type.Object({
-      conversationId: Type.String({ description: 'The conversation ID (UUID)' }),
-    }),
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        conversationId: { type: 'string', description: 'The conversation ID (UUID)' },
+      },
+      required: ['conversationId'],
+    },
     async execute(_id: string, params: { conversationId: string }) {
       const data = await client.get<Conversation>(`/api/v1/conversations/${params.conversationId}`);
       return { content: [{ type: 'text' as const, text: JSON.stringify(formatConversationDetail(data as unknown as Conversation), null, 2) }], details: {} };
+    },
+  });
+
+  // ── 3. Update Conversation (Direct Execution) ────────
+
+  api.registerTool({
+    name: 'update_conversation',
+    label: 'Update Conversation',
+    description:
+      'Update a conversation status (open, closed, archived) or classification. This is a direct action -- no confirmation needed since it is easily reversible.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        conversationId: { type: 'string', description: 'The conversation ID (UUID)' },
+        status: { type: 'string', description: 'New status: open, closed, or archived' },
+        classification: { type: 'string', description: 'New classification label' },
+      },
+      required: ['conversationId'],
+    },
+    async execute(_id: string, params: { conversationId: string; status?: string; classification?: string }) {
+      const body: Record<string, unknown> = {};
+      if (params.status !== undefined) body['status'] = params.status;
+      if (params.classification !== undefined) body['classification'] = params.classification;
+
+      if (Object.keys(body).length === 0) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: 'No fields provided to update. Specify status or classification.',
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const updated = await client.patch<Conversation>(`/api/v1/conversations/${params.conversationId}`, body);
+      const c = updated as unknown as Conversation;
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            message: `Conversation updated.`,
+            conversation: {
+              id: c.id,
+              status: c.status,
+              classification: c.classification,
+              subject: c.subject,
+            },
+          }, null, 2),
+        }],
+        details: {},
+      };
     },
   });
 }

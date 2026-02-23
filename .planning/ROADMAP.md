@@ -209,3 +209,21 @@ Plans:
 Plans:
 - [ ] 09-01-PLAN.md -- ApiClient 204 fix, PendingAction type extension, guest CRUD tools (update/delete/merge), booking tools (update/cancel)
 - [ ] 09-02-PLAN.md -- Event tools (update/delete/register), conversation update, settings update, index.ts tool count, verification
+
+### Phase 11: Documentation & OTA Alert Fix
+**Goal:** Close all remaining v1.0 audit gaps -- module documentation, Swagger updates, OpenClaw integration guide, and OTA booking alert wiring
+**Depends on:** Phase 10
+**Requirements:** DOC-01, DOC-02, DOC-03, ASST-07 (integration fix)
+**Gap Closure:** Closes gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Each new module (email, AI, calendar, assistant) has an ARCHITECTURE.md or README documenting its purpose, interfaces, and configuration
+  2. API endpoints for new modules are documented in Swagger with request/response examples
+  3. OpenClaw integration is documented with setup instructions, plugin configuration, and channel setup
+  4. OTA auto-created bookings trigger a WhatsApp notification to Ines (sendNewBookingAlert called in email pipeline OTA path)
+**Plans**: 4 plans
+
+Plans:
+- [ ] 11-01-PLAN.md -- OTA booking alert wiring + Swagger infrastructure (zod-openapi, tag descriptions, shared error schema)
+- [ ] 11-02-PLAN.md -- Swagger enrichment: .openapi() examples + error responses across all 13 modules
+- [ ] 11-03-PLAN.md -- ARCHITECTURE.md for email and AI modules
+- [ ] 11-04-PLAN.md -- ARCHITECTURE.md for CalDAV calendar and assistant/OpenClaw (integration guide)

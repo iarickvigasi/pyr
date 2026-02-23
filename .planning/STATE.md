@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 11 - Add database update/migration tools for the AI assistant
+**Current focus:** Phase 11 - Documentation, OTA alert fix, and Swagger infrastructure
 
 ## Current Position
 
-Phase: 11 (Add database update/migration tools for the AI assistant)
-Plan: 2 of 2 in current phase
-Status: Phase 11 COMPLETE (all plans executed)
-Last activity: 2026-02-23 -- 11-02-PLAN.md complete (Event/Conversation/Settings mutation tools, 37 total tools)
+Phase: 11 (Documentation, OTA alert fix, and Swagger infrastructure)
+Plan: 1 of 4 in current phase
+Status: Executing phase 11-documentation-ota-alert-fix
+Last activity: 2026-02-23 -- 11-01-PLAN.md complete (OTA alert wiring + Swagger infrastructure)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓] 100%
+Progress: [▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Progress: [▓▓▓▓▓▓▓▓▓▓] 100%
 - Trend: Stable
 
 *Updated after each plan completion*
+| Phase 11 P01 | 3min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -188,6 +189,8 @@ Recent decisions affecting current work:
 - [Phase 11]: [11-02]: WRITABLE_KEYS guard in update_setting limits assistant to 6 safe settings keys
 - [Phase 11]: [11-02]: prepare_register_guest searches by guest name with disambiguation for multiple matches
 - [Phase 11]: [11-02]: 37 tools total: guests(7) + bookings(4) + rooms(3) + events(6) + conversations(3) + dashboard(2) + settings(2) + actions(6) + drafts(4)
+- [Phase 11]: zod-openapi@4.2.4 (not v5) required for Zod 3.x compatibility
+- [Phase 11]: zod-openapi/extend import in both app.ts (global) and error-response.schema.ts (standalone) for type safety
 
 ### Pending Todos
 
@@ -207,5 +210,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 11-02-PLAN.md (Event/Conversation/Settings Mutation Tools -- Phase 11 complete)
-Resume file: N/A (Phase 11 complete)
+Stopped at: Completed 11-01-PLAN.md (OTA alert wiring + Swagger infrastructure)
+Resume file: .planning/phases/11-documentation-ota-alert-fix/11-02-PLAN.md

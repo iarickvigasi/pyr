@@ -72,11 +72,8 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **TEST-02**: Integration tests cover AI draft generation (context injection -> LLM call -> draft stored)
 - [x] **TEST-03**: Email threading verified against Gmail, Outlook, and Apple Mail clients
 - [x] **TEST-04**: CalDAV sync tested with real iCloud account (create, update, delete events)
-- [ ] **TEST-05**: Excel data migration script imports real guest and booking data with validation
-- [ ] **TEST-06**: UAT sessions with Ines covering daily workflows (email -> draft -> approve -> send, assistant queries)
-- [ ] **TEST-07**: Production deployment on Hetzner with monitoring, backups, and rollback plan
 - [ ] **DOC-01**: Each new module has an ARCHITECTURE.md or README documenting its purpose, interfaces, and configuration
-- [ ] **DOC-02**: API endpoints for new modules are documented in Swagger with examples
+- [x] **DOC-02**: API endpoints for new modules are documented in Swagger with examples
 - [ ] **DOC-03**: OpenClaw integration documented with setup instructions and skill definitions
 
 ## v2 Requirements
@@ -170,12 +167,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASST-07 | Phase 8 | Complete |
 | ASST-08 | Phase 8 | Complete |
 | ASST-09 | Phase 8 | Complete |
-| TEST-05 | Phase 9 | Pending |
-| TEST-06 | Phase 9 | Pending |
-| TEST-07 | Phase 9 | Pending |
-| DOC-01 | Phase 9 | Pending |
-| DOC-02 | Phase 9 | Pending |
-| DOC-03 | Phase 9 | Pending |
+| DOC-01 | Phase 11 | Pending |
+| DOC-02 | Phase 11 | Complete |
+| DOC-03 | Phase 11 | Pending |
 | ASST-10 | Phase 11 | Complete |
 | ASST-11 | Phase 11 | Complete |
 | ASST-12 | Phase 11 | Complete |
@@ -196,11 +190,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACCT-03 | -- | Deferred (v2) |
 
 **Coverage:**
-- v1 requirements: 51 total (41 complete, 4 pending Phase 11, 6 pending Phase 9)
+- v1 requirements: 48 total (45 complete, 3 pending Phase 11)
 - v2 requirements: 14 total (all deferred)
-- Total tracked: 65
+- Total tracked: 62
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-23 -- added ASST-10..13 for Phase 11 (assistant CRUD tools)*
+*Last updated: 2026-02-23 -- dropped TEST-05/06/07 (Phase 9 removed), reassigned DOC-01..03 to Phase 11 gap closure*

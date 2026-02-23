@@ -55,9 +55,9 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **ASST-07**: Proactive alerts sent via assistant: new booking received, payment confirmed, guest arriving tomorrow, overdue invoice
 - [x] **ASST-08**: AI email drafts can be reviewed and approved directly from the assistant chat ("Reply OK to send")
 - [x] **ASST-09**: Assistant can trigger overdue invoice reminders on request
-- [ ] **ASST-10**: Assistant can update existing guests, bookings, events, and conversations via natural language with confirmation flow
-- [ ] **ASST-11**: Assistant can delete/cancel guests (soft delete), bookings (cancel), and events (hard delete) with confirmation flow
-- [ ] **ASST-12**: Assistant can merge duplicate guests and register guests for events via confirmation flow
+- [x] **ASST-10**: Assistant can update existing guests, bookings, events, and conversations via natural language with confirmation flow
+- [x] **ASST-11**: Assistant can delete/cancel guests (soft delete), bookings (cancel), and events (hard delete) with confirmation flow
+- [x] **ASST-12**: Assistant can merge duplicate guests and register guests for events via confirmation flow
 - [ ] **ASST-13**: Assistant can update non-sensitive application settings directly (no confirmation needed for safe, reversible settings)
 
 ### Architecture & Modularity
@@ -176,9 +176,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-01 | Phase 9 | Pending |
 | DOC-02 | Phase 9 | Pending |
 | DOC-03 | Phase 9 | Pending |
-| ASST-10 | Phase 11 | Pending |
-| ASST-11 | Phase 11 | Pending |
-| ASST-12 | Phase 11 | Pending |
+| ASST-10 | Phase 11 | Complete |
+| ASST-11 | Phase 11 | Complete |
+| ASST-12 | Phase 11 | Complete |
 | ASST-13 | Phase 11 | Pending |
 | MSG-01 | -- | Deferred (v2) |
 | MSG-02 | -- | Deferred (v2) |

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 10 - Switch the backend to use the gateway's WebSocket API
+**Current focus:** Phase 11 - Add database update/migration tools for the AI assistant
 
 ## Current Position
 
-Phase: 10 (Switch the backend to use the gateway's WebSocket API)
-Plan: 3 of 3 in current phase -- PHASE COMPLETE
-Status: Plan 10-03 complete (Draft Generation Migration & Gateway Tests)
-Last activity: 2026-02-22 -- 10-03-PLAN.md complete (WS agent draft generation, GatewayWsClient tests, HTTP cleanup)
+Phase: 11 (Add database update/migration tools for the AI assistant)
+Plan: 1 of 2 in current phase
+Status: Plan 11-01 complete (Guest/Booking Mutation Tools)
+Last activity: 2026-02-23 -- 11-01-PLAN.md complete (ApiClient 204 fix, 5 new mutation tools, 5 confirm_action cases)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓] 100%
+Progress: [▓▓▓▓▓░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29
+- Total plans completed: 30
 - Average duration: 6min
-- Total execution time: 2.9 hours
+- Total execution time: 2.95 hours
 
 **By Phase:**
 
@@ -37,9 +37,10 @@ Progress: [▓▓▓▓▓▓▓▓▓▓] 100%
 | 08-assistant-actions-automation | 2/2 | 9min | 4.5min |
 | 08.1-integration-fixes-verification-closure | 2/2 | 12min | 6.0min |
 | 10-switch-the-backend-to-use-the-gateway-s-websocket-api | 3/3 | 11min | 3.7min |
+| 11-add-database-update-migration-tools-for-the-ai-assistant | 1/2 | 3min | 3.0min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 7min, 4min, 2min, 5min
+- Last 5 plans: 7min, 4min, 2min, 5min, 3min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -180,6 +181,10 @@ Recent decisions affecting current work:
 - [Phase 10]: [10-03]: deliver: false on agent RPC ensures drafts are never auto-sent to WhatsApp
 - [Phase 10]: [10-03]: OPENCLAW_HOOK_TOKEN removed from backend env schema (HTTP hooks fully replaced)
 
+- [Phase 11]: [11-01]: 204 No Content check placed before JSON parsing to prevent SyntaxError on DELETE responses
+- [Phase 11]: [11-01]: PendingAction type union extended upfront for all 14 types (both Plan 01 and Plan 02) to avoid incremental type errors
+- [Phase 11]: [11-01]: Update tools use field-level diff with JSON.stringify for deep comparison on arrays (tags)
+
 ### Pending Todos
 
 None yet.
@@ -187,6 +192,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 10 added: Switch the backend to use the gateway's WebSocket API
+- Phase 11 added: Add database update/migration tools for the AI assistant
 
 ### Blockers/Concerns
 
@@ -196,6 +202,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-22
-Stopped at: Completed 10-03-PLAN.md (Draft Generation Migration & Gateway Tests) -- Phase 10 COMPLETE
-Resume file: None -- all phases complete
+Last session: 2026-02-23
+Stopped at: Completed 11-01-PLAN.md (Guest/Booking Mutation Tools)
+Resume file: .planning/phases/11-add-database-update-migration-tools-for-the-ai-assistant/11-02-PLAN.md

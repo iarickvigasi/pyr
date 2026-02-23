@@ -223,7 +223,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 11-01-PLAN.md -- OTA booking alert wiring + Swagger infrastructure (zod-openapi, tag descriptions, shared error schema)
-- [ ] 11-02-PLAN.md -- Swagger enrichment: .openapi() examples + error responses across all 13 modules
+- [x] 11-01-PLAN.md -- OTA booking alert wiring + Swagger infrastructure (zod-openapi, tag descriptions, shared error schema)
+- [x] 11-02-PLAN.md -- Swagger enrichment: .openapi() examples + error responses across all 13 modules
 - [x] 11-03-PLAN.md -- ARCHITECTURE.md for email and AI modules
-- [ ] 11-04-PLAN.md -- ARCHITECTURE.md for CalDAV calendar and assistant/OpenClaw (integration guide)
+- [x] 11-04-PLAN.md -- ARCHITECTURE.md for CalDAV calendar and assistant/OpenClaw (integration guide)

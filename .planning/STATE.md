@@ -47,6 +47,7 @@ Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100%
 | Phase 11 P01 | 3min | 2 tasks | 7 files |
 | Phase 11 P03 | 4min | 2 tasks | 2 files |
 | Phase 11 P04 | 5min | 2 tasks | 2 files |
+| Phase 11 P02 | 11min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -193,6 +194,7 @@ Recent decisions affecting current work:
 - [Phase 11]: [11-02]: 37 tools total: guests(7) + bookings(4) + rooms(3) + events(6) + conversations(3) + dashboard(2) + settings(2) + actions(6) + drafts(4)
 - [Phase 11]: zod-openapi@4.2.4 (not v5) required for Zod 3.x compatibility
 - [Phase 11]: zod-openapi/extend import in both app.ts (global) and error-response.schema.ts (standalone) for type safety
+- [Phase 11]: Error response schemas only added to routes with existing success response blocks -- fastify-type-provider-zod infers error-only response as handler return type
 
 ### Pending Todos
 
@@ -212,5 +214,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 11-04-PLAN.md (CalDAV & Assistant ARCHITECTURE.md documentation) -- Phase 11 complete
+Stopped at: Completed 11-02-PLAN.md (Swagger enrichment with .openapi() examples and error responses) -- Phase 11 complete
 Resume file: N/A (phase complete)

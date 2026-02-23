@@ -58,7 +58,7 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **ASST-10**: Assistant can update existing guests, bookings, events, and conversations via natural language with confirmation flow
 - [x] **ASST-11**: Assistant can delete/cancel guests (soft delete), bookings (cancel), and events (hard delete) with confirmation flow
 - [x] **ASST-12**: Assistant can merge duplicate guests and register guests for events via confirmation flow
-- [ ] **ASST-13**: Assistant can update non-sensitive application settings directly (no confirmation needed for safe, reversible settings)
+- [x] **ASST-13**: Assistant can update non-sensitive application settings directly (no confirmation needed for safe, reversible settings)
 
 ### Architecture & Modularity
 
@@ -179,7 +179,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASST-10 | Phase 11 | Complete |
 | ASST-11 | Phase 11 | Complete |
 | ASST-12 | Phase 11 | Complete |
-| ASST-13 | Phase 11 | Pending |
+| ASST-13 | Phase 11 | Complete |
 | MSG-01 | -- | Deferred (v2) |
 | MSG-02 | -- | Deferred (v2) |
 | MSG-03 | -- | Deferred (v2) |

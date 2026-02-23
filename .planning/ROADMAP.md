@@ -243,7 +243,7 @@ Plans:
   3. Ines can merge duplicate guests and register guests for events through the assistant
   4. Ines can update safe application settings (briefing time, business name, timezone) directly through the assistant
   5. Delete operations on 204 No Content responses work without JSON parse errors
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 11-01-PLAN.md -- ApiClient 204 fix, PendingAction type extension, guest CRUD tools (update/delete/merge), booking tools (update/cancel)

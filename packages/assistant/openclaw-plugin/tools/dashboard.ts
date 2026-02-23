@@ -1,4 +1,3 @@
-import { Type } from '@sinclair/typebox';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import type { ApiClient } from '../lib/api-client.js';
 import { formatDate, formatEurCents, formatEventType, dashboardUrl } from '../lib/formatters.js';
@@ -43,7 +42,7 @@ export function registerDashboardTools(api: OpenClawPluginApi, client: ApiClient
     label: 'Business Dashboard Stats',
     description:
       'Get current business KPIs: pending inquiries, confirmed bookings, checked-in guests, revenue this month, total guests, and upcoming events. Great for "how\'s business?" or "revenue this month?".',
-    parameters: Type.Object({}),
+    parameters: { type: 'object' as const, properties: {}, required: [] },
     async execute() {
       const data = await client.get<DashboardStats>('/api/v1/dashboard/stats');
       const stats = data as unknown as DashboardStats;
@@ -64,7 +63,7 @@ export function registerDashboardTools(api: OpenClawPluginApi, client: ApiClient
     label: "Today's Schedule",
     description:
       'Get today\'s schedule: who\'s checking in, who\'s checking out, and what events are happening today. Perfect for morning overview or "what\'s happening today?".',
-    parameters: Type.Object({}),
+    parameters: { type: 'object' as const, properties: {}, required: [] },
     async execute() {
       const data = await client.get<TodaySchedule>('/api/v1/dashboard/today');
       const schedule = data as unknown as TodaySchedule;

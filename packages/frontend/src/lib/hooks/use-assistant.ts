@@ -41,19 +41,41 @@ function toolLabel(toolName: string): string {
     search_guests: 'Searching guests...',
     get_guest: 'Looking up guest profile...',
     list_guests: 'Fetching guest list...',
+    prepare_create_guest: 'Preparing new guest...',
+    prepare_update_guest: 'Preparing guest update...',
+    prepare_delete_guest: 'Preparing guest archive...',
+    prepare_merge_guests: 'Preparing guest merge...',
     list_bookings: 'Looking up bookings...',
     get_booking: 'Checking booking details...',
+    prepare_update_booking: 'Preparing booking update...',
+    prepare_cancel_booking: 'Preparing booking cancellation...',
     list_rooms: 'Checking rooms...',
     list_room_types: 'Checking room types...',
     check_availability: 'Checking availability...',
     list_events: 'Fetching events...',
     get_event: 'Checking event details...',
     list_event_registrations: 'Checking registrations...',
+    prepare_update_event: 'Preparing event update...',
+    prepare_delete_event: 'Preparing event deletion...',
+    prepare_register_guest: 'Preparing event registration...',
     list_conversations: 'Checking messages...',
     get_conversation: 'Reading conversation...',
+    update_conversation: 'Updating conversation...',
     get_dashboard_stats: 'Checking dashboard stats...',
     get_today_schedule: 'Looking up today\'s schedule...',
     get_settings: 'Checking settings...',
+    update_setting: 'Updating setting...',
+    prepare_create_booking: 'Preparing booking...',
+    prepare_create_event: 'Preparing event...',
+    confirm_action: 'Confirming action...',
+    cancel_action: 'Cancelling action...',
+    send_invoice_reminder: 'Checking overdue bookings...',
+    update_briefing_time: 'Updating briefing time...',
+    list_pending_drafts: 'Checking pending drafts...',
+    show_draft: 'Loading email draft...',
+    approve_draft: 'Approving draft...',
+    reject_draft: 'Rejecting draft...',
+    regenerate_draft: 'Regenerating draft...',
   };
   return labels[toolName] ?? `Running ${toolName.replace(/_/g, ' ')}...`;
 }
@@ -62,7 +84,11 @@ export function useAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTools, setActiveTools] = useState<ToolCall[]>([]);
-  const [sessionKey, setSessionKey] = useState<string>(getStoredSessionKey);
+  const [sessionKey, setSessionKey] = useState<string>(() => {
+    const fresh = `dashboard:${Date.now()}`;
+    storeSessionKey(fresh);
+    return fresh;
+  });
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(async (text: string) => {
@@ -224,27 +250,30 @@ export function useAssistant() {
     const token = getToken();
     if (!token) return;
 
+    let newKey: string | null = null;
+
     try {
       const response = await fetch(`${API_BASE}/api/v1/assistant/chat/reset`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
       if (response.ok) {
         const body = await response.json();
-        const newKey = body.data.sessionKey;
-        setSessionKey(newKey);
-        storeSessionKey(newKey);
+        newKey = body.data.sessionKey;
       }
     } catch {
-      // Generate a client-side key as fallback
-      const fallbackKey = `dashboard:${Date.now()}`;
-      setSessionKey(fallbackKey);
-      storeSessionKey(fallbackKey);
+      // Network error -- fall through to client-side key
     }
+
+    // Always generate a fresh session key, even if the endpoint failed
+    if (!newKey) {
+      newKey = `dashboard:${Date.now()}`;
+    }
+    setSessionKey(newKey);
+    storeSessionKey(newKey);
 
     setMessages([]);
     setIsStreaming(false);

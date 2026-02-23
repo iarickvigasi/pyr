@@ -16,7 +16,7 @@ export default {
 
   register(api: OpenClawPluginApi): void {
     const pluginCfg = (api.pluginConfig ?? {}) as Record<string, string | undefined>;
-    const apiUrl = pluginCfg['apiUrl'] ?? process.env['PYR_API_URL'] ?? 'http://host.docker.internal:3001';
+    const apiUrl = pluginCfg['apiUrl'] ?? process.env['PYR_API_URL'] ?? 'http://localhost:3001';
     const apiKey = pluginCfg['apiKey'] ?? process.env['PYR_API_KEY'] ?? '';
 
     if (!apiKey) {
@@ -35,6 +35,6 @@ export default {
     registerActionTools(api, client);
     registerDraftTools(api, client);
 
-    api.logger.info('PYR Assistant plugin loaded: 37 tools registered (17 read + 16 action + 4 draft)');
+    api.logger.info('PYR Assistant plugin loaded: 38 tools registered (17 read + 16 action + 5 draft)');
   },
 };

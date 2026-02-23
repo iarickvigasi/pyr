@@ -325,11 +325,11 @@ export class GatewayWsClient extends EventEmitter {
       client: {
         id: 'pyr-backend',
         version: '1.0.0',
-        platform: 'linux',
+        platform: process.platform,
         mode: 'backend',
       },
       role: 'operator',
-      scopes: ['operator.read', 'operator.write'],
+      scopes: ['operator.admin', 'operator.read', 'operator.write'],
       auth: { token: this.token },
     };
 

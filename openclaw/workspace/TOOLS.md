@@ -2,7 +2,7 @@
 
 ## PYR Backend API
 
-The PYR business assistant plugin connects to the PYR backend REST API to query and manage business data. The plugin is loaded automatically by the OpenClaw Gateway on startup. It provides 26 tools across 9 categories: read queries, write actions with confirmation, and draft management.
+The PYR business assistant plugin connects to the PYR backend REST API to query and manage business data. The plugin is loaded automatically by the OpenClaw Gateway on startup. It provides 38 tools across 9 categories: read queries, write actions with confirmation, and draft management.
 
 **Connection:** The plugin reads `PYR_API_URL` and `PYR_API_KEY` from environment variables. In Docker, these are injected via the Gateway container's environment config.
 
@@ -10,35 +10,46 @@ The PYR business assistant plugin connects to the PYR backend REST API to query 
 
 ## Available Tool Categories
 
-### Guests (3 tools)
+### Guests (7 tools)
 - `search_guests` -- Search by name, email, or phone
 - `get_guest` -- Full profile with booking history and conversations
 - `list_guests` -- Browse recent guests
+- `prepare_create_guest` -- Create a new guest profile (two-step confirmation)
+- `prepare_update_guest` -- Update guest fields with before/after diff (two-step confirmation)
+- `prepare_delete_guest` -- Archive (soft-delete) a guest (two-step confirmation)
+- `prepare_merge_guests` -- Merge two duplicate guest records (two-step confirmation)
 
-### Bookings (2 tools)
+### Bookings (4 tools)
 - `list_bookings` -- Filter by status, date range
 - `get_booking` -- Full booking detail with guest and room info
+- `prepare_update_booking` -- Update booking fields with before/after diff (two-step confirmation)
+- `prepare_cancel_booking` -- Cancel a booking with summary and warning (two-step confirmation)
 
 ### Rooms (3 tools)
 - `list_rooms` -- All rooms with status and type
 - `list_room_types` -- Room categories with pricing
 - `check_availability` -- Available rooms for a date range
 
-### Events (3 tools)
+### Events (6 tools)
 - `list_events` -- Scheduled events with capacity info
 - `get_event` -- Event details
 - `list_event_registrations` -- Guests registered for an event
+- `prepare_update_event` -- Update event fields with before/after diff (two-step confirmation)
+- `prepare_delete_event` -- Delete an event permanently with warning (two-step confirmation)
+- `prepare_register_guest` -- Register a guest for an event with capacity check (two-step confirmation)
 
-### Conversations (2 tools)
+### Conversations (3 tools)
 - `list_conversations` -- Email inbox, filterable by status
 - `get_conversation` -- Full message thread
+- `update_conversation` -- Update conversation status or classification (direct execution, no confirmation)
 
 ### Dashboard (2 tools)
 - `get_dashboard_stats` -- Business KPIs (revenue, bookings, inquiries)
 - `get_today_schedule` -- Today's check-ins, check-outs, events
 
-### Settings (1 tool)
+### Settings (2 tools)
 - `get_settings` -- Non-sensitive application settings
+- `update_setting` -- Update safe settings like business_name, timezone, email_signature, ai_model, briefing_time (direct execution, no confirmation)
 
 ### Actions (6 tools)
 - `prepare_create_booking` -- Search guest, check availability, calculate price, return summary for confirmation
@@ -48,10 +59,11 @@ The PYR business assistant plugin connects to the PYR backend REST API to query 
 - `send_invoice_reminder` -- List overdue bookings or get specific booking details for follow-up
 - `update_briefing_time` -- Change the morning briefing delivery time (stored in settings)
 
-### Drafts (4 tools)
+### Drafts (5 tools)
 - `list_pending_drafts` -- Show AI email drafts awaiting approval across conversations
 - `show_draft` -- Display the full email draft (To, Subject, Body) for review
 - `approve_draft` -- Queue draft for sending (goes through confirmation flow)
+- `regenerate_draft` -- Discard current draft and generate a fresh replacement (no confirmation needed)
 - `reject_draft` -- Discard a draft immediately (no confirmation needed)
 
 ## Confirmation Flow
@@ -64,6 +76,8 @@ All write actions use a two-step confirmation pattern. This is a core business r
 4. **Cancel step**: When Ines says cancel/no/stop, call `cancel_action` with the `actionId`. Simply acknowledge "Got it, cancelled." -- no follow-up prompts.
 
 Draft approvals also follow this pattern: `approve_draft` stores a pending action, and `confirm_action` sends the email.
+
+**Direct execution tools** (no confirmation): `update_conversation`, `update_setting`, `update_briefing_time`, `reject_draft`, `regenerate_draft`. These are reversible or non-critical.
 
 ## Limitations
 

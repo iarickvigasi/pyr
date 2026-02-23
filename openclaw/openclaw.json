@@ -1,12 +1,12 @@
 {
   "env": {
     "vars": {
-      "PYR_API_URL": "http://host.docker.internal:3001",
+      "PYR_API_URL": "http://localhost:3001",
       "PYR_API_KEY": "${API_KEY}"
     }
   },
   "logging": {
-    "level": "info"
+    "level": "debug"
   },
   "agents": {
     "defaults": {
@@ -51,9 +51,7 @@
         "action": "agent",
         "agentId": "main",
         "sessionKey": "hook:briefing",
-        "deliver": {
-          "channel": "whatsapp"
-        }
+        "deliver": true
       },
       {
         "match": {
@@ -62,9 +60,7 @@
         "action": "agent",
         "agentId": "main",
         "sessionKey": "hook:alert",
-        "deliver": {
-          "channel": "whatsapp"
-        }
+        "deliver": true
       }
     ]
   },
@@ -103,13 +99,13 @@
   "plugins": {
     "load": {
       "paths": [
-        "/home/node/.openclaw/plugins/pyr-assistant"
+        "../packages/assistant/openclaw-plugin"
       ]
     },
     "entries": {
       "pyr-assistant": {
         "config": {
-          "apiUrl": "http://host.docker.internal:3001",
+          "apiUrl": "http://localhost:3001",
           "apiKey": "${API_KEY}"
         }
       },

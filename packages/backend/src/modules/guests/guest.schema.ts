@@ -10,7 +10,10 @@ export const createGuestSchema = z.object({
   source: z.string().max(100).nullish(),
   tags: z.array(z.string().max(50)).max(20).default([]),
   notes: z.string().max(5000).nullish(),
-});
+}).refine(
+  (data) => data.email || data.phone,
+  { message: 'At least one of email or phone is required', path: ['email'] },
+);
 
 export type CreateGuestBody = z.infer<typeof createGuestSchema>;
 

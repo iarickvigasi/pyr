@@ -31,26 +31,6 @@ services:
       timeout: 5s
       retries: 5
 
-  openclaw-gateway:
-    image: ghcr.io/openclaw/openclaw:latest
-    container_name: pyr-openclaw-gateway
-    restart: unless-stopped
-    ports:
-      - "18789:18789"
-    volumes:
-      - ./openclaw:/home/node/.openclaw
-      - ./openclaw/workspace:/home/node/.openclaw/workspace
-      - ./packages/assistant/openclaw-plugin:/home/node/.openclaw/plugins/pyr-assistant
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENCLAW_HOOK_TOKEN=${OPENCLAW_HOOK_TOKEN}
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      - API_KEY=${API_KEY}
-    depends_on:
-      - postgres
-      - redis
-
 volumes:
   postgres_data:
   redis_data:

@@ -1,9 +1,12 @@
 {
-  "name": "@pyr/openclaw-plugin",
+  "name": "@pyr/pyr-assistant",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
+  "openclaw": {
+    "extensions": ["./index.ts"]
+  },
   "scripts": {
     "build": "tsc",
     "type-check": "tsc --noEmit",

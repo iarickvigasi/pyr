@@ -218,10 +218,12 @@ describe('OTA booking calendar sync', () => {
     mockedParseOtaEmail.mockReturnValue({
       guestName: 'Test Guest',
       guestEmail: 'guest@example.com',
+      guestPhone: null,
       checkIn: '2026-03-15',
       checkOut: '2026-03-19',
       packageName: '4-Day Retreat',
       totalPrice: 85000,
+      currency: 'EUR',
       otaPlatform: 'tripaneer',
       otaReferenceId: 'TR-99999',
       needsReview: false,

@@ -41,8 +41,14 @@ pnpm-debug.log*
 # Docker
 docker-compose.override.yml
 
-# OpenClaw runtime data
+# OpenClaw runtime data (secrets, device keys, logs, state)
 openclaw/agents/
+openclaw/identity/
+openclaw/devices/
+openclaw/logs/
+openclaw/canvas/
+openclaw/workspace/.openclaw/
+openclaw/update-check.json
 openclaw/*.log
 
 # GSD Planning

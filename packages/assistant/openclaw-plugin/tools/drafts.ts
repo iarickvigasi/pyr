@@ -204,7 +204,51 @@ export function registerDraftTools(api: OpenClawPluginApi, client: ApiClient): v
     },
   });
 
-  // ── 4. Reject Draft ────────────────────────────────────
+  // ── 4. Regenerate Draft ────────────────────────────────
+
+  api.registerTool({
+    name: 'regenerate_draft',
+    label: 'Regenerate Draft',
+    description:
+      'Regenerate an AI email draft. Rejects the current draft and queues a fresh AI-generated replacement. Use when Ines wants the email rewritten from scratch. Only works on drafts with status pending, rejected, or failed. No confirmation needed.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        conversationId: { type: 'string', description: 'The conversation ID' },
+        draftId: { type: 'string', description: 'The draft ID to regenerate' },
+      },
+      required: ['conversationId', 'draftId'],
+    },
+    async execute(_id: string, params: { conversationId: string; draftId: string }) {
+      try {
+        await client.post(`/api/v1/conversations/${params.conversationId}/drafts/${params.draftId}/regenerate`);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              message: 'Draft discarded and a new one is being generated. It will appear in pending drafts shortly.',
+            }, null, 2),
+          }],
+          details: {},
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to regenerate draft';
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+    },
+  });
+
+  // ── 5. Reject Draft ────────────────────────────────────
 
   api.registerTool({
     name: 'reject_draft',

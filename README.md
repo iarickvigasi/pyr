@@ -55,7 +55,15 @@ pnpm dev
 # Dashboard at http://localhost:3000
 ```
 
-### 7. Seed development data (optional)
+### 7. Start OpenClaw (AI assistant gateway)
+
+```bash
+# From project root — runs locally (not in Docker)
+cd openclaw && openclaw start
+# Gateway available at http://localhost:18789
+```
+
+### 8. Seed development data (optional)
 
 ```bash
 pnpm --filter @pyr/backend db:seed
@@ -105,7 +113,7 @@ PYR/
 ├── docker/               # Docker configs (Postgres init, Caddy)
 ├── docs/                 # Deployment runbooks, DNS setup
 ├── scripts/              # DB seed, Excel import
-├── docker-compose.yml    # Local dev (Postgres + Redis only)
+├── docker-compose.yml    # Local dev (Postgres + Redis)
 ├── docker-compose.prod.yml  # Production (all services)
 ├── .env.example          # Environment variable template
 ├── CLAUDE.md             # AI coding assistant context

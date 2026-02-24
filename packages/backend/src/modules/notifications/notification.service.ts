@@ -264,22 +264,21 @@ export async function processGuestArrivalAlert(app: FastifyInstance): Promise<vo
 
 /**
  * Process overdue invoice alerts.
- * Identifies bookings that checked out more than 7 days ago with a positive price
- * and no payment records (simplified heuristic -- full payment system is Phase 2).
+ * Identifies bookings with outstanding balance (totalPrice - SUM(payments) > 0)
+ * where check-in has arrived or passed. Includes confirmed, checked_in, checked_out,
+ * and cancelled statuses -- any booking with a balance due triggers an alert.
  */
 export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<void> {
   const todayStr = nicosiaToday();
-  const todayDate = new Date(todayStr);
-  todayDate.setDate(todayDate.getDate() - 7);
-  const overdueThresholdStr = todayDate.toISOString().slice(0, 10);
-  const overdueThreshold = utcMidnight(overdueThresholdStr);
+  const todayMidnight = utcMidnight(todayStr);
 
-  const overdueBookings = await app.prisma.booking.findMany({
+  // Candidate bookings: check-in has arrived/passed, has a price
+  // Include cancelled bookings (which have deletedAt set) -- they may still owe money
+  const candidates = await app.prisma.booking.findMany({
     where: {
-      status: 'checked_out',
       totalPrice: { gt: 0 },
-      checkOut: { lt: overdueThreshold },
-      deletedAt: null,
+      checkIn: { lte: todayMidnight },
+      status: { in: ['confirmed', 'checked_in', 'checked_out', 'cancelled'] },
     },
     include: {
       guest: { select: { name: true } },
@@ -287,8 +286,30 @@ export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<
     },
   });
 
+  if (candidates.length === 0) {
+    app.log.info('No candidate bookings for overdue check');
+    return;
+  }
+
+  // Batch fetch payment totals for all candidates
+  const paymentSums = await app.prisma.payment.groupBy({
+    by: ['bookingId'],
+    _sum: { amount: true },
+    where: {
+      bookingId: { in: candidates.map(b => b.id) },
+      deletedAt: null,
+    },
+  });
+  const paidMap = new Map(paymentSums.map(p => [p.bookingId, p._sum.amount ?? 0]));
+
+  // Filter to only bookings with outstanding balance
+  const overdueBookings = candidates.filter(b => {
+    const totalPaid = paidMap.get(b.id) ?? 0;
+    return b.totalPrice - totalPaid > 0;
+  });
+
   if (overdueBookings.length === 0) {
-    app.log.info('No overdue bookings found');
+    app.log.info('No overdue bookings found (all candidates are fully paid)');
     return;
   }
 
@@ -298,11 +319,13 @@ export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<
       : booking.guest.name;
 
     const checkOutDate = booking.checkOut.toISOString().slice(0, 10);
+    const totalPaid = paidMap.get(booking.id) ?? 0;
+    const balanceDue = booking.totalPrice - totalPaid;
 
     const message = formatAlert('overdue-invoice', {
       guestName,
       checkOutDate,
-      amount: booking.totalPrice,
+      amount: balanceDue,
     });
 
     await sendViaGateway(app, 'alert', message);

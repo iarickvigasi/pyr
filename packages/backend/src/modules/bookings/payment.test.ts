@@ -3,6 +3,10 @@ import type { FastifyInstance } from 'fastify';
 import { getTestApp, cleanDatabase, getAuthToken, prisma } from '../../test/setup.js';
 import { createTestBooking, createTestPayment } from '../../test/factories.js';
 
+type BookingData = Record<string, unknown>;
+type PaymentData = Record<string, unknown>;
+type ListResponse = { data: BookingData[]; hasMore: boolean; nextCursor: string | null };
+
 describe('Payment endpoints', () => {
   let app: FastifyInstance;
   let token: string;
@@ -264,6 +268,207 @@ describe('Payment endpoints', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body) as { data: unknown[] };
       expect(body.data).toHaveLength(0);
+    });
+  });
+
+  // ─── Booking Detail Payment Summary ─────────────────────────
+
+  describe('Booking detail paymentSummary', () => {
+    it('returns paymentSummary with correct totalPaid and balanceDue after logging a payment', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 50000 });
+      await createTestPayment(app, token, booking.id, { amount: 20000 });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/bookings/${booking.id}`,
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as { data: BookingData };
+      const summary = body.data.paymentSummary as { totalPrice: number; totalPaid: number; balanceDue: number };
+      expect(summary.totalPrice).toBe(50000);
+      expect(summary.totalPaid).toBe(20000);
+      expect(summary.balanceDue).toBe(30000);
+    });
+
+    it('returns payments array sorted by date desc', async () => {
+      const booking = await createTestBooking(app, token);
+      await createTestPayment(app, token, booking.id, { amount: 5000, date: '2026-03-01' });
+      await createTestPayment(app, token, booking.id, { amount: 15000, date: '2026-03-20' });
+      await createTestPayment(app, token, booking.id, { amount: 10000, date: '2026-03-10' });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/bookings/${booking.id}`,
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as { data: BookingData };
+      const payments = body.data.payments as PaymentData[];
+      expect(payments).toHaveLength(3);
+      // Sorted by date desc: 2026-03-20, 2026-03-10, 2026-03-01
+      expect(payments[0]!.amount).toBe(15000);
+      expect(payments[1]!.amount).toBe(10000);
+      expect(payments[2]!.amount).toBe(5000);
+    });
+
+    it('shows balanceDue=totalPrice when no payments exist', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 60000 });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/bookings/${booking.id}`,
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as { data: BookingData };
+      const summary = body.data.paymentSummary as { totalPrice: number; totalPaid: number; balanceDue: number };
+      expect(summary.totalPaid).toBe(0);
+      expect(summary.balanceDue).toBe(60000);
+    });
+
+    it('excludes soft-deleted payments from paymentSummary', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 50000 });
+      const p1 = await createTestPayment(app, token, booking.id, { amount: 20000 });
+      await createTestPayment(app, token, booking.id, { amount: 10000 });
+
+      // Soft-delete the first payment
+      await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/bookings/${booking.id}/payments/${p1.id}`,
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/bookings/${booking.id}`,
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as { data: BookingData };
+      const summary = body.data.paymentSummary as { totalPrice: number; totalPaid: number; balanceDue: number };
+      expect(summary.totalPaid).toBe(10000);
+      expect(summary.balanceDue).toBe(40000);
+      // Only 1 payment should be in the list
+      const payments = body.data.payments as PaymentData[];
+      expect(payments).toHaveLength(1);
+    });
+  });
+
+  // ─── Booking List Payment Status ────────────────────────────
+
+  describe('Booking list paymentStatus', () => {
+    it('returns paymentStatus=unpaid when no payments', async () => {
+      await createTestBooking(app, token, { totalPrice: 40000 });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/bookings',
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as ListResponse;
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0]!.paymentStatus).toBe('unpaid');
+    });
+
+    it('returns paymentStatus=partial after partial payment', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 40000 });
+      await createTestPayment(app, token, booking.id, { amount: 15000 });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/bookings',
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as ListResponse;
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0]!.paymentStatus).toBe('partial');
+    });
+
+    it('returns paymentStatus=paid when fully paid', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 40000 });
+      await createTestPayment(app, token, booking.id, { amount: 40000 });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/bookings',
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as ListResponse;
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0]!.paymentStatus).toBe('paid');
+    });
+
+    it('returns paymentStatus=paid when overpaid', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 40000 });
+      await createTestPayment(app, token, booking.id, { amount: 50000 });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/bookings',
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as ListResponse;
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0]!.paymentStatus).toBe('paid');
+    });
+  });
+
+  // ─── Total Price Editing (PAY-05 verification) ──────────────
+
+  describe('Total price editing (PAY-05)', () => {
+    it('PATCH /bookings/:id with totalPrice updates the price (any status)', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 40000, status: 'confirmed' });
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/bookings/${booking.id}`,
+        headers: { authorization: `Bearer ${token}` },
+        payload: { totalPrice: 55000 },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as { data: BookingData };
+      expect(body.data.totalPrice).toBe(55000);
+    });
+
+    it('updated totalPrice reflected in paymentSummary balanceDue', async () => {
+      const booking = await createTestBooking(app, token, { totalPrice: 40000 });
+      await createTestPayment(app, token, booking.id, { amount: 20000 });
+
+      // Update totalPrice
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/bookings/${booking.id}`,
+        headers: { authorization: `Bearer ${token}` },
+        payload: { totalPrice: 60000 },
+      });
+
+      // Fetch detail and verify balance
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/bookings/${booking.id}`,
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body) as { data: BookingData };
+      const summary = body.data.paymentSummary as { totalPrice: number; totalPaid: number; balanceDue: number };
+      expect(summary.totalPrice).toBe(60000);
+      expect(summary.totalPaid).toBe(20000);
+      expect(summary.balanceDue).toBe(40000);
     });
   });
 });

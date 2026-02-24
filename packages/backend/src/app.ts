@@ -22,6 +22,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import guestRoutes from './modules/guests/guest.routes.js';
 import roomRoutes from './modules/rooms/room.routes.js';
 import bookingRoutes from './modules/bookings/booking.routes.js';
+import paymentRoutes from './modules/bookings/payment.routes.js';
 import eventRoutes from './modules/events/event.routes.js';
 import inboxRoutes from './modules/inbox/inbox.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
@@ -134,6 +135,7 @@ export async function buildApp() {
   await app.register(guestRoutes, { prefix: '/api/v1/guests' });
   await app.register(roomRoutes, { prefix: '/api/v1' });
   await app.register(bookingRoutes, { prefix: '/api/v1/bookings' });
+  await app.register(paymentRoutes, { prefix: '/api/v1/bookings' });
   await app.register(eventRoutes, { prefix: '/api/v1/events' });
   await app.register(inboxRoutes, { prefix: '/api/v1/conversations' });
   await app.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });

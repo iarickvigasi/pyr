@@ -223,6 +223,24 @@ export async function addTestMessage(
   return { id: data.id as string, body: data };
 }
 
+/** Create a payment for a booking via API. Returns `{ id, body }`. */
+export async function createTestPayment(
+  app: FastifyInstance,
+  token: string,
+  bookingId: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; body: Record<string, unknown> }> {
+  const res = await app.inject({
+    method: 'POST',
+    url: `/api/v1/bookings/${bookingId}/payments`,
+    headers: authHeaders(token),
+    payload: { amount: 20000, method: 'bank_transfer', ...overrides },
+  });
+  const body = parseBody(res);
+  const data = body.data as Record<string, unknown>;
+  return { id: data.id as string, body: data };
+}
+
 /** Create a full booking setup: guest, room type, 2 rooms. Returns all IDs. */
 export async function createFullBookingSetup(
   app: FastifyInstance,

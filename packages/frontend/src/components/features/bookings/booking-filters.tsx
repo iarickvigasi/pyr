@@ -12,10 +12,12 @@ import { BOOKING_STATUSES } from '@pyr/shared';
 
 interface BookingFiltersProps {
   status: string;
+  paymentStatus: string;
   from: string;
   to: string;
   search: string;
   onStatusChange: (v: string) => void;
+  onPaymentStatusChange: (v: string) => void;
   onFromChange: (v: string) => void;
   onToChange: (v: string) => void;
   onSearchChange: (v: string) => void;
@@ -23,10 +25,12 @@ interface BookingFiltersProps {
 
 export function BookingFilters({
   status,
+  paymentStatus,
   from,
   to,
   search,
   onStatusChange,
+  onPaymentStatusChange,
   onFromChange,
   onToChange,
   onSearchChange,
@@ -44,6 +48,17 @@ export function BookingFilters({
               {s.replace('_', ' ')}
             </SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+      <Select value={paymentStatus} onValueChange={onPaymentStatusChange}>
+        <SelectTrigger className="w-[140px]">
+          <SelectValue placeholder="All payments" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All payments</SelectItem>
+          <SelectItem value="paid">Paid</SelectItem>
+          <SelectItem value="partial">Partial</SelectItem>
+          <SelectItem value="unpaid">Unpaid</SelectItem>
         </SelectContent>
       </Select>
       <Input

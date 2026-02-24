@@ -21,7 +21,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookingStatusBadge } from './booking-status-badge';
+import { PaymentStatusBadge } from './payment-status-badge';
 import { formatDate, formatCurrency } from '@/lib/format';
+
+interface BookingGuest {
+  id: string;
+  bookingId: string;
+  guestId: string;
+  guest: { id: string; name: string; email: string | null };
+}
 
 interface BookingRow {
   id: string;
@@ -32,6 +40,9 @@ interface BookingRow {
   needsReview?: boolean;
   guest: { id: string; name: string };
   room: { name: string; roomType: { name: string } };
+  bookingGuests?: BookingGuest[];
+  paymentStatus?: string;
+  totalPaid?: number;
 }
 
 const STATUS_TRANSITIONS: Record<string, Array<{ label: string; status: string }>> = {
@@ -48,6 +59,38 @@ const STATUS_TRANSITIONS: Record<string, Array<{ label: string; status: string }
     { label: 'Cancel', status: 'cancelled' },
   ],
 };
+
+function renderGuestNames(b: BookingRow): React.ReactNode {
+  const guests = b.bookingGuests;
+  if (!guests || guests.length === 0) {
+    // Fallback to legacy single guest
+    return (
+      <Link href={`/guests/${b.guest.id}`} className="font-medium hover:underline">
+        {b.guest.name}
+      </Link>
+    );
+  }
+
+  if (guests.length === 1) {
+    return (
+      <Link href={`/guests/${guests[0].guest.id}`} className="font-medium hover:underline">
+        {guests[0].guest.name}
+      </Link>
+    );
+  }
+
+  // Multiple guests: link first guest, show count for rest
+  return (
+    <span className="font-medium">
+      <Link href={`/guests/${guests[0].guest.id}`} className="hover:underline">
+        {guests[0].guest.name}
+      </Link>
+      <span className="text-muted-foreground">
+        {' '}+ {guests.length - 1} other{guests.length - 1 > 1 ? 's' : ''}
+      </span>
+    </span>
+  );
+}
 
 export function BookingTable({
   bookings,
@@ -85,6 +128,7 @@ export function BookingTable({
           <TableHead>Check-in</TableHead>
           <TableHead>Check-out</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead>Payment</TableHead>
           <TableHead className="text-right">Price</TableHead>
           <TableHead className="w-10" />
         </TableRow>
@@ -95,8 +139,8 @@ export function BookingTable({
           return (
             <TableRow key={b.id}>
               <TableCell>
-                <Link href={`/bookings/${b.id}`} className="font-medium hover:underline">
-                  {b.guest.name}
+                <Link href={`/bookings/${b.id}`} className="hover:underline">
+                  {renderGuestNames(b)}
                 </Link>
               </TableCell>
               <TableCell>{b.room.name}</TableCell>
@@ -112,6 +156,13 @@ export function BookingTable({
                     </Badge>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                {b.paymentStatus ? (
+                  <PaymentStatusBadge status={b.paymentStatus} />
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
               </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(b.totalPrice)}

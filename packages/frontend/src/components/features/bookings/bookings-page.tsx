@@ -18,6 +18,7 @@ export function BookingsPage() {
   const router = useRouter();
 
   const [status, setStatus] = useState(searchParams.get('status') ?? 'all');
+  const [paymentStatus, setPaymentStatus] = useState(searchParams.get('paymentStatus') ?? 'all');
   const [from, setFrom] = useState(searchParams.get('from') ?? '');
   const [to, setTo] = useState(searchParams.get('to') ?? '');
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
@@ -29,6 +30,7 @@ export function BookingsPage() {
 
   const params: Record<string, string | undefined> = {
     status: status === 'all' ? undefined : status,
+    paymentStatus: paymentStatus === 'all' ? undefined : paymentStatus,
     from: from || undefined,
     to: to || undefined,
     search: debouncedSearch || undefined,
@@ -43,7 +45,7 @@ export function BookingsPage() {
   useEffect(() => {
     setCursor(undefined);
     setAllBookings([]);
-  }, [status, debouncedSearch, from, to]);
+  }, [status, paymentStatus, debouncedSearch, from, to]);
 
   // Accumulate pages
   useEffect(() => {
@@ -59,12 +61,13 @@ export function BookingsPage() {
   useEffect(() => {
     const p = new URLSearchParams();
     if (status !== 'all') p.set('status', status);
+    if (paymentStatus !== 'all') p.set('paymentStatus', paymentStatus);
     if (from) p.set('from', from);
     if (to) p.set('to', to);
     if (search) p.set('search', search);
     const qs = p.toString();
     router.replace(`/bookings${qs ? `?${qs}` : ''}`, { scroll: false });
-  }, [status, from, to, search, router]);
+  }, [status, paymentStatus, from, to, search, router]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
@@ -93,10 +96,12 @@ export function BookingsPage() {
 
       <BookingFilters
         status={status}
+        paymentStatus={paymentStatus}
         from={from}
         to={to}
         search={search}
         onStatusChange={setStatus}
+        onPaymentStatusChange={setPaymentStatus}
         onFromChange={setFrom}
         onToChange={setTo}
         onSearchChange={setSearch}

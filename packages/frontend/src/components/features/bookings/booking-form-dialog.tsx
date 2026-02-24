@@ -47,11 +47,11 @@ import { useGuests } from '@/lib/hooks/use-guests';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
-import { ChevronsUpDown, Check } from 'lucide-react';
+import { ChevronsUpDown, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const bookingSchema = z.object({
-  guestId: z.string().min(1, 'Guest is required'),
+  guestIds: z.array(z.string()).min(1, 'At least one guest is required'),
   roomId: z.string().min(1, 'Room is required'),
   checkIn: z.string().min(1, 'Check-in date is required'),
   checkOut: z.string().min(1, 'Check-out date is required'),
@@ -62,6 +62,12 @@ const bookingSchema = z.object({
 });
 
 type BookingFormData = z.infer<typeof bookingSchema>;
+
+interface SelectedGuest {
+  id: string;
+  name: string;
+  email: string | null;
+}
 
 interface BookingFormDialogProps {
   open: boolean;
@@ -77,6 +83,12 @@ interface BookingFormDialogProps {
     source: string | null;
     notes: string | null;
     guest: { id: string; name: string };
+    bookingGuests?: Array<{
+      id: string;
+      bookingId: string;
+      guestId: string;
+      guest: { id: string; name: string; email: string | null };
+    }>;
   };
 }
 
@@ -91,15 +103,18 @@ export function BookingFormDialog({
 
   const [guestSearch, setGuestSearch] = useState('');
   const [guestOpen, setGuestOpen] = useState(false);
-  const [selectedGuestName, setSelectedGuestName] = useState(booking?.guest.name ?? '');
+  const [selectedGuests, setSelectedGuests] = useState<SelectedGuest[]>([]);
 
   const debouncedSearch = useDebounce(guestSearch, 300);
   const guestsQuery = useGuests({ search: debouncedSearch || undefined, limit: 10 });
 
+  // Derive initial guestIds from bookingGuests (edit) or empty (create)
+  const initialGuestIds = booking?.bookingGuests?.map((bg) => bg.guestId) ?? [];
+
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      guestId: booking?.guestId ?? '',
+      guestIds: initialGuestIds,
       roomId: booking?.roomId ?? '',
       checkIn: booking?.checkIn?.split('T')[0] ?? '',
       checkOut: booking?.checkOut?.split('T')[0] ?? '',
@@ -117,8 +132,15 @@ export function BookingFormDialog({
   // Reset form values whenever the dialog opens or the booking prop changes
   useEffect(() => {
     if (open) {
+      const editGuestIds = booking?.bookingGuests?.map((bg) => bg.guestId) ?? [];
+      const editSelectedGuests: SelectedGuest[] = booking?.bookingGuests?.map((bg) => ({
+        id: bg.guest.id,
+        name: bg.guest.name,
+        email: bg.guest.email,
+      })) ?? [];
+
       form.reset({
-        guestId: booking?.guestId ?? '',
+        guestIds: editGuestIds,
         roomId: booking?.roomId ?? '',
         checkIn: booking?.checkIn?.split('T')[0] ?? '',
         checkOut: booking?.checkOut?.split('T')[0] ?? '',
@@ -127,7 +149,8 @@ export function BookingFormDialog({
         source: booking?.source ?? '',
         notes: booking?.notes ?? '',
       });
-      setSelectedGuestName(booking?.guest.name ?? '');
+      setSelectedGuests(editSelectedGuests);
+      setGuestSearch('');
     }
   }, [open, booking]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -141,14 +164,34 @@ export function BookingFormDialog({
     }
   }, [availabilityQuery.data, form, isEdit]);
 
+  const handleGuestToggle = (guest: SelectedGuest) => {
+    const currentIds = form.getValues('guestIds');
+    if (currentIds.includes(guest.id)) {
+      // Remove
+      const newIds = currentIds.filter((id) => id !== guest.id);
+      form.setValue('guestIds', newIds, { shouldValidate: true });
+      setSelectedGuests((prev) => prev.filter((g) => g.id !== guest.id));
+    } else {
+      // Add
+      form.setValue('guestIds', [...currentIds, guest.id], { shouldValidate: true });
+      setSelectedGuests((prev) => [...prev, guest]);
+    }
+  };
+
+  const handleRemoveGuest = (guestId: string) => {
+    const newIds = form.getValues('guestIds').filter((id) => id !== guestId);
+    form.setValue('guestIds', newIds, { shouldValidate: true });
+    setSelectedGuests((prev) => prev.filter((g) => g.id !== guestId));
+  };
+
   const onSubmit = async (data: BookingFormData) => {
     try {
       if (isEdit) {
-        await updateBooking.mutateAsync({ id: booking.id, ...data });
+        const { guestIds, ...rest } = data;
+        await updateBooking.mutateAsync({ id: booking.id, guestIds, ...rest });
         toast.success('Booking updated');
       } else {
-        const { guestId, ...rest } = data;
-        await createBooking.mutateAsync({ ...rest, guestIds: [guestId] });
+        await createBooking.mutateAsync(data);
         toast.success('Booking created');
       }
       onOpenChange(false);
@@ -167,10 +210,10 @@ export function BookingFormDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="guestId"
-              render={({ field }) => (
+              name="guestIds"
+              render={() => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Guest</FormLabel>
+                  <FormLabel>Guests</FormLabel>
                   <Popover open={guestOpen} onOpenChange={setGuestOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -179,10 +222,12 @@ export function BookingFormDialog({
                           role="combobox"
                           className={cn(
                             'w-full justify-between',
-                            !field.value && 'text-muted-foreground',
+                            selectedGuests.length === 0 && 'text-muted-foreground',
                           )}
                         >
-                          {selectedGuestName || 'Select guest...'}
+                          {selectedGuests.length > 0
+                            ? `${selectedGuests.length} guest${selectedGuests.length > 1 ? 's' : ''} selected`
+                            : 'Select guests...'}
                           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -197,35 +242,61 @@ export function BookingFormDialog({
                         <CommandList>
                           <CommandEmpty>No guests found</CommandEmpty>
                           <CommandGroup>
-                            {guestsQuery.data?.data.map((g) => (
-                              <CommandItem
-                                key={g.id}
-                                value={g.id}
-                                onSelect={() => {
-                                  field.onChange(g.id);
-                                  setSelectedGuestName(g.name);
-                                  setGuestOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    field.value === g.id ? 'opacity-100' : 'opacity-0',
+                            {guestsQuery.data?.data.map((g) => {
+                              const isSelected = form.getValues('guestIds').includes(g.id);
+                              return (
+                                <CommandItem
+                                  key={g.id}
+                                  value={g.id}
+                                  onSelect={() => {
+                                    handleGuestToggle({
+                                      id: g.id,
+                                      name: g.name,
+                                      email: g.email,
+                                    });
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      isSelected ? 'opacity-100' : 'opacity-0',
+                                    )}
+                                  />
+                                  <span>{g.name}</span>
+                                  {g.email && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      {g.email}
+                                    </span>
                                   )}
-                                />
-                                <span>{g.name}</span>
-                                {g.email && (
-                                  <span className="ml-2 text-xs text-muted-foreground">
-                                    {g.email}
-                                  </span>
-                                )}
-                              </CommandItem>
-                            ))}
+                                </CommandItem>
+                              );
+                            })}
                           </CommandGroup>
                         </CommandList>
                       </Command>
                     </PopoverContent>
                   </Popover>
+                  {/* Selected guests as removable chips */}
+                  {selectedGuests.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {selectedGuests.map((g) => (
+                        <Badge
+                          key={g.id}
+                          variant="secondary"
+                          className="flex items-center gap-1 pr-1"
+                        >
+                          {g.name}
+                          <button
+                            type="button"
+                            className="ml-0.5 rounded-full p-0.5 hover:bg-muted"
+                            onClick={() => handleRemoveGuest(g.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

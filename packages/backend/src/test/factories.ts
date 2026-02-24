@@ -86,12 +86,16 @@ export async function createTestBooking(
   token: string,
   overrides: Record<string, unknown> = {},
 ): Promise<{ id: string; body: Record<string, unknown> }> {
-  let guestId = overrides.guestId as string | undefined;
+  // Support both guestIds (new) and guestId (legacy) for backward compat
+  let guestIds = overrides.guestIds as string[] | undefined;
+  const guestId = overrides.guestId as string | undefined;
   let roomId = overrides.roomId as string | undefined;
 
-  if (!guestId) {
+  if (!guestIds && !guestId) {
     const guest = await createTestGuest(app, token);
-    guestId = guest.id;
+    guestIds = [guest.id];
+  } else if (!guestIds && guestId) {
+    guestIds = [guestId];
   }
   if (!roomId) {
     const rt = await createTestRoomType(app, token);
@@ -99,17 +103,54 @@ export async function createTestBooking(
     roomId = room.id;
   }
 
+  // Remove guestId/guestIds from overrides so they don't conflict
+  const { guestId: _gId, guestIds: _gIds, roomId: _rId, ...rest } = overrides;
+
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/bookings',
     headers: authHeaders(token),
     payload: {
-      guestId,
+      guestIds,
       roomId,
       checkIn: '2026-04-01',
       checkOut: '2026-04-05',
       totalPrice: 40000,
-      ...overrides,
+      ...rest,
+    },
+  });
+  const body = parseBody(res);
+  const data = body.data as Record<string, unknown>;
+  return { id: data.id as string, body: data };
+}
+
+/** Create a multi-guest booking via API. Creates room if not provided. Returns `{ id, body }`. */
+export async function createTestBookingMultiGuest(
+  app: FastifyInstance,
+  token: string,
+  guestIds: string[],
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; body: Record<string, unknown> }> {
+  let roomId = overrides.roomId as string | undefined;
+  if (!roomId) {
+    const rt = await createTestRoomType(app, token);
+    const room = await createTestRoom(app, token, rt.id);
+    roomId = room.id;
+  }
+
+  const { roomId: _rId, ...rest } = overrides;
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/v1/bookings',
+    headers: authHeaders(token),
+    payload: {
+      guestIds,
+      roomId,
+      checkIn: '2026-04-01',
+      checkOut: '2026-04-05',
+      totalPrice: 40000,
+      ...rest,
     },
   });
   const body = parseBody(res);

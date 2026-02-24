@@ -15,7 +15,7 @@ import {
 function makeBookingParams(overrides: Partial<BookingVeventParams> = {}): BookingVeventParams {
   return {
     uid: 'pyr-booking-test-1',
-    guestName: 'Anna Schmidt',
+    guestNames: ['Anna Schmidt'],
     roomName: 'Sea View Suite (Room 1)',
     guestEmail: 'anna@example.com',
     guestPhone: '+49 170 1234567',

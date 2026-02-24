@@ -35,11 +35,14 @@ export async function syncBookingToCalendar(
 ): Promise<void> {
   const logger = app.log.child({ bookingId, action, entity: 'booking' });
 
-  // Load booking with relations
+  // Load booking with relations (bookingGuests junction for multi-guest support)
   const booking = await app.prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
       guest: { select: { name: true, email: true, phone: true } },
+      bookingGuests: {
+        include: { guest: { select: { name: true, email: true, phone: true } } },
+      },
       room: {
         select: {
           name: true,
@@ -58,6 +61,12 @@ export async function syncBookingToCalendar(
   const roomName = booking.room?.roomType?.name
     ? `${booking.room.roomType.name} (${booking.room.name})`
     : booking.room?.name ?? 'Unassigned';
+
+  // Derive guest data from junction table (fallback to legacy guest FK)
+  const guestNames = booking.bookingGuests.length > 0
+    ? booking.bookingGuests.map(bg => bg.guest.name)
+    : [booking.guest?.name ?? 'Unknown Guest'];
+  const primaryGuest = booking.bookingGuests[0]?.guest ?? booking.guest ?? null;
 
   // Simple payment status heuristic (no payment model queries for MVP)
   const paymentStatus = booking.totalPrice > 0 ? 'Unpaid' : 'N/A';
@@ -82,10 +91,10 @@ export async function syncBookingToCalendar(
     const uid = `pyr-booking-${calendarEvent.id}`;
     const iCalString = buildBookingVevent({
       uid,
-      guestName: booking.guest?.name ?? 'Unknown Guest',
+      guestNames,
       roomName,
-      guestEmail: booking.guest?.email ?? null,
-      guestPhone: booking.guest?.phone ?? null,
+      guestEmail: primaryGuest?.email ?? null,
+      guestPhone: primaryGuest?.phone ?? null,
       totalPrice: booking.totalPrice,
       paymentStatus,
       bookingSource: booking.source,
@@ -140,10 +149,10 @@ export async function syncBookingToCalendar(
 
     const iCalString = buildBookingVevent({
       uid,
-      guestName: booking.guest?.name ?? 'Unknown Guest',
+      guestNames,
       roomName,
-      guestEmail: booking.guest?.email ?? null,
-      guestPhone: booking.guest?.phone ?? null,
+      guestEmail: primaryGuest?.email ?? null,
+      guestPhone: primaryGuest?.phone ?? null,
       totalPrice: booking.totalPrice,
       paymentStatus,
       bookingSource: booking.source,

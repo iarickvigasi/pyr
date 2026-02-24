@@ -93,6 +93,27 @@ function formatEurCents(cents: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Guest Name Formatting
+// ---------------------------------------------------------------------------
+
+/**
+ * Format guest names from bookingGuests junction for display in alerts.
+ * - 1 guest: "Anna Schmidt"
+ * - 2 guests: "Anna Schmidt & Max Muller"
+ * - 3+ guests: "Anna Schmidt + 2 others"
+ */
+function formatGuestNames(
+  bookingGuests: Array<{ guest: { name: string } }>,
+): string {
+  if (bookingGuests.length === 0) return 'Unknown Guest';
+  if (bookingGuests.length === 1) return bookingGuests[0]!.guest.name;
+  if (bookingGuests.length === 2) {
+    return `${bookingGuests[0]!.guest.name} & ${bookingGuests[1]!.guest.name}`;
+  }
+  return `${bookingGuests[0]!.guest.name} + ${bookingGuests.length - 1} others`;
+}
+
+// ---------------------------------------------------------------------------
 // Alert Formatters
 // ---------------------------------------------------------------------------
 
@@ -202,6 +223,7 @@ export async function processGuestArrivalAlert(app: FastifyInstance): Promise<vo
     },
     include: {
       guest: { select: { name: true } },
+      bookingGuests: { include: { guest: { select: { name: true } } } },
       room: { select: { name: true } },
     },
   });
@@ -212,6 +234,10 @@ export async function processGuestArrivalAlert(app: FastifyInstance): Promise<vo
   }
 
   for (const booking of arrivingBookings) {
+    const guestName = booking.bookingGuests.length > 0
+      ? formatGuestNames(booking.bookingGuests)
+      : booking.guest.name;
+
     const checkInDate = booking.checkIn.toISOString().slice(0, 10);
     const checkOutDate = booking.checkOut.toISOString().slice(0, 10);
     const nights = Math.round(
@@ -219,7 +245,7 @@ export async function processGuestArrivalAlert(app: FastifyInstance): Promise<vo
     );
 
     const message = formatAlert('guest-arriving', {
-      guestName: booking.guest.name,
+      guestName,
       roomName: booking.room.name,
       checkIn: checkInDate,
       checkOut: checkOutDate,
@@ -257,6 +283,7 @@ export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<
     },
     include: {
       guest: { select: { name: true } },
+      bookingGuests: { include: { guest: { select: { name: true } } } },
     },
   });
 
@@ -266,10 +293,14 @@ export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<
   }
 
   for (const booking of overdueBookings) {
+    const guestName = booking.bookingGuests.length > 0
+      ? formatGuestNames(booking.bookingGuests)
+      : booking.guest.name;
+
     const checkOutDate = booking.checkOut.toISOString().slice(0, 10);
 
     const message = formatAlert('overdue-invoice', {
-      guestName: booking.guest.name,
+      guestName,
       checkOutDate,
       amount: booking.totalPrice,
     });
@@ -296,6 +327,7 @@ export async function sendNewBookingAlert(
     where: { id: bookingId },
     include: {
       guest: { select: { name: true } },
+      bookingGuests: { include: { guest: { select: { name: true } } } },
       room: { select: { name: true } },
     },
   });
@@ -305,6 +337,10 @@ export async function sendNewBookingAlert(
     return;
   }
 
+  const guestName = booking.bookingGuests.length > 0
+    ? formatGuestNames(booking.bookingGuests)
+    : booking.guest.name;
+
   const checkInDate = booking.checkIn.toISOString().slice(0, 10);
   const checkOutDate = booking.checkOut.toISOString().slice(0, 10);
   const nights = Math.round(
@@ -312,7 +348,7 @@ export async function sendNewBookingAlert(
   );
 
   const message = formatAlert('new-booking', {
-    guestName: booking.guest.name,
+    guestName,
     roomName: booking.room.name,
     checkIn: checkInDate,
     checkOut: checkOutDate,

@@ -86,7 +86,7 @@ describeIf(hasCredentials)('CalDAV Integration (real iCloud)', () => {
     const uid = `pyr-test-booking-${randomUUID()}`;
     const iCalString = buildBookingVevent({
       uid,
-      guestName: 'Integration Test Guest',
+      guestNames: ['Integration Test Guest'],
       roomName: 'Sea View Suite',
       guestEmail: 'test@example.com',
       guestPhone: '+1234567890',
@@ -158,7 +158,7 @@ describeIf(hasCredentials)('CalDAV Integration (real iCloud)', () => {
     // Create initial booking
     const initialIcal = buildBookingVevent({
       uid,
-      guestName: 'Update Test Guest',
+      guestNames: ['Update Test Guest'],
       roomName: 'Garden Room',
       guestEmail: 'update@example.com',
       guestPhone: null,
@@ -183,7 +183,7 @@ describeIf(hasCredentials)('CalDAV Integration (real iCloud)', () => {
     // Update with new room name and incremented sequence
     const updatedIcal = buildBookingVevent({
       uid,
-      guestName: 'Update Test Guest',
+      guestNames: ['Update Test Guest'],
       roomName: 'Sea View Suite',
       guestEmail: 'update@example.com',
       guestPhone: null,
@@ -223,7 +223,7 @@ describeIf(hasCredentials)('CalDAV Integration (real iCloud)', () => {
     // Create initial booking
     const initialIcal = buildBookingVevent({
       uid,
-      guestName: 'Cancel Test Guest',
+      guestNames: ['Cancel Test Guest'],
       roomName: 'Pool View',
       guestEmail: 'cancel@example.com',
       guestPhone: null,
@@ -248,7 +248,7 @@ describeIf(hasCredentials)('CalDAV Integration (real iCloud)', () => {
     // Cancel: update with [CANCELLED] prefix
     const cancelledIcal = buildBookingVevent({
       uid,
-      guestName: 'Cancel Test Guest',
+      guestNames: ['Cancel Test Guest'],
       roomName: 'Pool View',
       guestEmail: 'cancel@example.com',
       guestPhone: null,
@@ -289,7 +289,7 @@ describeIf(hasCredentials)('CalDAV Integration (real iCloud)', () => {
     // DTSTART should be 20260310, DTEND should be 20260313 (checkout + 1, non-inclusive)
     const iCalString = buildBookingVevent({
       uid,
-      guestName: 'Span Test Guest',
+      guestNames: ['Span Test Guest'],
       roomName: 'Suite',
       guestEmail: null,
       guestPhone: null,
@@ -326,7 +326,7 @@ describeIf(hasCredentials)('CalDAV Integration (real iCloud)', () => {
 
     const iCalString = buildBookingVevent({
       uid,
-      guestName: 'Delete Test Guest',
+      guestNames: ['Delete Test Guest'],
       roomName: 'Temp Room',
       guestEmail: null,
       guestPhone: null,

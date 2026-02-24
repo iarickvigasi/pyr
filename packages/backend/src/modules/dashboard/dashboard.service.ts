@@ -12,7 +12,7 @@ export interface DashboardStats {
 
 export interface TodayBooking {
   id: string;
-  guestName: string;
+  guestNames: string[]; // Phase 15: frontend update needed
   roomName: string;
   checkIn: string;
   checkOut: string;
@@ -92,14 +92,14 @@ export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
     prisma.booking.findMany({
       where: { checkIn: today, deletedAt: null },
       include: {
-        guest: { select: { name: true } },
+        bookingGuests: { include: { guest: { select: { name: true } } } },
         room: { select: { name: true } },
       },
     }),
     prisma.booking.findMany({
       where: { checkOut: today, deletedAt: null },
       include: {
-        guest: { select: { name: true } },
+        bookingGuests: { include: { guest: { select: { name: true } } } },
         room: { select: { name: true } },
       },
     }),
@@ -118,7 +118,7 @@ export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
 
   const checkIns: TodayBooking[] = checkInBookings.map((b) => ({
     id: b.id,
-    guestName: b.guest.name,
+    guestNames: b.bookingGuests.map(bg => bg.guest.name),
     roomName: b.room.name,
     checkIn: b.checkIn.toISOString().split('T')[0]!,
     checkOut: b.checkOut.toISOString().split('T')[0]!,
@@ -126,7 +126,7 @@ export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
 
   const checkOuts: TodayBooking[] = checkOutBookings.map((b) => ({
     id: b.id,
-    guestName: b.guest.name,
+    guestNames: b.bookingGuests.map(bg => bg.guest.name),
     roomName: b.room.name,
     checkIn: b.checkIn.toISOString().split('T')[0]!,
     checkOut: b.checkOut.toISOString().split('T')[0]!,

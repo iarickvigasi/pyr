@@ -12,12 +12,13 @@ export const dashboardStatsResponseSchema = z.object({
   }),
 });
 
+// Phase 15: frontend update needed -- guestName (string) changed to guestNames (string[])
 export const dashboardTodayResponseSchema = z.object({
   data: z.object({
     checkIns: z.array(
       z.object({
         id: z.string(),
-        guestName: z.string(),
+        guestNames: z.array(z.string()),
         roomName: z.string(),
         checkIn: z.string(),
         checkOut: z.string(),
@@ -26,7 +27,7 @@ export const dashboardTodayResponseSchema = z.object({
     checkOuts: z.array(
       z.object({
         id: z.string(),
-        guestName: z.string(),
+        guestNames: z.array(z.string()),
         roomName: z.string(),
         checkIn: z.string(),
         checkOut: z.string(),

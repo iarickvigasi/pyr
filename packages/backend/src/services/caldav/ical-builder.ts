@@ -55,7 +55,7 @@ export function getEventDuration(type: string): number {
 
 export interface BookingVeventParams {
   uid: string;
-  guestName: string;
+  guestNames: string[];
   roomName: string;
   guestEmail: string | null;
   guestPhone: string | null;
@@ -83,9 +83,10 @@ export interface BookingVeventParams {
 export function buildBookingVevent(params: BookingVeventParams): string {
   const cal = ical({ prodId: PRODID });
 
+  const guestName = params.guestNames.join(', ') || 'Unknown Guest';
   const title = params.isCancelled
-    ? `[CANCELLED] ${params.guestName} \u2014 ${params.roomName}`
-    : `${params.guestName} \u2014 ${params.roomName}`;
+    ? `[CANCELLED] ${guestName} \u2014 ${params.roomName}`
+    : `${guestName} \u2014 ${params.roomName}`;
 
   const descLines: string[] = [];
   if (params.guestEmail) descLines.push(`Email: ${params.guestEmail}`);

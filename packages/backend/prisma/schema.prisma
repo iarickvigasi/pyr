@@ -134,6 +134,7 @@ model Guest {
   deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
 
   bookings      Booking[]
+  bookingGuests BookingGuest[]
   eventBookings EventBooking[]
   conversations Conversation[]
   invoices      Invoice[]
@@ -204,14 +205,31 @@ model Booking {
   guest              Guest           @relation(fields: [guestId], references: [id])
   room               Room            @relation(fields: [roomId], references: [id])
   sourceConversation Conversation?   @relation(fields: [sourceConversationId], references: [id])
+  bookingGuests      BookingGuest[]
   calendarEvents     CalendarEvent[]
   invoices           Invoice[]
+  payments           Payment[]
 
   @@index([guestId])
   @@index([roomId])
   @@index([deletedAt, status])
   @@index([checkIn, checkOut])
   @@map("bookings")
+}
+
+model BookingGuest {
+  id        String   @id @default(cuid())
+  bookingId String   @map("booking_id")
+  guestId   String   @map("guest_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  guest   Guest   @relation(fields: [guestId], references: [id])
+
+  @@unique([bookingId, guestId])
+  @@index([bookingId])
+  @@index([guestId])
+  @@map("booking_guests")
 }
 
 model Event {
@@ -391,15 +409,20 @@ model Invoice {
 
 model Payment {
   id         String        @id @default(cuid())
-  invoiceId  String        @map("invoice_id")
+  invoiceId  String?       @map("invoice_id")
+  bookingId  String?       @map("booking_id")
   amount     Int           // cents
   method     PaymentMethod
+  notes      String?
+  date       DateTime      @default(now()) @map("date") @db.Date
   receivedAt DateTime      @map("received_at") @db.Timestamptz(3)
   createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
 
   @@index([invoiceId])
+  @@index([bookingId])
   @@map("payments")
 }
 

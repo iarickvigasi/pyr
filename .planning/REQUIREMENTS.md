@@ -90,12 +90,12 @@ Requirements for milestone v1.1: Multi-Guest Bookings, Payments & Chat History.
 
 ### Payment Tracking
 
-- [ ] **PAY-01**: Ines can log a payment for a booking (date, amount, method, notes)
+- [x] **PAY-01**: Ines can log a payment for a booking (date, amount, method, notes)
 - [ ] **PAY-02**: Ines can view payment history on a booking's detail page
 - [ ] **PAY-03**: Ines can see the balance (total / paid / due) on a booking
 - [ ] **PAY-04**: Balance is color-coded: green=paid, amber=partial, red=unpaid
 - [ ] **PAY-05**: Ines can modify a booking's total price from the dashboard
-- [ ] **PAY-06**: Ines can delete an erroneous payment entry
+- [x] **PAY-06**: Ines can delete an erroneous payment entry
 - [ ] **PAY-07**: Booking list shows payment status column (Paid/Partial/Unpaid)
 - [ ] **PAY-08**: Ines can query and log payments via the AI assistant
 
@@ -219,9 +219,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MBOOK-01 | Phase 13 | Complete |
 | MBOOK-03 | Phase 13 | Complete |
 | MBOOK-04 | Phase 13 | Complete |
-| PAY-01 | Phase 14 | Pending |
+| PAY-01 | Phase 14 | Complete |
 | PAY-05 | Phase 14 | Pending |
-| PAY-06 | Phase 14 | Pending |
+| PAY-06 | Phase 14 | Complete |
 | PAY-07 | Phase 14 | Pending |
 | MBOOK-02 | Phase 15 | Pending |
 | PAY-02 | Phase 15 | Pending |

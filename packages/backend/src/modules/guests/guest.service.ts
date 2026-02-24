@@ -229,6 +229,31 @@ export async function mergeGuests(
       where: { guestId: secondaryId },
       data: { guestId: primaryId },
     });
+
+    // Handle bookingGuests junction table: deduplicate then reassign
+    // 1. Find bookings where primary guest already exists (potential duplicates)
+    const primaryBookingGuests = await tx.bookingGuest.findMany({
+      where: { guestId: primaryId },
+      select: { bookingId: true },
+    });
+    const sharedBookingIds = new Set(primaryBookingGuests.map(bg => bg.bookingId));
+
+    // 2. Delete secondary's junction rows that would create duplicates
+    if (sharedBookingIds.size > 0) {
+      await tx.bookingGuest.deleteMany({
+        where: {
+          guestId: secondaryId,
+          bookingId: { in: [...sharedBookingIds] },
+        },
+      });
+    }
+
+    // 3. Reassign remaining secondary junction rows to primary
+    await tx.bookingGuest.updateMany({
+      where: { guestId: secondaryId },
+      data: { guestId: primaryId },
+    });
+
     await tx.conversation.updateMany({
       where: { guestId: secondaryId },
       data: { guestId: primaryId },

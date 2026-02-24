@@ -413,6 +413,14 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
                       },
                     });
 
+                    // Write junction table row for consistent multi-guest data
+                    await tx.bookingGuest.create({
+                      data: {
+                        bookingId: newBooking.id,
+                        guestId: otaGuestId!,
+                      },
+                    });
+
                     await writeAuditLog(tx, {
                       entityType: 'booking',
                       entityId: newBooking.id,

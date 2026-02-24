@@ -109,11 +109,14 @@ export async function buildDraftContext(
     throw Object.assign(new Error('Conversation not found'), { statusCode: 404 });
   }
 
-  // 2. Load guest's booking history
+  // 2. Load guest's booking history (via junction table to find secondary guest bookings)
   let bookings: DraftContext['bookings'] = [];
   if (conversation.guest) {
     const guestBookings = await prisma.booking.findMany({
-      where: { guestId: conversation.guest.id, deletedAt: null },
+      where: {
+        bookingGuests: { some: { guestId: conversation.guest.id } },
+        deletedAt: null,
+      },
       orderBy: { checkIn: 'desc' },
       include: {
         room: {

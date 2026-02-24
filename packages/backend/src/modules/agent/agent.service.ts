@@ -187,7 +187,10 @@ export async function getConversationContext(
     guest = toGuestSummary(conversation.guest);
 
     const guestBookings = await prisma.booking.findMany({
-      where: { guestId: conversation.guest.id, deletedAt: null },
+      where: {
+        bookingGuests: { some: { guestId: conversation.guest.id } },
+        deletedAt: null,
+      },
       orderBy: { checkIn: 'desc' },
       include: { room: { include: { roomType: true } } },
     });
@@ -226,11 +229,6 @@ export async function getGuestContext(
   const guest = await prisma.guest.findUnique({
     where: { id: guestId },
     include: {
-      bookings: {
-        where: { deletedAt: null },
-        orderBy: { checkIn: 'desc' },
-        include: { room: { include: { roomType: true } } },
-      },
       conversations: {
         orderBy: { lastMessageAt: 'desc' },
         include: {
@@ -244,9 +242,19 @@ export async function getGuestContext(
     throw Object.assign(new Error('Guest not found'), { statusCode: 404 });
   }
 
+  // Query bookings via junction table to include bookings where guest is secondary
+  const guestBookings = await prisma.booking.findMany({
+    where: {
+      bookingGuests: { some: { guestId } },
+      deletedAt: null,
+    },
+    orderBy: { checkIn: 'desc' },
+    include: { room: { include: { roomType: true } } },
+  });
+
   return {
     guest: toGuestSummary(guest),
-    bookings: guest.bookings.map(toBookingSummary),
+    bookings: guestBookings.map(toBookingSummary),
     conversations: guest.conversations.map((c) => ({
       id: c.id,
       channel: c.channel,

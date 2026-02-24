@@ -24,14 +24,14 @@ interface TodayResponse {
   data: {
     checkIns: Array<{
       id: string;
-      guestName: string;
+      guestNames: string[];
       roomName: string;
       checkIn: string;
       checkOut: string;
     }>;
     checkOuts: Array<{
       id: string;
-      guestName: string;
+      guestNames: string[];
       roomName: string;
       checkIn: string;
       checkOut: string;

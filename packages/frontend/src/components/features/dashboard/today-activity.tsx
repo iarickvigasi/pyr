@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface TodayBooking {
   id: string;
-  guestName: string;
+  guestNames: string[];
   roomName: string;
   checkIn: string;
   checkOut: string;
@@ -84,7 +84,7 @@ export function TodayActivity({
                     href={`/bookings/${b.id}`}
                     className="text-sm hover:underline"
                   >
-                    {b.guestName} &mdash; {b.roomName}
+                    {b.guestNames?.join(', ') || 'Unknown'} &mdash; {b.roomName}
                   </Link>
                 </li>
               ))}
@@ -104,7 +104,7 @@ export function TodayActivity({
                     href={`/bookings/${b.id}`}
                     className="text-sm hover:underline"
                   >
-                    {b.guestName} &mdash; {b.roomName}
+                    {b.guestNames?.join(', ') || 'Unknown'} &mdash; {b.roomName}
                   </Link>
                 </li>
               ))}

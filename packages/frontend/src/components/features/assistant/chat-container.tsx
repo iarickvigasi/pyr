@@ -16,6 +16,8 @@ export function ChatContainer() {
     sendMessage,
     resetSession,
     toolLabel,
+    contextMayBeLost,
+    clearContextWarning,
   } = useAssistant();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,19 @@ export function ChatContainer() {
           <span className="hidden sm:inline">New conversation</span>
         </Button>
       </div>
+
+      {/* Context loss banner */}
+      {contextMayBeLost && (
+        <div className="flex items-center justify-between bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-400">
+          <span>Session context may have been reset</span>
+          <button
+            onClick={clearContextWarning}
+            className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 text-xs underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Message area */}
       {isEmpty ? (

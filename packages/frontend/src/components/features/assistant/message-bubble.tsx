@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import type { ChatMessage } from '@/lib/hooks/use-assistant';
 import { cn } from '@/lib/utils';
 import type { ComponentPropsWithoutRef } from 'react';
+import { ToolSummary } from './tool-summary';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -123,6 +124,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               </Markdown>
             ) : null}
           </div>
+        )}
+        {/* Show collapsed tool summary for restored assistant messages */}
+        {!isUser && message.isRestored && message.toolCalls && message.toolCalls.length > 0 && (
+          <ToolSummary count={message.toolCalls.length} />
         )}
         <div
           className={cn(

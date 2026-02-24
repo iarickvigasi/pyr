@@ -94,7 +94,7 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. Schema Migration & Chat History | v1.1 | 0/2 | Not started | - |
+| 12. Schema Migration & Chat History | v1.1 | 1/2 | In progress | - |
 | 13. Backend Multi-Guest Bookings | v1.1 | 0/? | Not started | - |
 | 14. Backend Payment Tracking | v1.1 | 0/? | Not started | - |
 | 15. Frontend Multi-Guest & Payments | v1.1 | 0/? | Not started | - |

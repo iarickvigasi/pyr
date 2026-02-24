@@ -85,7 +85,7 @@ Plans:
 
 Plans:
 - [x] 15-01-PLAN.md -- Foundation: update booking types/hooks, payment hooks, PaymentStatusBadge, fix dashboard today-activity guestNames
-- [ ] 15-02-PLAN.md -- Booking form multi-guest combobox, booking table payment column and multi-guest names
+- [x] 15-02-PLAN.md -- Booking form multi-guest combobox, booking table payment column and multi-guest names
 - [ ] 15-03-PLAN.md -- Booking detail multi-guest display, payment panel (balance + log form + history)
 
 ### Phase 16: Assistant Integration
@@ -110,5 +110,5 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 12. Schema Migration & Chat History | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
 | 13. Backend Multi-Guest Bookings | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
 | 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
-| 15. Frontend Multi-Guest & Payments | v1.1 | 1/3 | In progress | - |
+| 15. Frontend Multi-Guest & Payments | 2/3 | In Progress|  | - |
 | 16. Assistant Integration | v1.1 | 0/? | Not started | - |

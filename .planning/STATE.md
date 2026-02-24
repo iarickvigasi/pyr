@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 15 (4 of 5 in v1.1) -- Frontend Multi-Guest & Payments
-Plan: 1 of 3
+Plan: 2 of 3
 Status: Executing
-Last activity: 2026-02-24 -- Completed 15-01 (Foundation: types, hooks, badge, dashboard fix)
+Last activity: 2026-02-24 -- Completed 15-02 (Booking form multi-guest combobox, table payment column)
 
-Progress: [#######...] 70% (7/10 plans across 5 phases)
+Progress: [########..] 80% (8/10 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [#######...] 70% (7/10 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 5min
-- Total execution time: 0.53 hours
+- Total execution time: 0.58 hours
 
 ## Accumulated Context
 
@@ -56,6 +56,9 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - [Phase 14]: Phase 14-02: paymentStatus filter applies post-computation (page size may shrink when filtering)
 - Phase 15-01: Used ReactElement instead of JSX.Element for return type (React 19 namespace change)
 - Phase 15-01: Booking form dialog wraps guestId into guestIds[] on create path (bridge until Plan 15-02 multi-select)
+- Phase 15-02: Multi-guest display in table uses first guest linked + "+ N others" for compactness
+- Phase 15-02: Popover stays open during multi-select (no close on each selection)
+- Phase 15-02: Payment status filter wired through URL search params for bookmark/share support
 
 ### Pending Todos
 
@@ -74,5 +77,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 15-01-PLAN.md
+Stopped at: Completed 15-02-PLAN.md
 Resume file: N/A

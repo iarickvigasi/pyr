@@ -18,7 +18,7 @@ v1.0 shipped the full MVP: CRM, email ingestion with AI-drafted replies, CalDAV 
 v1.0 phases (1-11) are archived in MILESTONES.md. v1.1 continues from Phase 12.
 
 - [x] **Phase 12: Schema Migration & Chat History** - Database migration (junction table, payment schema), Prisma regeneration, stable assistant session key, localStorage chat persistence
-- [ ] **Phase 13: Backend Multi-Guest Bookings** - Booking CRUD rewrite for guestIds[], CalDAV/notification/context-builder callsite updates, guest filter via junction
+- [x] **Phase 13: Backend Multi-Guest Bookings** - Booking CRUD rewrite for guestIds[], CalDAV/notification/context-builder callsite updates, guest filter via junction
 - [ ] **Phase 14: Backend Payment Tracking** - Invoice stub implementation, payment CRUD endpoints, balance calculation, overdue alert fix, payment status on listing
 - [ ] **Phase 15: Frontend Multi-Guest & Payments** - Multi-guest booking form, guest display on detail page, payment panel (balance, logging, history), color-coded status, editable price
 - [ ] **Phase 16: Assistant Integration** - OpenClaw plugin updates for multi-guest bookings and payment tools
@@ -53,7 +53,7 @@ Plans:
 
 Plans:
 - [x] 13-01-PLAN.md -- Booking CRUD rewrite: guestIds[] schema, junction table management, list filtering via junction, multi-guest tests
-- [ ] 13-02-PLAN.md -- Downstream callsite updates: CalDAV all-guest titles, notification multi-names, dashboard guestNames[], AI context junction queries, OTA junction write, guest merge dedup
+- [x] 13-02-PLAN.md -- Downstream callsite updates: CalDAV all-guest titles, notification multi-names, dashboard guestNames[], AI context junction queries, OTA junction write, guest merge dedup
 
 ### Phase 14: Backend Payment Tracking
 **Goal**: Ines can track payments against bookings through the API -- log, list, and delete payment entries with accurate balance calculation
@@ -99,7 +99,7 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 12. Schema Migration & Chat History | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
-| 13. Backend Multi-Guest Bookings | v1.1 | 1/2 | In progress | - |
+| 13. Backend Multi-Guest Bookings | v1.1 | Complete | 2026-02-24 | 2026-02-24 |
 | 14. Backend Payment Tracking | v1.1 | 0/? | Not started | - |
 | 15. Frontend Multi-Guest & Payments | v1.1 | 0/? | Not started | - |
 | 16. Assistant Integration | v1.1 | 0/? | Not started | - |

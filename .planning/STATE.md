@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 13 -- Backend Multi-Guest Bookings
+**Current focus:** Phase 14 -- Backend Payment Tracking
 
 ## Current Position
 
-Phase: 13 (2 of 5 in v1.1) -- Backend Multi-Guest Bookings
-Plan: 1 of 2
-Status: In progress
-Last activity: 2026-02-24 -- Completed 13-01 (Booking CRUD multi-guest rewrite)
+Phase: 14 (3 of 5 in v1.1) -- Backend Payment Tracking
+Plan: 0 of ?
+Status: Not started
+Last activity: 2026-02-24 -- Completed 13-02 (Downstream callsite updates)
 
-Progress: [###.......] 30% (3/10 plans across 5 phases)
+Progress: [####......] 40% (4/10 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [###.......] 30% (3/10 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 5min
-- Total execution time: 0.23 hours
+- Total execution time: 0.33 hours
 
 ## Accumulated Context
 
@@ -45,6 +45,10 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - Phase 13-01: Normalization guestId->guestIds done in service layer, not schema transform
 - Phase 13-01: Set-based diff strategy for junction table updates (toAdd/toRemove)
 - Phase 13-01: bookingGuests made non-optional on BookingWithRelations type
+- Phase 13-02: Dashboard guestName->guestNames is clean break (no backward compat shim) -- Phase 15 frontend update needed
+- Phase 13-02: CalDAV/notifications use fallback to legacy booking.guest when bookingGuests is empty
+- Phase 13-02: formatGuestNames uses & for 2 guests and + N others for 3+
+- Phase 13-02: Guest merge deduplicates junction: delete shared first, then reassign remaining
 
 ### Pending Todos
 
@@ -63,5 +67,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 13-01-PLAN.md
+Stopped at: Completed 13-02-PLAN.md
 Resume file: N/A

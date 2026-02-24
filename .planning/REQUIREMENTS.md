@@ -85,7 +85,7 @@ Requirements for milestone v1.1: Multi-Guest Bookings, Payments & Chat History.
 - [x] **MBOOK-01**: Ines can assign multiple guests to a single booking
 - [ ] **MBOOK-02**: Ines can see all guests on a booking's detail page
 - [x] **MBOOK-03**: Ines can search/filter bookings by any guest on the booking
-- [ ] **MBOOK-04**: Calendar events display all guest names for a booking
+- [x] **MBOOK-04**: Calendar events display all guest names for a booking
 - [ ] **MBOOK-05**: Ines can create a multi-guest booking via the AI assistant
 
 ### Payment Tracking
@@ -218,7 +218,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAT-02 | Phase 12 | Complete |
 | MBOOK-01 | Phase 13 | Complete |
 | MBOOK-03 | Phase 13 | Complete |
-| MBOOK-04 | Phase 13 | Pending |
+| MBOOK-04 | Phase 13 | Complete |
 | PAY-01 | Phase 14 | Pending |
 | PAY-05 | Phase 14 | Pending |
 | PAY-06 | Phase 14 | Pending |

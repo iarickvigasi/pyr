@@ -26,6 +26,7 @@ export type Guest = {
 
 export type GuestWithRelations = Guest & {
   bookings?: Booking[];
+  bookingGuests?: BookingGuest[];
   eventBookings?: EventBooking[];
   conversations?: Conversation[];
   invoices?: Invoice[];
@@ -123,9 +124,18 @@ export type Booking = {
   deletedAt: Date | null;
 };
 
+export type BookingGuest = {
+  id: string;
+  bookingId: string;
+  guestId: string;
+  createdAt: Date;
+};
+
 export type BookingWithRelations = Booking & {
   guest: Pick<Guest, 'id' | 'name' | 'email'>;
   room: RoomWithType;
+  bookingGuests?: BookingGuest[];
+  payments?: Payment[];
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -279,9 +289,12 @@ export type PaymentMethod = 'paypal' | 'bank_transfer' | 'cash';
 
 export type Payment = {
   id: string;
-  invoiceId: string;
+  invoiceId: string | null;
+  bookingId: string | null;
   amount: number;
   method: PaymentMethod;
+  notes: string | null;
+  date: Date;
   receivedAt: Date;
   createdAt: Date;
 };

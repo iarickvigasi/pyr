@@ -299,7 +299,7 @@ export type Payment = {
   method: PaymentMethod;
   notes: string | null;
   date: Date;
-  receivedAt: Date;
+  deletedAt: Date | null;
   createdAt: Date;
 };
 

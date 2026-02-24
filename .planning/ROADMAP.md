@@ -65,7 +65,11 @@ Plans:
   3. `GET /api/v1/bookings/:id` includes a payment summary: totalPrice, totalPaid, balanceDue (all in integer cents)
   4. `GET /api/v1/bookings` includes a paymentStatus field per booking (paid/partial/unpaid) for list-level display
   5. The overdue invoice alert (`processOverdueInvoiceAlert`) uses actual payment balance instead of the old heuristic, preventing false positives for paid bookings
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 14-01-PLAN.md -- Payment CRUD: Prisma migration, payment service/routes/schema, test factory, integration tests
+- [ ] 14-02-PLAN.md -- Booking augmentation: payment summary on detail, paymentStatus on list, overdue alert refactor, additional tests
 
 ### Phase 15: Frontend Multi-Guest & Payments
 **Goal**: Ines can assign multiple guests to bookings, see all guests on a booking, view and manage payments, and see at-a-glance payment status -- all from the dashboard
@@ -99,7 +103,7 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 12. Schema Migration & Chat History | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
-| 13. Backend Multi-Guest Bookings | v1.1 | Complete | 2026-02-24 | 2026-02-24 |
+| 13. Backend Multi-Guest Bookings | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
 | 14. Backend Payment Tracking | v1.1 | 0/? | Not started | - |
 | 15. Frontend Multi-Guest & Payments | v1.1 | 0/? | Not started | - |
 | 16. Assistant Integration | v1.1 | 0/? | Not started | - |

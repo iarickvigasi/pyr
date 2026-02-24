@@ -15,9 +15,12 @@ export interface Invoice {
 
 export interface Payment {
   id: string;
-  invoiceId: string;
+  invoiceId: string | null;
+  bookingId: string | null;
   amount: number;
   method: PaymentMethod;
-  receivedAt: Date;
+  notes: string | null;
+  date: Date;
+  deletedAt: Date | null;
   createdAt: Date;
 }

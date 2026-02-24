@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 14 (3 of 5 in v1.1) -- Backend Payment Tracking
-Plan: 1 of 2
-Status: In progress
-Last activity: 2026-02-24 -- Completed 14-01 (Payment CRUD endpoints)
+Plan: 2 of 2 (PHASE COMPLETE)
+Status: Phase complete
+Last activity: 2026-02-24 -- Completed 14-02 (Booking payment augmentation)
 
-Progress: [#####.....] 50% (5/10 plans across 5 phases)
+Progress: [######....] 60% (6/10 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [#####.....] 50% (5/10 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 5min
-- Total execution time: 0.41 hours
+- Total execution time: 0.48 hours
 
 ## Accumulated Context
 
@@ -51,6 +51,9 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - Phase 13-02: Guest merge deduplicates junction: delete shared first, then reassign remaining
 - [Phase 14]: Phase 14-01: Keep paypal in PaymentMethod enum; Zod restricts to bank_transfer and cash
 - [Phase 14]: Phase 14-01: Booking lookup for payments has no deletedAt filter (cancelled bookings accept payments)
+- [Phase 14]: Phase 14-02: paymentStatus computed post-query via groupBy, not stored as DB column
+- [Phase 14]: Phase 14-02: Overdue alert uses checkIn <= today, covers all statuses including cancelled
+- [Phase 14]: Phase 14-02: paymentStatus filter applies post-computation (page size may shrink when filtering)
 
 ### Pending Todos
 
@@ -60,7 +63,7 @@ None yet.
 
 - Phase 12: Two-migration strategy for junction table (create+backfill, then drop old column)
 - Phase 14: Verify zero existing payment rows before making invoiceId nullable
-- Phase 14: processOverdueInvoiceAlert must be updated before first payment is logged
+- Phase 14: processOverdueInvoiceAlert must be updated before first payment is logged (DONE in 14-02)
 
 ### Blockers/Concerns
 
@@ -69,5 +72,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 14-01-PLAN.md
+Stopped at: Completed 14-02-PLAN.md (Phase 14 complete)
 Resume file: N/A

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 12 -- Schema Migration & Chat History
+**Current focus:** Phase 13 -- Backend Multi-Guest Bookings
 
 ## Current Position
 
-Phase: 12 (1 of 5 in v1.1) -- Schema Migration & Chat History
-Plan: 1 of 2
-Status: Executing
-Last activity: 2026-02-24 -- Completed 12-01 (Schema migration + entity types)
+Phase: 13 (2 of 5 in v1.1) -- Backend Multi-Guest Bookings
+Plan: 0 of ?
+Status: Not started
+Last activity: 2026-02-24 -- Completed 12-02 (Chat persistence + tool summaries)
 
-Progress: [#.........] 10% (1/10 plans across 5 phases)
+Progress: [##........] 20% (2/10 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [#.........] 10% (1/10 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 1
+- Total plans completed: 2
 - Average duration: 3min
-- Total execution time: 0.05 hours
+- Total execution time: 0.10 hours
 
 ## Accumulated Context
 
@@ -38,6 +38,9 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - Phase 12-01: Backfill ALL bookings including soft-deleted into junction table
 - Phase 12-01: Used gen_random_uuid()::text for backfill IDs (Prisma cuid() unavailable in raw SQL)
 - Phase 12-01: Payment.invoiceId made nullable for Phase 14 direct booking payments
+- Phase 12-02: Counter-based session keys (dashboard:1, dashboard:2) replace timestamp-based for OpenClaw JSONL persistence
+- Phase 12-02: resetSession fully client-side (no server call) -- backend endpoint kept for backward compat
+- Phase 12-02: Messages saved to localStorage after each completed exchange (not per-chunk)
 
 ### Pending Todos
 
@@ -56,5 +59,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 12-01-PLAN.md
+Stopped at: Completed 12-02-PLAN.md (Phase 12 fully complete)
 Resume file: N/A

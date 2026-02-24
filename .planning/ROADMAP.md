@@ -17,7 +17,7 @@ v1.0 shipped the full MVP: CRM, email ingestion with AI-drafted replies, CalDAV 
 
 v1.0 phases (1-11) are archived in MILESTONES.md. v1.1 continues from Phase 12.
 
-- [ ] **Phase 12: Schema Migration & Chat History** - Database migration (junction table, payment schema), Prisma regeneration, stable assistant session key, localStorage chat persistence
+- [x] **Phase 12: Schema Migration & Chat History** - Database migration (junction table, payment schema), Prisma regeneration, stable assistant session key, localStorage chat persistence
 - [ ] **Phase 13: Backend Multi-Guest Bookings** - Booking CRUD rewrite for guestIds[], CalDAV/notification/context-builder callsite updates, guest filter via junction
 - [ ] **Phase 14: Backend Payment Tracking** - Invoice stub implementation, payment CRUD endpoints, balance calculation, overdue alert fix, payment status on listing
 - [ ] **Phase 15: Frontend Multi-Guest & Payments** - Multi-guest booking form, guest display on detail page, payment panel (balance, logging, history), color-coded status, editable price
@@ -37,8 +37,8 @@ v1.0 phases (1-11) are archived in MILESTONES.md. v1.1 continues from Phase 12.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md -- Schema migration: BookingGuest junction table, Payment model updates, backfill, Prisma regeneration, cross-package compilation
-- [ ] 12-02-PLAN.md -- Chat persistence: stable session keys, localStorage message storage, hydration on mount, tool summaries, context-loss banner
+- [x] 12-01-PLAN.md -- Schema migration: BookingGuest junction table, Payment model updates, backfill, Prisma regeneration, cross-package compilation
+- [x] 12-02-PLAN.md -- Chat persistence: stable session keys, localStorage message storage, hydration on mount, tool summaries, context-loss banner
 
 ### Phase 13: Backend Multi-Guest Bookings
 **Goal**: The booking API accepts and returns multiple guests per booking, and all downstream systems (CalDAV, notifications, AI context, email matching) correctly handle the new data shape
@@ -94,7 +94,7 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. Schema Migration & Chat History | v1.1 | 1/2 | In progress | - |
+| 12. Schema Migration & Chat History | v1.1 | 2/2 | Complete | 2026-02-24 |
 | 13. Backend Multi-Guest Bookings | v1.1 | 0/? | Not started | - |
 | 14. Backend Payment Tracking | v1.1 | 0/? | Not started | - |
 | 15. Frontend Multi-Guest & Payments | v1.1 | 0/? | Not started | - |

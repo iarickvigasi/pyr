@@ -1,11 +1,11 @@
-# Requirements: Puppy Yoga Retreat — MVP Completion
+# Requirements: Puppy Yoga Retreat -- Business Automation Platform
 
 **Defined:** 2026-02-19
 **Core Value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
 
-## v1 Requirements
+## v1.0 Requirements (Complete)
 
-Requirements for MVP completion. Each maps to roadmap phases.
+All v1.0 MVP requirements shipped. See MILESTONES.md for details.
 
 ### Email Ingestion
 
@@ -76,6 +76,34 @@ Requirements for MVP completion. Each maps to roadmap phases.
 - [x] **DOC-02**: API endpoints for new modules are documented in Swagger with examples
 - [x] **DOC-03**: OpenClaw integration documented with setup instructions and skill definitions
 
+## v1.1 Requirements
+
+Requirements for milestone v1.1: Multi-Guest Bookings, Payments & Chat History.
+
+### Multi-Guest Bookings
+
+- [ ] **MBOOK-01**: Ines can assign multiple guests to a single booking
+- [ ] **MBOOK-02**: Ines can see all guests on a booking's detail page
+- [ ] **MBOOK-03**: Ines can search/filter bookings by any guest on the booking
+- [ ] **MBOOK-04**: Calendar events display all guest names for a booking
+- [ ] **MBOOK-05**: Ines can create a multi-guest booking via the AI assistant
+
+### Payment Tracking
+
+- [ ] **PAY-01**: Ines can log a payment for a booking (date, amount, method, notes)
+- [ ] **PAY-02**: Ines can view payment history on a booking's detail page
+- [ ] **PAY-03**: Ines can see the balance (total / paid / due) on a booking
+- [ ] **PAY-04**: Balance is color-coded: green=paid, amber=partial, red=unpaid
+- [ ] **PAY-05**: Ines can modify a booking's total price from the dashboard
+- [ ] **PAY-06**: Ines can delete an erroneous payment entry
+- [ ] **PAY-07**: Booking list shows payment status column (Paid/Partial/Unpaid)
+- [ ] **PAY-08**: Ines can query and log payments via the AI assistant
+
+### Chat History
+
+- [x] **CHAT-01**: Assistant chat session persists across page refreshes
+- [x] **CHAT-02**: Chat messages display after page refresh (localStorage)
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -106,6 +134,18 @@ Deferred to future release. Tracked but not in current roadmap.
 - **ACCT-02**: Expense categorization and P&L reports
 - **ACCT-03**: Month-over-month revenue comparison
 
+### Chat Enhancements
+
+- **CHAT-03**: Ines can browse/view previous chat conversations (session list)
+- **CHAT-04**: Chat sessions have human-readable names
+- **CHAT-05**: Server-side chat persistence in PostgreSQL
+
+### Payment Enhancements
+
+- **PAY-09**: Payment type field (deposit/balance/full) for cleaner reporting
+- **PAY-10**: Payment due date reminders (Phase 2 PayPal invoicing scope)
+- **PAY-11**: Per-guest payment splitting within a group booking
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -114,11 +154,11 @@ Deferred to future release. Tracked but not in current roadmap.
 | Mobile native app | Web dashboard is sufficient; OpenClaw handles mobile via WhatsApp |
 | Two-way calendar sync | DB is the source of truth; reading from Apple Calendar would create conflicts |
 | Auto-send AI drafts | Human approval is a core business rule -- AI drafts must never auto-send |
-| Rich HTML email editor | Plain text + simple formatting is sufficient for guest communication |
-| WebSocket real-time inbox | BullMQ polling + page refresh is adequate for single-user MVP |
-| IMAP IDLE as primary strategy | Polling via BullMQ is simpler and more reliable for MVP |
-| OTA API integrations | Phase 4 -- requires partner registration processes |
-| Browser automation fallback | Phase 4 -- for platforms without API access |
+| PayPal/Stripe payment integration | Phase 2 scope -- v1.1 is manual logging only |
+| Invoice generation workflow | Phase 2 scope -- auto-invoice deferred |
+| Lead guest / primary guest concept | All guests equal per user requirement; no hierarchy needed |
+| Full LLM context replay on session restore | Expensive, complex, unnecessary for daily workflow tool |
+| Per-guest payment splitting | Single totalPrice per booking; Ines invoices the group, not individuals |
 
 ## Traceability
 
@@ -174,27 +214,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASST-11 | Phase 11 | Complete |
 | ASST-12 | Phase 11 | Complete |
 | ASST-13 | Phase 11 | Complete |
-| MSG-01 | -- | Deferred (v2) |
-| MSG-02 | -- | Deferred (v2) |
-| MSG-03 | -- | Deferred (v2) |
-| ADV-00 | -- | Deferred (v2) |
-| ADV-01 | -- | Deferred (v2) |
-| ADV-02 | -- | Deferred (v2) |
-| ADV-03 | -- | Deferred (v2) |
-| BOOK-01 | -- | Deferred (v2) |
-| BOOK-02 | -- | Deferred (v2) |
-| BOOK-03 | -- | Deferred (v2) |
-| BOOK-04 | -- | Deferred (v2) |
-| ACCT-01 | -- | Deferred (v2) |
-| ACCT-02 | -- | Deferred (v2) |
-| ACCT-03 | -- | Deferred (v2) |
+| CHAT-01 | Phase 12 | Complete |
+| CHAT-02 | Phase 12 | Complete |
+| MBOOK-01 | Phase 13 | Pending |
+| MBOOK-03 | Phase 13 | Pending |
+| MBOOK-04 | Phase 13 | Pending |
+| PAY-01 | Phase 14 | Pending |
+| PAY-05 | Phase 14 | Pending |
+| PAY-06 | Phase 14 | Pending |
+| PAY-07 | Phase 14 | Pending |
+| MBOOK-02 | Phase 15 | Pending |
+| PAY-02 | Phase 15 | Pending |
+| PAY-03 | Phase 15 | Pending |
+| PAY-04 | Phase 15 | Pending |
+| MBOOK-05 | Phase 16 | Pending |
+| PAY-08 | Phase 16 | Pending |
 
 **Coverage:**
-- v1 requirements: 48 total (45 complete, 3 pending Phase 11)
-- v2 requirements: 14 total (all deferred)
-- Total tracked: 62
+- v1.0 requirements: 48 total (all complete)
+- v1.1 requirements: 15 mapped, 0 unmapped
+- v2 requirements: 17 total (all deferred)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-23 -- dropped TEST-05/06/07 (Phase 9 removed), reassigned DOC-01..03 to Phase 11 gap closure*
+*Last updated: 2026-02-24 after v1.1 roadmap creation*

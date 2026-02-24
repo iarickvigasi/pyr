@@ -49,7 +49,11 @@ Plans:
   2. `GET /api/v1/bookings` supports filtering by any guest on a booking (not just a single guestId) -- searching for "Anna" returns bookings where Anna is any guest, not just the first
   3. Apple Calendar events for bookings display all guest names (e.g., "Anna Schmidt, Max Muller -- Suite Room") instead of a single guest name
   4. Email-to-booking matching finds bookings for guests who are secondary booking guests (not just the original single guestId)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [x] 13-01-PLAN.md -- Booking CRUD rewrite: guestIds[] schema, junction table management, list filtering via junction, multi-guest tests
+- [ ] 13-02-PLAN.md -- Downstream callsite updates: CalDAV all-guest titles, notification multi-names, dashboard guestNames[], AI context junction queries, OTA junction write, guest merge dedup
 
 ### Phase 14: Backend Payment Tracking
 **Goal**: Ines can track payments against bookings through the API -- log, list, and delete payment entries with accurate balance calculation
@@ -94,8 +98,8 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. Schema Migration & Chat History | v1.1 | 2/2 | Complete | 2026-02-24 |
-| 13. Backend Multi-Guest Bookings | v1.1 | 0/? | Not started | - |
+| 12. Schema Migration & Chat History | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
+| 13. Backend Multi-Guest Bookings | v1.1 | 1/2 | In progress | - |
 | 14. Backend Payment Tracking | v1.1 | 0/? | Not started | - |
 | 15. Frontend Multi-Guest & Payments | v1.1 | 0/? | Not started | - |
 | 16. Assistant Integration | v1.1 | 0/? | Not started | - |

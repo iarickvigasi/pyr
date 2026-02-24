@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 15 -- Frontend Multi-Guest & Payments
+**Current focus:** Phase 16 -- Assistant Integration
 
 ## Current Position
 
-Phase: 15 (4 of 5 in v1.1) -- Frontend Multi-Guest & Payments
-Plan: 2 of 3
-Status: Executing
-Last activity: 2026-02-24 -- Completed 15-02 (Booking form multi-guest combobox, table payment column)
+Phase: 16 (5 of 5 in v1.1) -- Assistant Integration
+Plan: 0 of ?
+Status: Not started
+Last activity: 2026-02-24 -- Completed 15-03 (Booking detail multi-guest display, payment panel)
 
-Progress: [########..] 80% (8/10 plans across 5 phases)
+Progress: [#########.] 90% (9/10 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [########..] 80% (8/10 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 5min
-- Total execution time: 0.58 hours
+- Total execution time: 0.61 hours
 
 ## Accumulated Context
 
@@ -59,6 +59,8 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - Phase 15-02: Multi-guest display in table uses first guest linked + "+ N others" for compactness
 - Phase 15-02: Popover stays open during multi-select (no close on each selection)
 - Phase 15-02: Payment status filter wired through URL search params for bookmark/share support
+- Phase 15-03: Guest list falls back to legacy booking.guest when bookingGuests is empty (backward compat safety)
+- Phase 15-03: PaymentPanel uses defensive defaults for paymentSummary prop
 
 ### Pending Todos
 
@@ -77,5 +79,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 15-02-PLAN.md
+Stopped at: Completed 15-03-PLAN.md (Phase 15 complete)
 Resume file: N/A

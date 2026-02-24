@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 14 -- Backend Payment Tracking
+**Current focus:** Phase 15 -- Frontend Multi-Guest & Payments
 
 ## Current Position
 
-Phase: 14 (3 of 5 in v1.1) -- Backend Payment Tracking
-Plan: 2 of 2 (PHASE COMPLETE)
-Status: Phase complete
-Last activity: 2026-02-24 -- Completed 14-02 (Booking payment augmentation)
+Phase: 15 (4 of 5 in v1.1) -- Frontend Multi-Guest & Payments
+Plan: 1 of 3
+Status: Executing
+Last activity: 2026-02-24 -- Completed 15-01 (Foundation: types, hooks, badge, dashboard fix)
 
-Progress: [######....] 60% (6/10 plans across 5 phases)
+Progress: [#######...] 70% (7/10 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [######....] 60% (6/10 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 5min
-- Total execution time: 0.48 hours
+- Total execution time: 0.53 hours
 
 ## Accumulated Context
 
@@ -54,6 +54,8 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - [Phase 14]: Phase 14-02: paymentStatus computed post-query via groupBy, not stored as DB column
 - [Phase 14]: Phase 14-02: Overdue alert uses checkIn <= today, covers all statuses including cancelled
 - [Phase 14]: Phase 14-02: paymentStatus filter applies post-computation (page size may shrink when filtering)
+- Phase 15-01: Used ReactElement instead of JSX.Element for return type (React 19 namespace change)
+- Phase 15-01: Booking form dialog wraps guestId into guestIds[] on create path (bridge until Plan 15-02 multi-select)
 
 ### Pending Todos
 
@@ -72,5 +74,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 14-02-PLAN.md (Phase 14 complete)
+Stopped at: Completed 15-01-PLAN.md
 Resume file: N/A

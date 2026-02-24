@@ -68,8 +68,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md -- Payment CRUD: Prisma migration, payment service/routes/schema, test factory, integration tests
-- [ ] 14-02-PLAN.md -- Booking augmentation: payment summary on detail, paymentStatus on list, overdue alert refactor, additional tests
+- [x] 14-01-PLAN.md -- Payment CRUD: Prisma migration, payment service/routes/schema, test factory, integration tests
+- [x] 14-02-PLAN.md -- Booking augmentation: payment summary on detail, paymentStatus on list, overdue alert refactor, additional tests
 
 ### Phase 15: Frontend Multi-Guest & Payments
 **Goal**: Ines can assign multiple guests to bookings, see all guests on a booking, view and manage payments, and see at-a-glance payment status -- all from the dashboard
@@ -81,7 +81,12 @@ Plans:
   3. The booking detail page shows a payment panel: balance display (total / paid / due), a form to log payments, and a history table of all payment entries
   4. Balance indicators are color-coded: green when fully paid, amber when partially paid, red when unpaid
   5. The booking list table shows a payment status column (Paid / Partial / Unpaid) with color-coded badges
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [x] 15-01-PLAN.md -- Foundation: update booking types/hooks, payment hooks, PaymentStatusBadge, fix dashboard today-activity guestNames
+- [ ] 15-02-PLAN.md -- Booking form multi-guest combobox, booking table payment column and multi-guest names
+- [ ] 15-03-PLAN.md -- Booking detail multi-guest display, payment panel (balance + log form + history)
 
 ### Phase 16: Assistant Integration
 **Goal**: Ines can create multi-guest bookings and manage payments through natural language via the AI assistant
@@ -104,6 +109,6 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 |-------|-----------|----------------|--------|-----------|
 | 12. Schema Migration & Chat History | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
 | 13. Backend Multi-Guest Bookings | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
-| 14. Backend Payment Tracking | 2/2 | Complete   | 2026-02-24 | - |
-| 15. Frontend Multi-Guest & Payments | v1.1 | 0/? | Not started | - |
+| 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
+| 15. Frontend Multi-Guest & Payments | v1.1 | 1/3 | In progress | - |
 | 16. Assistant Integration | v1.1 | 0/? | Not started | - |

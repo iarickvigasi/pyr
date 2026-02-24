@@ -14,6 +14,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookingStatusBadge } from './booking-status-badge';
+import { PaymentPanel } from './payment-panel';
 import { formatDate, formatDateRange, formatCurrency, nightsBetween } from '@/lib/format';
 import { toast } from 'sonner';
 
@@ -63,6 +64,11 @@ export function BookingDetail({ id }: { id: string }) {
   const transitions = STATUS_TRANSITIONS[booking.status] ?? [];
   const nights = nightsBetween(booking.checkIn, booking.checkOut);
 
+  // Multi-guest display: prefer bookingGuests, fall back to legacy guest
+  const guests = booking.bookingGuests && booking.bookingGuests.length > 0
+    ? booking.bookingGuests.map((bg) => bg.guest)
+    : [booking.guest];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -111,31 +117,23 @@ export function BookingDetail({ id }: { id: string }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Guest</CardTitle>
+            <CardTitle className="text-base">
+              {guests.length === 1 ? 'Guest' : 'Guests'}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div>
-              <span className="text-muted-foreground">Name: </span>
-              <Link href={`/guests/${booking.guest.id}`} className="font-medium hover:underline">
-                {booking.guest.name}
-              </Link>
-            </div>
-            {booking.guest.email && (
-              <div>
-                <span className="text-muted-foreground">Email: </span>
-                {booking.guest.email}
+          <CardContent className="space-y-3 text-sm">
+            {guests.map((g, idx) => (
+              <div key={g.id} className={idx > 0 ? 'border-t pt-3' : ''}>
+                <div>
+                  <Link href={`/guests/${g.id}`} className="font-medium hover:underline">
+                    {g.name}
+                  </Link>
+                </div>
+                {g.email && (
+                  <div className="text-muted-foreground">{g.email}</div>
+                )}
               </div>
-            )}
-            {booking.guest.phone && (
-              <div>
-                <span className="text-muted-foreground">Phone: </span>
-                {booking.guest.phone}
-              </div>
-            )}
-            <div>
-              <span className="text-muted-foreground">Language: </span>
-              {booking.guest.language === 'de' ? 'German' : 'English'}
-            </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -196,6 +194,12 @@ export function BookingDetail({ id }: { id: string }) {
           </div>
         </>
       )}
+
+      <PaymentPanel
+        bookingId={booking.id}
+        payments={booking.payments ?? []}
+        paymentSummary={booking.paymentSummary ?? { totalPrice: booking.totalPrice, totalPaid: 0, balanceDue: booking.totalPrice }}
+      />
     </div>
   );
 }

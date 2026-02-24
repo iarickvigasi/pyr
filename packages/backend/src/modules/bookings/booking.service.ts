@@ -5,7 +5,7 @@ import { notDeleted, computeChanges } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../../lib/errors.js';
 import type { CreateBookingBody, UpdateBookingBody, ListBookingsQuery } from './booking.schema.js';
-import type { Booking, BookingWithRelations } from '../../types/entities.js';
+import type { Booking, BookingWithRelations, PaymentStatus } from '../../types/entities.js';
 import type { PrismaClientOrTx } from '../../types/prisma.js';
 
 // Typed as Record<BookingStatus, ...> for compile-time exhaustiveness — adding a new
@@ -77,8 +77,33 @@ export async function listBookings(
   const hasMore = bookings.length > limit;
   const data = hasMore ? bookings.slice(0, limit) : bookings;
 
+  // Batch-fetch payment totals for all bookings in this page
+  const bookingIds = data.map(b => b.id);
+  const paymentSums = await prisma.payment.groupBy({
+    by: ['bookingId'],
+    _sum: { amount: true },
+    where: { bookingId: { in: bookingIds }, deletedAt: null },
+  });
+
+  const paidMap = new Map(paymentSums.map(p => [p.bookingId, p._sum.amount ?? 0]));
+
+  const enriched = data.map(b => {
+    const totalPaid = paidMap.get(b.id) ?? 0;
+    let paymentStatus: PaymentStatus;
+    if (totalPaid >= b.totalPrice) paymentStatus = 'paid';
+    else if (totalPaid > 0) paymentStatus = 'partial';
+    else paymentStatus = 'unpaid';
+    return { ...b, paymentStatus, totalPaid };
+  });
+
+  // Post-query filter by paymentStatus (computed field, not a DB column)
+  let result = enriched;
+  if (query.paymentStatus) {
+    result = enriched.filter(b => b.paymentStatus === query.paymentStatus);
+  }
+
   return {
-    data: data as BookingWithRelations[],
+    data: result as unknown as BookingWithRelations[],
     nextCursor: hasMore ? data[data.length - 1]!.id : null,
     hasMore,
   };
@@ -100,7 +125,24 @@ export async function getBooking(
   });
 
   if (!booking) throw new NotFoundError('Booking', id);
-  return booking as BookingWithRelations;
+
+  // Fetch non-deleted payments for this booking
+  const payments = await prisma.payment.findMany({
+    where: { bookingId: id, deletedAt: null },
+    orderBy: { date: 'desc' },
+  });
+
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+
+  return {
+    ...booking,
+    payments,
+    paymentSummary: {
+      totalPrice: booking.totalPrice,
+      totalPaid,
+      balanceDue: booking.totalPrice - totalPaid,
+    },
+  } as BookingWithRelations;
 }
 
 export async function createBooking(

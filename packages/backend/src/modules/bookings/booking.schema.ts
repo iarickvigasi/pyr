@@ -34,6 +34,7 @@ export type UpdateBookingBody = z.infer<typeof updateBookingSchema>;
 
 export const listBookingsQuerySchema = paginationQuerySchema.extend({
   status: z.enum(['inquiry', 'confirmed', 'checked_in', 'checked_out', 'cancelled']).optional().openapi({ example: 'confirmed' }),
+  paymentStatus: z.enum(['paid', 'partial', 'unpaid']).optional().openapi({ example: 'unpaid' }),
   guestId: z.string().optional().openapi({ example: 'cm4x7abc00001' }),
   from: z.string().date().optional().openapi({ example: '2026-04-01' }),
   to: z.string().date().optional().openapi({ example: '2026-04-30' }),

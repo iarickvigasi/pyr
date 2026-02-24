@@ -135,11 +135,21 @@ export type BookingGuestWithGuest = BookingGuest & {
   guest: Pick<Guest, 'id' | 'name' | 'email'>;
 };
 
+export type PaymentSummary = {
+  totalPrice: number;
+  totalPaid: number;
+  balanceDue: number;
+};
+
+export type PaymentStatus = 'paid' | 'partial' | 'unpaid';
+
 export type BookingWithRelations = Booking & {
   guest: Pick<Guest, 'id' | 'name' | 'email'>;
   room: RoomWithType;
   bookingGuests: BookingGuestWithGuest[];
   payments?: Payment[];
+  paymentSummary?: PaymentSummary;
+  paymentStatus?: PaymentStatus;
 };
 
 // ──────────────────────────────────────────────────────────────

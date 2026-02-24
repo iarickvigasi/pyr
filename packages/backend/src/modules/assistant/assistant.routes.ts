@@ -147,7 +147,9 @@ export default async function assistantRoutes(app: FastifyInstance): Promise<voi
     }
   });
 
-  // POST /chat/reset -- Generate a new session key (new conversation)
+  // POST /chat/reset -- Acknowledge session reset (new conversation)
+  // Session key management is now handled client-side via counter-based keys.
+  // This endpoint is kept for any server-side cleanup needed in the future.
   // Note: no body schema -- this endpoint takes no input. Clients must NOT send
   // Content-Type: application/json with an empty body (Fastify's JSON parser rejects it).
   server.post('/chat/reset', {
@@ -157,7 +159,8 @@ export default async function assistantRoutes(app: FastifyInstance): Promise<voi
       response: { 200: resetResponseSchema },
     },
   }, async (_request, reply) => {
-    const newSessionKey = `dashboard:${Date.now()}`;
-    return reply.send({ data: { sessionKey: newSessionKey } });
+    // Session key management moved to frontend (counter-based).
+    // This endpoint is kept for backward compatibility and future server-side cleanup.
+    return reply.send({ data: { sessionKey: 'client-managed' } });
   });
 }

@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, useCallback, useRef } from 'react';
+import {
+  initializeSessionKey,
+  getSessionKey,
+  loadMessages,
+  saveMessages,
+  incrementSession,
+  type StoredMessage,
+} from '@/lib/chat-storage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-const SESSION_KEY_STORAGE = 'pyr_assistant_session';
-const DEFAULT_SESSION_KEY = 'dashboard:ines';
 
 export interface ToolCall {
   name: string;
@@ -17,22 +23,12 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   toolCalls?: ToolCall[];
+  isRestored?: boolean; // true for messages hydrated from localStorage
 }
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('pyr_token');
-}
-
-function getStoredSessionKey(): string {
-  if (typeof window === 'undefined') return DEFAULT_SESSION_KEY;
-  return localStorage.getItem(SESSION_KEY_STORAGE) ?? DEFAULT_SESSION_KEY;
-}
-
-function storeSessionKey(key: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(SESSION_KEY_STORAGE, key);
-  }
 }
 
 /** Map tool function names to human-readable activity labels */
@@ -80,20 +76,53 @@ function toolLabel(toolName: string): string {
   return labels[toolName] ?? `Running ${toolName.replace(/_/g, ' ')}...`;
 }
 
+/** Convert ChatMessage array to StoredMessage array for localStorage persistence. */
+function toStoredMessages(msgs: ChatMessage[]): StoredMessage[] {
+  return msgs.map(m => ({
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    timestamp: m.timestamp.toISOString(),
+    toolCalls: m.toolCalls
+      ?.filter(t => t.status === 'complete')
+      .map(t => ({ name: t.name, status: 'complete' as const })),
+    toolCount: m.toolCalls?.length ?? 0,
+  }));
+}
+
 export function useAssistant() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessionKey, setSessionKey] = useState<string>(() => {
+    return initializeSessionKey();
+  });
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const key = initializeSessionKey();
+    const stored = loadMessages(key);
+    return stored.map(m => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(m.timestamp),
+      toolCalls: m.toolCalls ?? [],
+      isRestored: true,
+    }));
+  });
+
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTools, setActiveTools] = useState<ToolCall[]>([]);
-  const [sessionKey, setSessionKey] = useState<string>(() => {
-    const fresh = `dashboard:${Date.now()}`;
-    storeSessionKey(fresh);
-    return fresh;
+  const [contextMayBeLost, setContextMayBeLost] = useState<boolean>(() => {
+    // If messages were restored from storage, context may be lost
+    const key = initializeSessionKey();
+    return loadMessages(key).length > 0;
   });
+
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(async (text: string) => {
     const token = getToken();
     if (!token) return;
+
+    const currentKey = getSessionKey();
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -110,7 +139,12 @@ export function useAssistant() {
       toolCalls: [],
     };
 
-    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    // Add messages to state and save user message immediately
+    setMessages(prev => {
+      const next = [...prev, userMessage, assistantMessage];
+      saveMessages(currentKey, toStoredMessages(next));
+      return next;
+    });
     setIsStreaming(true);
     setActiveTools([]);
 
@@ -124,7 +158,7 @@ export function useAssistant() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: text, sessionKey }),
+        body: JSON.stringify({ message: text, sessionKey: currentKey }),
         signal: controller.signal,
       });
 
@@ -140,23 +174,27 @@ export function useAssistant() {
           // Use default error message
         }
 
-        setMessages(prev =>
-          prev.map(m =>
+        setMessages(prev => {
+          const next = prev.map(m =>
             m.id === assistantMessage.id ? { ...m, content: errorMsg } : m
-          )
-        );
+          );
+          saveMessages(currentKey, toStoredMessages(next));
+          return next;
+        });
         setIsStreaming(false);
         return;
       }
 
       if (!response.body) {
-        setMessages(prev =>
-          prev.map(m =>
+        setMessages(prev => {
+          const next = prev.map(m =>
             m.id === assistantMessage.id
               ? { ...m, content: 'No response received.' }
               : m
-          )
-        );
+          );
+          saveMessages(currentKey, toStoredMessages(next));
+          return next;
+        });
         setIsStreaming(false);
         return;
       }
@@ -222,6 +260,11 @@ export function useAssistant() {
           }
         }
       }
+
+      // Streaming completed successfully -- clear context warning if set
+      if (contextMayBeLost) {
+        setContextMayBeLost(false);
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         // User cancelled -- do nothing
@@ -235,49 +278,29 @@ export function useAssistant() {
         );
       }
     } finally {
+      // Save final message state to localStorage
+      setMessages(prev => {
+        saveMessages(currentKey, toStoredMessages(prev));
+        return prev;
+      });
       setIsStreaming(false);
       setActiveTools([]);
       abortRef.current = null;
     }
-  }, [sessionKey]);
+  }, [sessionKey, contextMayBeLost]);
 
-  const resetSession = useCallback(async () => {
+  const resetSession = useCallback(() => {
     // Abort any in-flight stream
     if (abortRef.current) {
       abortRef.current.abort();
     }
-
-    const token = getToken();
-    if (!token) return;
-
-    let newKey: string | null = null;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/v1/assistant/chat/reset`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const body = await response.json();
-        newKey = body.data.sessionKey;
-      }
-    } catch {
-      // Network error -- fall through to client-side key
-    }
-
-    // Always generate a fresh session key, even if the endpoint failed
-    if (!newKey) {
-      newKey = `dashboard:${Date.now()}`;
-    }
+    // Increment counter for new session (no server call)
+    const newKey = incrementSession();
     setSessionKey(newKey);
-    storeSessionKey(newKey);
-
     setMessages([]);
     setIsStreaming(false);
     setActiveTools([]);
+    setContextMayBeLost(false);
   }, []);
 
   return {
@@ -287,5 +310,7 @@ export function useAssistant() {
     sendMessage,
     resetSession,
     toolLabel,
+    contextMayBeLost,
+    clearContextWarning: () => setContextMayBeLost(false),
   };
 }

@@ -131,10 +131,14 @@ export type BookingGuest = {
   createdAt: Date;
 };
 
+export type BookingGuestWithGuest = BookingGuest & {
+  guest: Pick<Guest, 'id' | 'name' | 'email'>;
+};
+
 export type BookingWithRelations = Booking & {
   guest: Pick<Guest, 'id' | 'name' | 'email'>;
   room: RoomWithType;
-  bookingGuests?: BookingGuest[];
+  bookingGuests: BookingGuestWithGuest[];
   payments?: Payment[];
 };
 

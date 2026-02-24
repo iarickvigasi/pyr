@@ -50,7 +50,9 @@ export async function listBookings(
   const where: Prisma.BookingWhereInput = { ...notDeleted };
 
   if (query.status) where.status = query.status as BookingStatus;
-  if (query.guestId) where.guestId = query.guestId;
+  if (query.guestId) {
+    where.bookingGuests = { some: { guestId: query.guestId } };
+  }
   if (query.from) {
     where.checkOut = { gt: new Date(query.from) };
   }
@@ -66,6 +68,9 @@ export async function listBookings(
     include: {
       guest: { select: { id: true, name: true, email: true } },
       room: { select: { id: true, name: true, roomType: { select: { name: true } } } },
+      bookingGuests: {
+        include: { guest: { select: { id: true, name: true, email: true } } },
+      },
     },
   });
 
@@ -88,6 +93,9 @@ export async function getBooking(
     include: {
       guest: { select: { id: true, name: true, email: true, phone: true, language: true } },
       room: { include: { roomType: true } },
+      bookingGuests: {
+        include: { guest: { select: { id: true, name: true, email: true } } },
+      },
     },
   });
 
@@ -100,6 +108,9 @@ export async function createBooking(
   data: CreateBookingBody,
   actorId?: string,
 ): Promise<Booking> {
+  // Normalize: accept guestId (legacy) or guestIds (new)
+  const guestIds = data.guestIds ?? (data.guestId ? [data.guestId] : []);
+
   const checkIn = new Date(data.checkIn);
   const checkOut = new Date(data.checkOut);
 
@@ -108,9 +119,16 @@ export async function createBooking(
   }
 
   return prisma.$transaction(async (tx) => {
-    // Verify guest exists
-    const guest = await tx.guest.findFirst({ where: { id: data.guestId, ...notDeleted } });
-    if (!guest) throw new NotFoundError('Guest', data.guestId);
+    // Verify ALL guests exist and are not soft-deleted
+    const existingGuests = await tx.guest.findMany({
+      where: { id: { in: guestIds }, deletedAt: null },
+      select: { id: true },
+    });
+    if (existingGuests.length !== guestIds.length) {
+      const foundIds = new Set(existingGuests.map(g => g.id));
+      const missingIds = guestIds.filter(id => !foundIds.has(id));
+      throw new NotFoundError('Guest', missingIds.join(', '));
+    }
 
     // Verify room exists
     const room = await tx.room.findUnique({ where: { id: data.roomId } });
@@ -121,7 +139,7 @@ export async function createBooking(
 
     const booking = await tx.booking.create({
       data: {
-        guestId: data.guestId,
+        guestId: guestIds[0]!, // Legacy column: always set to first guest
         roomId: data.roomId,
         checkIn,
         checkOut,
@@ -132,11 +150,19 @@ export async function createBooking(
       },
     });
 
+    // Create junction table rows for all guests
+    await tx.bookingGuest.createMany({
+      data: guestIds.map(gId => ({
+        bookingId: booking.id,
+        guestId: gId,
+      })),
+    });
+
     await writeAuditLog(tx, {
       entityType: 'booking',
       entityId: booking.id,
       action: 'create',
-      changes: data as Record<string, unknown>,
+      changes: { ...data, guestIds } as Record<string, unknown>,
       actor: getActor(actorId),
     });
 
@@ -177,9 +203,47 @@ export async function updateBooking(
       await checkOverlap(tx, newRoomId, newCheckIn, newCheckOut, id);
     }
 
+    // Handle guestIds update via junction table diff
+    if (data.guestIds) {
+      // Validate ALL new guests exist and are not soft-deleted
+      const existingGuests = await tx.guest.findMany({
+        where: { id: { in: data.guestIds }, deletedAt: null },
+        select: { id: true },
+      });
+      if (existingGuests.length !== data.guestIds.length) {
+        const foundIds = new Set(existingGuests.map(g => g.id));
+        const missingIds = data.guestIds.filter(gId => !foundIds.has(gId));
+        throw new NotFoundError('Guest', missingIds.join(', '));
+      }
+
+      // Diff strategy: compute adds and removes
+      const currentGuests = await tx.bookingGuest.findMany({
+        where: { bookingId: id },
+        select: { guestId: true },
+      });
+      const existingIds = new Set(currentGuests.map(bg => bg.guestId));
+      const newIds = new Set(data.guestIds);
+
+      const toRemove = [...existingIds].filter(gId => !newIds.has(gId));
+      if (toRemove.length > 0) {
+        await tx.bookingGuest.deleteMany({
+          where: { bookingId: id, guestId: { in: toRemove } },
+        });
+      }
+
+      const toAdd = [...newIds].filter(gId => !existingIds.has(gId));
+      if (toAdd.length > 0) {
+        await tx.bookingGuest.createMany({
+          data: toAdd.map(gId => ({ bookingId: id, guestId: gId })),
+        });
+      }
+    }
+
     const booking = await tx.booking.update({
       where: { id },
       data: {
+        // Update legacy guestId to first guest when guestIds changes
+        ...(data.guestIds ? { guestId: data.guestIds[0]! } : {}),
         ...(data.roomId !== undefined ? { roomId: data.roomId } : {}),
         ...(data.checkIn !== undefined ? { checkIn: new Date(data.checkIn) } : {}),
         ...(data.checkOut !== undefined ? { checkOut: new Date(data.checkOut) } : {}),
@@ -194,12 +258,12 @@ export async function updateBooking(
       existing as Record<string, unknown>,
       booking as Record<string, unknown>,
     );
-    if (changes) {
+    if (changes || data.guestIds) {
       await writeAuditLog(tx, {
         entityType: 'booking',
         entityId: id,
         action: 'update',
-        changes,
+        changes: { ...changes, ...(data.guestIds ? { guestIds: data.guestIds } : {}) },
         actor: getActor(actorId),
       });
     }

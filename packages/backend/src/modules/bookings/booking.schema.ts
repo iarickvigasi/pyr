@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { paginationQuerySchema } from '@pyr/shared';
 
 export const createBookingSchema = z.object({
-  guestId: z.string().min(1).openapi({ example: 'cm4x7abc00001' }),
+  guestIds: z.array(z.string().min(1)).min(1).optional().openapi({ example: ['cm4x7abc00001'] }),
+  guestId: z.string().min(1).optional().openapi({ example: 'cm4x7abc00001', description: 'Deprecated: use guestIds instead. Kept for backward compatibility.' }),
   roomId: z.string().min(1).openapi({ example: 'cm4x7abc00010' }),
   checkIn: z.string().date().openapi({ example: '2026-04-15' }),
   checkOut: z.string().date().openapi({ example: '2026-04-22' }),
@@ -11,11 +12,15 @@ export const createBookingSchema = z.object({
   totalPrice: z.number().int().min(0).openapi({ example: 89500 }),
   source: z.string().max(100).nullish().openapi({ example: 'website' }),
   notes: z.string().max(5000).nullish().openapi({ example: 'Arrives late around 8pm. Vegan diet.' }),
-});
+}).refine(
+  (data) => data.guestIds || data.guestId,
+  { message: 'Either guestIds or guestId must be provided', path: ['guestIds'] },
+);
 
 export type CreateBookingBody = z.infer<typeof createBookingSchema>;
 
 export const updateBookingSchema = z.object({
+  guestIds: z.array(z.string().min(1)).min(1).optional().openapi({ example: ['cm4x7abc00001', 'cm4x7abc00002'] }),
   roomId: z.string().min(1).optional().openapi({ example: 'cm4x7abc00011' }),
   checkIn: z.string().date().optional().openapi({ example: '2026-04-16' }),
   checkOut: z.string().date().optional().openapi({ example: '2026-04-23' }),

@@ -147,7 +147,8 @@ export function BookingFormDialog({
         await updateBooking.mutateAsync({ id: booking.id, ...data });
         toast.success('Booking updated');
       } else {
-        await createBooking.mutateAsync(data);
+        const { guestId, ...rest } = data;
+        await createBooking.mutateAsync({ ...rest, guestIds: [guestId] });
         toast.success('Booking created');
       }
       onOpenChange(false);

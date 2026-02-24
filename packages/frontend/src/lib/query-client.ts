@@ -53,6 +53,9 @@ export const queryKeys = {
     stats: ['dashboard', 'stats'] as const,
     today: ['dashboard', 'today'] as const,
   },
+  payments: {
+    list: (bookingId: string) => ['payments', 'list', bookingId] as const,
+  },
   settings: {
     all: ['settings'] as const,
     key: (k: string) => ['settings', k] as const,

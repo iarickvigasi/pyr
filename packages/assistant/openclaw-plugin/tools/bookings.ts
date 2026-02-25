@@ -1,6 +1,6 @@
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import type { ApiClient } from '../lib/api-client.js';
-import { formatDate, formatEurCents, formatBookingStatus, formatNights, dashboardUrl } from '../lib/formatters.js';
+import { formatDate, formatEurCents, formatBookingStatus, formatPaymentStatus, formatNights, dashboardUrl } from '../lib/formatters.js';
 import { storePendingAction } from '../lib/confirmation.js';
 
 interface Booking {
@@ -12,31 +12,48 @@ interface Booking {
   source: string | null;
   notes: string | null;
   guest?: { id: string; name: string; email: string | null };
+  bookingGuests?: Array<{ guest: { id: string; name: string; email: string | null } }>;
+  paymentStatus?: string;
+  paymentSummary?: { totalPrice: number; totalPaid: number; balanceDue: number };
+  payments?: Array<{ id: string; date: string; amount: number; method: string; notes: string | null }>;
   room?: { id: string; name: string; roomType?: { name: string } };
+}
+
+function getGuestNames(b: Booking): string[] {
+  return b.bookingGuests?.length
+    ? b.bookingGuests.map(bg => bg.guest.name)
+    : b.guest ? [b.guest.name] : [];
 }
 
 function formatBooking(b: Booking): Record<string, unknown> {
   return {
     id: b.id,
-    guestName: b.guest?.name,
-    guestEmail: b.guest?.email,
+    guests: getGuestNames(b).join(', '),
     room: b.room?.name,
     roomType: b.room?.roomType?.name,
     checkIn: formatDate(b.checkIn),
     checkOut: formatDate(b.checkOut),
     status: formatBookingStatus(b.status),
     totalPrice: formatEurCents(b.totalPrice),
+    paymentStatus: b.paymentStatus ? formatPaymentStatus(b.paymentStatus) : undefined,
     source: b.source,
     dashboardUrl: dashboardUrl(`/bookings/${b.id}`),
   };
 }
 
 function formatBookingDetail(b: Booking): Record<string, unknown> {
+  const guestLinks = b.bookingGuests?.length
+    ? b.bookingGuests.map(bg => ({ name: bg.guest.name, dashboardUrl: dashboardUrl(`/guests/${bg.guest.id}`) }))
+    : b.guest ? [{ name: b.guest.name, dashboardUrl: dashboardUrl(`/guests/${b.guest.id}`) }] : [];
   return {
     ...formatBooking(b),
     notes: b.notes,
-    guestId: b.guest?.id,
-    guestDashboardUrl: b.guest ? dashboardUrl(`/guests/${b.guest.id}`) : null,
+    guestDetails: guestLinks,
+    paymentSummary: b.paymentSummary ? {
+      totalPrice: formatEurCents(b.paymentSummary.totalPrice),
+      totalPaid: formatEurCents(b.paymentSummary.totalPaid),
+      balanceDue: formatEurCents(b.paymentSummary.balanceDue),
+    } : undefined,
   };
 }
 
@@ -178,10 +195,12 @@ export function registerBookingTools(api: OpenClawPluginApi, client: ApiClient):
         params.checkOut ?? b.checkOut,
       );
 
+      const guestNames = getGuestNames(b).join(', ') || 'unknown guest';
+
       storePendingAction({
         id: actionId,
         type: 'update_booking',
-        summary: `Update booking for ${b.guest?.name ?? 'unknown guest'}: ${Object.keys(diff).join(', ')}`,
+        summary: `Update booking for ${guestNames}: ${Object.keys(diff).join(', ')}`,
         payload: { bookingId: params.bookingId, ...changes },
         createdAt: Date.now(),
       });
@@ -192,7 +211,7 @@ export function registerBookingTools(api: OpenClawPluginApi, client: ApiClient):
           text: JSON.stringify({
             actionId,
             booking: {
-              guest: b.guest?.name,
+              guests: guestNames,
               room: b.room?.name,
               nights,
             },
@@ -225,11 +244,12 @@ export function registerBookingTools(api: OpenClawPluginApi, client: ApiClient):
 
       const nights = formatNights(b.checkIn, b.checkOut);
       const actionId = crypto.randomUUID();
+      const guestNames = getGuestNames(b).join(', ') || 'unknown guest';
 
       storePendingAction({
         id: actionId,
         type: 'cancel_booking',
-        summary: `Cancel booking for ${b.guest?.name ?? 'unknown guest'}: ${b.room?.name ?? 'unknown room'}, ${formatDate(b.checkIn)} - ${formatDate(b.checkOut)}`,
+        summary: `Cancel booking for ${guestNames}: ${b.room?.name ?? 'unknown room'}, ${formatDate(b.checkIn)} - ${formatDate(b.checkOut)}`,
         payload: { bookingId: params.bookingId },
         createdAt: Date.now(),
       });
@@ -241,8 +261,7 @@ export function registerBookingTools(api: OpenClawPluginApi, client: ApiClient):
             actionId,
             summary: {
               action: 'Cancel booking',
-              guest: b.guest?.name,
-              guestEmail: b.guest?.email,
+              guests: guestNames,
               room: b.room?.name,
               roomType: b.room?.roomType?.name,
               checkIn: formatDate(b.checkIn),

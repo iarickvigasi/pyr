@@ -72,6 +72,18 @@ export function formatNights(checkIn: string, checkOut: string): number {
 }
 
 /**
+ * Human-readable payment status.
+ */
+export function formatPaymentStatus(status: string): string {
+  const map: Record<string, string> = {
+    paid: 'Paid',
+    partial: 'Partially Paid',
+    unpaid: 'Unpaid',
+  };
+  return map[status] ?? status;
+}
+
+/**
  * Build a relative dashboard URL for an entity.
  */
 export function dashboardUrl(path: string): string {

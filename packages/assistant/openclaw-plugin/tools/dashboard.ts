@@ -14,15 +14,15 @@ interface DashboardStats {
 interface TodaySchedule {
   checkIns: Array<{
     id: string;
-    guest: { id: string; name: string };
-    room: { name: string };
+    guestNames: string[];
+    roomName: string;
     checkIn: string;
     checkOut: string;
   }>;
   checkOuts: Array<{
     id: string;
-    guest: { id: string; name: string };
-    room: { name: string };
+    guestNames: string[];
+    roomName: string;
     checkIn: string;
     checkOut: string;
   }>;
@@ -69,20 +69,18 @@ export function registerDashboardTools(api: OpenClawPluginApi, client: ApiClient
       const schedule = data as unknown as TodaySchedule;
       const result = {
         checkIns: schedule.checkIns.map(b => ({
-          guestName: b.guest.name,
-          room: b.room.name,
+          guestNames: b.guestNames.join(', '),
+          room: b.roomName,
           checkIn: formatDate(b.checkIn),
           checkOut: formatDate(b.checkOut),
           dashboardUrl: dashboardUrl(`/bookings/${b.id}`),
-          guestDashboardUrl: dashboardUrl(`/guests/${b.guest.id}`),
         })),
         checkOuts: schedule.checkOuts.map(b => ({
-          guestName: b.guest.name,
-          room: b.room.name,
+          guestNames: b.guestNames.join(', '),
+          room: b.roomName,
           checkIn: formatDate(b.checkIn),
           checkOut: formatDate(b.checkOut),
           dashboardUrl: dashboardUrl(`/bookings/${b.id}`),
-          guestDashboardUrl: dashboardUrl(`/guests/${b.guest.id}`),
         })),
         events: schedule.events.map(e => ({
           type: formatEventType(e.type),

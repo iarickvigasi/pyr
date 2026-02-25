@@ -527,12 +527,15 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
           }
 
           case 'log_payment': {
-            const { bookingId, amount, method, notes } = action.payload as {
-              bookingId: string; amount: number; method: string; notes: string | null;
+            const { bookingId, amount, method, date, notes } = action.payload as {
+              bookingId: string; amount: number; method: string; date: string | null; notes: string | null;
             };
+            const body: Record<string, unknown> = { amount, method };
+            if (date) body['date'] = date;
+            if (notes) body['notes'] = notes;
             const payment = await client.post<{ id: string; amount: number; method: string; date: string }>(
               `/api/v1/bookings/${bookingId}/payments`,
-              { amount, method, notes },
+              body,
             );
             const p = payment as unknown as { id: string; amount: number; method: string; date: string };
             return {

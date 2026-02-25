@@ -220,7 +220,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MBOOK-03 | Phase 13 | Complete |
 | MBOOK-04 | Phase 13 | Complete |
 | PAY-01 | Phase 14 | Complete |
-| PAY-05 | Phase 14 | Complete |
+| PAY-05 | Phase 14, 17 | Complete (UI trigger gap → Phase 17) |
 | PAY-06 | Phase 14 | Complete |
 | PAY-07 | Phase 14 | Complete |
 | MBOOK-02 | Phase 15 | Complete |

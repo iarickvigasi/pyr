@@ -7,7 +7,7 @@ v1.0 shipped the full MVP: CRM, email ingestion with AI-drafted replies, CalDAV 
 ## Milestones
 
 - v1.0 MVP -- Phases 1-11 (shipped 2026-02-24). See MILESTONES.md.
-- v1.1 Multi-Guest Bookings, Payments & Chat History -- Phases 12-16 (in progress)
+- v1.1 Multi-Guest Bookings, Payments & Chat History -- Phases 12-17 (in progress)
 
 ## Phases
 
@@ -22,6 +22,7 @@ v1.0 phases (1-11) are archived in MILESTONES.md. v1.1 continues from Phase 12.
 - [x] **Phase 14: Backend Payment Tracking** - Invoice stub implementation, payment CRUD endpoints, balance calculation, overdue alert fix, payment status on listing (completed 2026-02-24)
 - [x] **Phase 15: Frontend Multi-Guest & Payments** - Multi-guest booking form, guest display on detail page, payment panel (balance, logging, history), color-coded status, editable price (completed 2026-02-24)
 - [x] **Phase 16: Assistant Integration** - OpenClaw plugin updates for multi-guest bookings and payment tools (completed 2026-02-25)
+- [ ] **Phase 17: Edit Booking UI Triggers** - Add "Edit Booking" button to booking detail page and "Edit" menu item to booking table row dropdown (gap closure)
 
 ## Phase Details
 
@@ -103,6 +104,18 @@ Plans:
 - [ ] 16-01-PLAN.md -- Update existing booking tools for multi-guest support, fix dashboard today interface, add formatPaymentStatus, fix invoice reminder
 - [ ] 16-02-PLAN.md -- Add payment query/logging tools, confirm handler, register tools, update documentation
 
+### Phase 17: Edit Booking UI Triggers
+**Goal**: The dashboard provides direct "Edit Booking" entry points so Ines can modify any booking field (including total price) without relying on the AI assistant
+**Depends on**: Phase 15
+**Requirements**: PAY-05 (UI gap closure)
+**Gap Closure**: Closes PAY-05-UI integration gap and FLOW-PAY-05 from v1.1 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Booking detail page (`booking-detail.tsx`) has an "Edit Booking" button that opens `BookingFormDialog` pre-filled with the current booking data
+  2. Booking table (`booking-table.tsx`) row dropdown menu includes an "Edit" item that opens `BookingFormDialog` for that booking
+  3. `BookingFormDialog` correctly switches to edit mode (PATCH instead of POST) when opened with existing booking data
+
+Plans: TBD
+
 ## Progress
 
 **Execution Order:**
@@ -115,4 +128,5 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 13. Backend Multi-Guest Bookings | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
 | 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Frontend Multi-Guest & Payments | 3/3 | Complete    | 2026-02-24 | - |
-| 16. Assistant Integration | 2/2 | Complete   | 2026-02-25 | - |
+| 16. Assistant Integration | 2/2 | Complete    | 2026-02-25 | - |
+| 17. Edit Booking UI Triggers | 0/0 | Not started | - | - |

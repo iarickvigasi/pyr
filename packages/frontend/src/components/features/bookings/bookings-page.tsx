@@ -23,6 +23,7 @@ export function BookingsPage() {
   const [to, setTo] = useState(searchParams.get('to') ?? '');
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [showCreate, setShowCreate] = useState(searchParams.get('new') === '1');
+  const [editBooking, setEditBooking] = useState<Booking | undefined>(undefined);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
 
@@ -88,7 +89,7 @@ export function BookingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Bookings</h1>
-        <Button onClick={() => setShowCreate(true)}>
+        <Button onClick={() => { setEditBooking(undefined); setShowCreate(true); }}>
           <Plus className="mr-2 h-4 w-4" />
           New Booking
         </Button>
@@ -111,6 +112,7 @@ export function BookingsPage() {
         bookings={allBookings}
         isLoading={isLoading}
         onStatusChange={handleStatusChange}
+        onEdit={(b) => { setEditBooking(b as Booking); setShowCreate(true); }}
       />
 
       {data?.hasMore && (
@@ -127,7 +129,11 @@ export function BookingsPage() {
 
       <BookingFormDialog
         open={showCreate}
-        onOpenChange={setShowCreate}
+        onOpenChange={(open) => {
+          setShowCreate(open);
+          if (!open) setEditBooking(undefined);
+        }}
+        booking={editBooking}
       />
     </div>
   );

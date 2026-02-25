@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { AlertTriangle, MoreHorizontal } from 'lucide-react';
+import { AlertTriangle, MoreHorizontal, Pencil } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -33,10 +33,14 @@ interface BookingGuest {
 
 interface BookingRow {
   id: string;
+  guestId: string;
+  roomId: string;
   checkIn: string;
   checkOut: string;
   status: string;
   totalPrice: number;
+  source: string | null;
+  notes: string | null;
   needsReview?: boolean;
   guest: { id: string; name: string };
   room: { name: string; roomType: { name: string } };
@@ -96,10 +100,12 @@ export function BookingTable({
   bookings,
   isLoading,
   onStatusChange,
+  onEdit,
 }: {
   bookings: BookingRow[];
   isLoading: boolean;
   onStatusChange: (id: string, status: string) => void;
+  onEdit: (booking: BookingRow) => void;
 }) {
   if (isLoading) {
     return (
@@ -177,6 +183,10 @@ export function BookingTable({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
                       <Link href={`/bookings/${b.id}`}>View Details</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onEdit(b)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
                     </DropdownMenuItem>
                     {transitions.length > 0 && <DropdownMenuSeparator />}
                     {transitions.map((t) => (

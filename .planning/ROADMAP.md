@@ -114,7 +114,10 @@ Plans:
   2. Booking table (`booking-table.tsx`) row dropdown menu includes an "Edit" item that opens `BookingFormDialog` for that booking
   3. `BookingFormDialog` correctly switches to edit mode (PATCH instead of POST) when opened with existing booking data
 
-Plans: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 17-01-PLAN.md -- Wire edit triggers on detail page and table dropdown, fix form status enum for edit mode
 
 ## Progress
 
@@ -129,4 +132,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Frontend Multi-Guest & Payments | 3/3 | Complete    | 2026-02-24 | - |
 | 16. Assistant Integration | 2/2 | Complete    | 2026-02-25 | - |
-| 17. Edit Booking UI Triggers | 0/0 | Not started | - | - |
+| 17. Edit Booking UI Triggers | 0/1 | Not started | - | - |

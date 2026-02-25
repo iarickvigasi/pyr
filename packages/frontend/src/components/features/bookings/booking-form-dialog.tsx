@@ -55,7 +55,7 @@ const bookingSchema = z.object({
   roomId: z.string().min(1, 'Room is required'),
   checkIn: z.string().min(1, 'Check-in date is required'),
   checkOut: z.string().min(1, 'Check-out date is required'),
-  status: z.enum(['inquiry', 'confirmed']),
+  status: z.enum(['inquiry', 'confirmed', 'checked_in', 'checked_out', 'cancelled']),
   totalPrice: z.coerce.number().int().min(0, 'Price must be positive'),
   source: z.string().optional(),
   notes: z.string().optional(),
@@ -118,7 +118,7 @@ export function BookingFormDialog({
       roomId: booking?.roomId ?? '',
       checkIn: booking?.checkIn?.split('T')[0] ?? '',
       checkOut: booking?.checkOut?.split('T')[0] ?? '',
-      status: (booking?.status as 'inquiry' | 'confirmed') ?? 'inquiry',
+      status: (booking?.status as BookingFormData['status']) ?? 'inquiry',
       totalPrice: booking?.totalPrice ?? 0,
       source: booking?.source ?? '',
       notes: booking?.notes ?? '',
@@ -144,7 +144,7 @@ export function BookingFormDialog({
         roomId: booking?.roomId ?? '',
         checkIn: booking?.checkIn?.split('T')[0] ?? '',
         checkOut: booking?.checkOut?.split('T')[0] ?? '',
-        status: (booking?.status as 'inquiry' | 'confirmed') ?? 'inquiry',
+        status: (booking?.status as BookingFormData['status']) ?? 'inquiry',
         totalPrice: booking?.totalPrice ?? 0,
         source: booking?.source ?? '',
         notes: booking?.notes ?? '',
@@ -413,6 +413,9 @@ export function BookingFormDialog({
                     <SelectContent>
                       <SelectItem value="inquiry">Inquiry</SelectItem>
                       <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="checked_in">Checked In</SelectItem>
+                      <SelectItem value="checked_out">Checked Out</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

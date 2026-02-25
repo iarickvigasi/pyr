@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Mail, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Mail, AlertTriangle, Pencil } from 'lucide-react';
 import { useBooking, useUpdateBooking } from '@/lib/hooks/use-bookings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookingStatusBadge } from './booking-status-badge';
+import { BookingFormDialog } from './booking-form-dialog';
 import { PaymentPanel } from './payment-panel';
 import { formatDate, formatDateRange, formatCurrency, nightsBetween } from '@/lib/format';
 import { toast } from 'sonner';
@@ -38,6 +40,7 @@ export function BookingDetail({ id }: { id: string }) {
   const updateBooking = useUpdateBooking();
 
   const booking = data?.data;
+  const [showEdit, setShowEdit] = useState(false);
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -83,6 +86,10 @@ export function BookingDetail({ id }: { id: string }) {
             {formatDateRange(booking.checkIn, booking.checkOut)} ({nights} night{nights !== 1 ? 's' : ''})
           </p>
         </div>
+        <Button variant="outline" onClick={() => setShowEdit(true)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Edit Booking
+        </Button>
         <BookingStatusBadge status={booking.status} />
       </div>
 
@@ -199,6 +206,12 @@ export function BookingDetail({ id }: { id: string }) {
         bookingId={booking.id}
         payments={booking.payments ?? []}
         paymentSummary={booking.paymentSummary ?? { totalPrice: booking.totalPrice, totalPaid: 0, balanceDue: booking.totalPrice }}
+      />
+
+      <BookingFormDialog
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        booking={booking}
       />
     </div>
   );

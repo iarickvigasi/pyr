@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 16 (5 of 5 in v1.1) -- Assistant Integration
-Plan: 1 of 2
-Status: In progress
-Last activity: 2026-02-25 -- Completed 16-01 (Assistant multi-guest booking tools)
+Plan: 2 of 2
+Status: Complete
+Last activity: 2026-02-25 -- Completed 16-02 (Assistant payment tools)
 
-Progress: [##########] 91% (10/11 plans across 5 phases)
+Progress: [###########] 100% (11/11 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [##########] 91% (10/11 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 5min
-- Total execution time: 0.68 hours
+- Total execution time: 0.73 hours
 
 ## Accumulated Context
 
@@ -64,6 +64,8 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - Phase 16-01: Comma-separated string parameter for guestNames (LLMs handle natural text better than JSON arrays)
 - Phase 16-01: Client-side paymentStatus filter on checked_out bookings (avoids two API calls for unpaid+partial)
 - Phase 16-01: Proactively added log_payment handler in confirm_action for Plan 02 readiness
+- Phase 16-02: get_payment_status derives status from balanceDue (paid/partial/unpaid) rather than API field
+- Phase 16-02: prepare_log_payment accepts EUR amount and converts to cents internally (better LLM UX)
 
 ### Pending Todos
 
@@ -82,5 +84,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 16-01-PLAN.md
+Stopped at: Completed 16-02-PLAN.md (Phase 16 complete, v1.1 complete)
 Resume file: N/A

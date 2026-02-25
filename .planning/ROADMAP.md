@@ -21,7 +21,7 @@ v1.0 phases (1-11) are archived in MILESTONES.md. v1.1 continues from Phase 12.
 - [x] **Phase 13: Backend Multi-Guest Bookings** - Booking CRUD rewrite for guestIds[], CalDAV/notification/context-builder callsite updates, guest filter via junction
 - [x] **Phase 14: Backend Payment Tracking** - Invoice stub implementation, payment CRUD endpoints, balance calculation, overdue alert fix, payment status on listing (completed 2026-02-24)
 - [x] **Phase 15: Frontend Multi-Guest & Payments** - Multi-guest booking form, guest display on detail page, payment panel (balance, logging, history), color-coded status, editable price (completed 2026-02-24)
-- [ ] **Phase 16: Assistant Integration** - OpenClaw plugin updates for multi-guest bookings and payment tools
+- [x] **Phase 16: Assistant Integration** - OpenClaw plugin updates for multi-guest bookings and payment tools (completed 2026-02-25)
 
 ## Phase Details
 
@@ -115,4 +115,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 13. Backend Multi-Guest Bookings | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
 | 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Frontend Multi-Guest & Payments | 3/3 | Complete    | 2026-02-24 | - |
-| 16. Assistant Integration | 1/2 | In Progress|  | - |
+| 16. Assistant Integration | 2/2 | Complete   | 2026-02-25 | - |

@@ -6,7 +6,7 @@ import {
   removePendingAction,
   cleanupStaleActions,
 } from '../lib/confirmation.js';
-import { formatDate, formatEurCents, formatEventType, formatNights } from '../lib/formatters.js';
+import { formatDate, formatEurCents, formatEventType, formatPaymentStatus, formatNights, dashboardUrl } from '../lib/formatters.js';
 
 // ─── Types from API responses ────────────────────────────
 
@@ -33,7 +33,16 @@ interface Booking {
   checkOut: string;
   totalPrice: number;
   guest?: { id: string; name: string; email: string | null };
+  bookingGuests?: Array<{ guest: { id: string; name: string; email: string | null } }>;
+  paymentStatus?: string;
+  paymentSummary?: { totalPrice: number; totalPaid: number; balanceDue: number };
   room?: { id: string; name: string; roomType?: { name: string } };
+}
+
+function getGuestNames(b: Booking): string[] {
+  return b.bookingGuests?.length
+    ? b.bookingGuests.map(bg => bg.guest.name)
+    : b.guest ? [b.guest.name] : [];
 }
 
 // ─── Tool Registration ───────────────────────────────────
@@ -45,23 +54,23 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
     name: 'prepare_create_booking',
     label: 'Prepare Booking',
     description:
-      'Prepare a new booking for confirmation. Searches for the guest, checks room availability, calculates price, and returns a summary for Ines to review before creating. NEVER execute a booking without showing the summary first.',
+      'Prepare a new booking for confirmation. Searches for guest(s) by name, checks room availability, calculates price, and returns a summary for Ines to review before creating. Supports multiple guests (comma-separated). NEVER execute a booking without showing the summary first.',
     parameters: {
       type: 'object' as const,
       properties: {
-        guestName: { type: 'string', description: 'Guest name to search for' },
+        guestNames: { type: 'string', description: 'Guest name(s) to search for, comma-separated (e.g., "Anna Schmidt, Max Muller")' },
         roomType: { type: 'string', description: 'Room type preference (e.g., Suite, Standard). Optional -- picks first available if not specified.' },
         checkIn: { type: 'string', description: 'Check-in date (YYYY-MM-DD)' },
         checkOut: { type: 'string', description: 'Check-out date (YYYY-MM-DD)' },
         status: { type: 'string', description: 'Booking status: inquiry or confirmed (default: confirmed)' },
         notes: { type: 'string', description: 'Optional notes for the booking' },
       },
-      required: ['guestName', 'checkIn', 'checkOut'],
+      required: ['guestNames', 'checkIn', 'checkOut'],
     },
     async execute(
       _id: string,
       params: {
-        guestName: string;
+        guestNames: string;
         roomType?: string;
         checkIn: string;
         checkOut: string;
@@ -69,28 +78,54 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
         notes?: string;
       },
     ) {
-      // 1. Search for the guest
-      const guests = await client.get<Guest[]>('/api/v1/guests', { search: params.guestName });
-      const guestList = guests as unknown as Guest[];
-
-      if (guestList.length === 0) {
+      // 1. Resolve guest names
+      const names = params.guestNames.split(',').map(n => n.trim()).filter(Boolean);
+      if (names.length === 0) {
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
               error: true,
-              message: `No guest found matching "${params.guestName}". Please verify the name or create the guest first.`,
+              message: 'No guest names provided. Please specify at least one guest name.',
             }, null, 2),
           }],
           details: {},
         };
       }
 
-      // Pick first match (LLM can disambiguate if multiple)
-      const guest = guestList[0]!;
-      const disambiguationNote = guestList.length > 1
-        ? `Found ${guestList.length} guests matching "${params.guestName}". Using "${guest.name}" (${guest.email ?? 'no email'}). If this is wrong, specify the full name.`
-        : undefined;
+      const resolved: Guest[] = [];
+      const notFound: string[] = [];
+      const disambiguationNotes: string[] = [];
+
+      for (const name of names) {
+        const guests = await client.get<Guest[]>('/api/v1/guests', { search: name });
+        const guestList = guests as unknown as Guest[];
+
+        if (guestList.length === 0) {
+          notFound.push(name);
+        } else if (guestList.length === 1) {
+          resolved.push(guestList[0]!);
+        } else {
+          // Multiple matches -- pick first but note ambiguity
+          resolved.push(guestList[0]!);
+          disambiguationNotes.push(
+            `Found ${guestList.length} guests matching "${name}". Using "${guestList[0]!.name}" (${guestList[0]!.email ?? 'no email'}). If this is wrong, specify the full name.`,
+          );
+        }
+      }
+
+      if (notFound.length > 0) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: `Could not find guest(s): ${notFound.join(', ')}. Please verify the name(s) or create the guest(s) first.`,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
 
       // 2. Check availability
       const available = await client.get<AvailabilityRoom[]>('/api/v1/availability', {
@@ -143,9 +178,9 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
       storePendingAction({
         id: actionId,
         type: 'create_booking',
-        summary: `Booking for ${guest.name}: ${selectedRoom.roomName} (${selectedRoom.roomTypeName}), ${formatDate(params.checkIn)} - ${formatDate(params.checkOut)}, ${nights} nights, ${formatEurCents(selectedRoom.totalPrice)}`,
+        summary: `Booking for ${resolved.map(g => g.name).join(', ')}: ${selectedRoom.roomName} (${selectedRoom.roomTypeName}), ${formatDate(params.checkIn)} - ${formatDate(params.checkOut)}, ${nights} nights, ${formatEurCents(selectedRoom.totalPrice)}`,
         payload: {
-          guestId: guest.id,
+          guestIds: resolved.map(g => g.id),
           roomId: selectedRoom.room.id,
           checkIn: params.checkIn,
           checkOut: params.checkOut,
@@ -160,8 +195,7 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
       const result: Record<string, unknown> = {
         actionId,
         summary: {
-          guest: guest.name,
-          guestEmail: guest.email,
+          guests: resolved.map(g => ({ name: g.name, email: g.email })),
           room: selectedRoom.roomName,
           roomType: selectedRoom.roomTypeName,
           checkIn: formatDate(params.checkIn),
@@ -173,8 +207,8 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
         },
         instruction: 'Present this as a structured summary table and ask Ines to reply OK to confirm or Cancel to reject.',
       };
-      if (disambiguationNote) {
-        result['disambiguationNote'] = disambiguationNote;
+      if (disambiguationNotes.length > 0) {
+        result['disambiguationNotes'] = disambiguationNotes;
       }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], details: {} };
@@ -373,13 +407,12 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
           }
 
           case 'send_reminder': {
-            // Phase 2 feature -- for now, return the booking details for manual follow-up
             return {
               content: [{
                 type: 'text' as const,
                 text: JSON.stringify({
                   success: true,
-                  message: 'Invoice reminder noted. Full invoice/payment automation is coming in Phase 2. For now, the booking details have been presented for manual follow-up.',
+                  message: 'Invoice reminder noted. The booking details have been presented for manual follow-up.',
                   bookingDetails: action.payload,
                 }, null, 2),
               }],
@@ -493,6 +526,30 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
             };
           }
 
+          case 'log_payment': {
+            const { bookingId, amount, method, notes } = action.payload as {
+              bookingId: string; amount: number; method: string; notes: string | null;
+            };
+            const payment = await client.post<{ id: string; amount: number; method: string; date: string }>(
+              `/api/v1/bookings/${bookingId}/payments`,
+              { amount, method, notes },
+            );
+            const p = payment as unknown as { id: string; amount: number; method: string; date: string };
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: `Payment of ${formatEurCents(amount)} logged successfully!`,
+                payment: {
+                  id: p.id,
+                  amount: formatEurCents(p.amount),
+                  method: p.method,
+                  date: formatDate(p.date),
+                },
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
           default: {
             return {
               content: [{ type: 'text' as const, text: JSON.stringify({
@@ -566,7 +623,7 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
     name: 'send_invoice_reminder',
     label: 'Send Invoice Reminder',
     description:
-      'List overdue bookings (checked out but unpaid) or get details for a specific booking to send a reminder. Since invoice automation is Phase 2, this surfaces the information for Ines to take manual action.',
+      'List overdue bookings (checked out with unpaid or partial payment status) or get details for a specific booking to send a reminder. Surfaces payment information for Ines to take action.',
     parameters: {
       type: 'object' as const,
       properties: {
@@ -576,11 +633,13 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
     },
     async execute(_id: string, params: { bookingId?: string }) {
       if (!params.bookingId) {
-        // List checked_out bookings with totalPrice > 0 (potential overdue)
-        const bookings = await client.get<Booking[]>('/api/v1/bookings', { status: 'checked_out' });
-        const overdue = (bookings as unknown as Booking[]).filter((b) => b.totalPrice > 0);
+        // List checked_out bookings and filter by paymentStatus
+        const bookings = await client.get<Booking[]>('/api/v1/bookings', { status: 'checked_out', limit: 50 });
+        const overdueList = (bookings as unknown as Booking[]).filter(
+          (b) => b.paymentStatus === 'unpaid' || b.paymentStatus === 'partial',
+        );
 
-        if (overdue.length === 0) {
+        if (overdueList.length === 0) {
           return {
             content: [{
               type: 'text' as const,
@@ -596,15 +655,19 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
-              overdueBookings: overdue.map((b) => ({
-                id: b.id,
-                guestName: b.guest?.name,
-                guestEmail: b.guest?.email,
-                checkIn: formatDate(b.checkIn),
-                checkOut: formatDate(b.checkOut),
-                totalPrice: formatEurCents(b.totalPrice),
-              })),
-              totalOverdue: overdue.length,
+              overdueBookings: overdueList.map((b) => {
+                const guestNameStr = getGuestNames(b).join(', ') || 'Unknown';
+                return {
+                  id: b.id,
+                  guests: guestNameStr,
+                  checkIn: formatDate(b.checkIn),
+                  checkOut: formatDate(b.checkOut),
+                  totalPrice: formatEurCents(b.totalPrice),
+                  paymentStatus: formatPaymentStatus(b.paymentStatus ?? 'unpaid'),
+                  dashboardUrl: dashboardUrl(`/bookings/${b.id}`),
+                };
+              }),
+              totalOverdue: overdueList.length,
               instruction: 'Present these overdue bookings and ask Ines which one(s) to follow up on.',
             }, null, 2),
           }],
@@ -615,6 +678,7 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
       // Get specific booking details
       const booking = await client.get<Booking>(`/api/v1/bookings/${params.bookingId}`);
       const b = booking as unknown as Booking;
+      const guestNameStr = getGuestNames(b).join(', ') || 'Unknown';
 
       return {
         content: [{
@@ -622,14 +686,20 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
           text: JSON.stringify({
             booking: {
               id: b.id,
-              guestName: b.guest?.name,
-              guestEmail: b.guest?.email,
+              guests: guestNameStr,
               checkIn: formatDate(b.checkIn),
               checkOut: formatDate(b.checkOut),
               totalPrice: formatEurCents(b.totalPrice),
+              paymentStatus: b.paymentStatus ? formatPaymentStatus(b.paymentStatus) : 'Unknown',
+              paymentSummary: b.paymentSummary ? {
+                totalPrice: formatEurCents(b.paymentSummary.totalPrice),
+                totalPaid: formatEurCents(b.paymentSummary.totalPaid),
+                balanceDue: formatEurCents(b.paymentSummary.balanceDue),
+              } : undefined,
               status: b.status,
+              dashboardUrl: dashboardUrl(`/bookings/${b.id}`),
             },
-            message: 'Full invoice/payment automation is coming in Phase 2. For now, here are the booking details to help Ines send a manual reminder.',
+            instruction: 'Here are the booking details for Ines to send a manual reminder or log a payment.',
           }, null, 2),
         }],
         details: {},

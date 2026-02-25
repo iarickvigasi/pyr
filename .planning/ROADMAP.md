@@ -97,7 +97,11 @@ Plans:
   2. Ines can ask "What's the payment status for booking #123?" and get the balance summary (total, paid, due)
   3. Ines can tell the assistant "Log a 500 euro bank transfer for booking #123" and it creates the payment entry (after confirmation)
   4. The assistant's booking query responses include all guest names and payment status (not just the old single-guest format)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 16-01-PLAN.md -- Update existing booking tools for multi-guest support, fix dashboard today interface, add formatPaymentStatus, fix invoice reminder
+- [ ] 16-02-PLAN.md -- Add payment query/logging tools, confirm handler, register tools, update documentation
 
 ## Progress
 
@@ -111,4 +115,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 13. Backend Multi-Guest Bookings | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
 | 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Frontend Multi-Guest & Payments | 3/3 | Complete    | 2026-02-24 | - |
-| 16. Assistant Integration | v1.1 | 0/? | Not started | - |
+| 16. Assistant Integration | 1/2 | In Progress|  | - |

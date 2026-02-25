@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 16 (5 of 5 in v1.1) -- Assistant Integration
-Plan: 0 of ?
-Status: Not started
-Last activity: 2026-02-24 -- Completed 15-03 (Booking detail multi-guest display, payment panel)
+Plan: 1 of 2
+Status: In progress
+Last activity: 2026-02-25 -- Completed 16-01 (Assistant multi-guest booking tools)
 
-Progress: [#########.] 90% (9/10 plans across 5 phases)
+Progress: [##########] 91% (10/11 plans across 5 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [#########.] 90% (9/10 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 5min
-- Total execution time: 0.61 hours
+- Total execution time: 0.68 hours
 
 ## Accumulated Context
 
@@ -61,6 +61,9 @@ v1.0 decisions preserved -- see MILESTONES.md for full archive.
 - Phase 15-02: Payment status filter wired through URL search params for bookmark/share support
 - Phase 15-03: Guest list falls back to legacy booking.guest when bookingGuests is empty (backward compat safety)
 - Phase 15-03: PaymentPanel uses defensive defaults for paymentSummary prop
+- Phase 16-01: Comma-separated string parameter for guestNames (LLMs handle natural text better than JSON arrays)
+- Phase 16-01: Client-side paymentStatus filter on checked_out bookings (avoids two API calls for unpaid+partial)
+- Phase 16-01: Proactively added log_payment handler in confirm_action for Plan 02 readiness
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-24
-Stopped at: Completed 15-03-PLAN.md (Phase 15 complete)
+Last session: 2026-02-25
+Stopped at: Completed 16-01-PLAN.md
 Resume file: N/A

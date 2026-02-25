@@ -132,4 +132,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Frontend Multi-Guest & Payments | 3/3 | Complete    | 2026-02-24 | - |
 | 16. Assistant Integration | 2/2 | Complete    | 2026-02-25 | - |
-| 17. Edit Booking UI Triggers | 1/1 | Complete | 2026-02-25 | 2026-02-25 |
+| 17. Edit Booking UI Triggers | 1/1 | Complete    | 2026-02-25 | 2026-02-25 |

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 16 -- Assistant Integration
+**Current focus:** Phase 17 -- Edit Booking UI Triggers
 
 ## Current Position
 
-Phase: 16 (5 of 5 in v1.1) -- Assistant Integration
-Plan: 2 of 2
+Phase: 17 (6 of 6 in v1.1) -- Edit Booking UI Triggers
+Plan: 1 of 1
 Status: Complete
-Last activity: 2026-02-25 -- Completed 16-02 (Assistant payment tools)
+Last activity: 2026-02-25 -- Completed 17-01 (Edit booking UI triggers)
 
-Progress: [###########] 100% (11/11 plans across 5 phases)
+Progress: [############] 100% (12/12 plans across 6 phases)
 
 ## Performance Metrics
 
@@ -24,9 +24,9 @@ Progress: [###########] 100% (11/11 plans across 5 phases)
 - Total execution time: 2.98 hours
 
 **Velocity (v1.1):**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 5min
-- Total execution time: 0.73 hours
+- Total execution time: 0.76 hours
 
 ## Accumulated Context
 
@@ -84,5 +84,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 16-02-PLAN.md (Phase 16 complete, v1.1 complete)
+Stopped at: Completed 17-01-PLAN.md (Phase 17 complete, v1.1 complete)
 Resume file: N/A

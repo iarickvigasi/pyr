@@ -22,7 +22,7 @@ v1.0 phases (1-11) are archived in MILESTONES.md. v1.1 continues from Phase 12.
 - [x] **Phase 14: Backend Payment Tracking** - Invoice stub implementation, payment CRUD endpoints, balance calculation, overdue alert fix, payment status on listing (completed 2026-02-24)
 - [x] **Phase 15: Frontend Multi-Guest & Payments** - Multi-guest booking form, guest display on detail page, payment panel (balance, logging, history), color-coded status, editable price (completed 2026-02-24)
 - [x] **Phase 16: Assistant Integration** - OpenClaw plugin updates for multi-guest bookings and payment tools (completed 2026-02-25)
-- [ ] **Phase 17: Edit Booking UI Triggers** - Add "Edit Booking" button to booking detail page and "Edit" menu item to booking table row dropdown (gap closure)
+- [x] **Phase 17: Edit Booking UI Triggers** - Add "Edit Booking" button to booking detail page and "Edit" menu item to booking table row dropdown (gap closure) (completed 2026-02-25)
 
 ## Phase Details
 
@@ -101,8 +101,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 16-01-PLAN.md -- Update existing booking tools for multi-guest support, fix dashboard today interface, add formatPaymentStatus, fix invoice reminder
-- [ ] 16-02-PLAN.md -- Add payment query/logging tools, confirm handler, register tools, update documentation
+- [x] 16-01-PLAN.md -- Update existing booking tools for multi-guest support, fix dashboard today interface, add formatPaymentStatus, fix invoice reminder
+- [x] 16-02-PLAN.md -- Add payment query/logging tools, confirm handler, register tools, update documentation
 
 ### Phase 17: Edit Booking UI Triggers
 **Goal**: The dashboard provides direct "Edit Booking" entry points so Ines can modify any booking field (including total price) without relying on the AI assistant
@@ -117,7 +117,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 17-01-PLAN.md -- Wire edit triggers on detail page and table dropdown, fix form status enum for edit mode
+- [x] 17-01-PLAN.md -- Wire edit triggers on detail page and table dropdown, fix form status enum for edit mode
 
 ## Progress
 
@@ -132,4 +132,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Frontend Multi-Guest & Payments | 3/3 | Complete    | 2026-02-24 | - |
 | 16. Assistant Integration | 2/2 | Complete    | 2026-02-25 | - |
-| 17. Edit Booking UI Triggers | 0/1 | Not started | - | - |
+| 17. Edit Booking UI Triggers | 1/1 | Complete | 2026-02-25 | 2026-02-25 |

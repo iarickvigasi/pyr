@@ -2,7 +2,7 @@
 
 ## PYR Backend API
 
-The PYR business assistant plugin connects to the PYR backend REST API to query and manage business data. The plugin is loaded automatically by the OpenClaw Gateway on startup. It provides 38 tools across 9 categories: read queries, write actions with confirmation, and draft management.
+The PYR business assistant plugin connects to the PYR backend REST API to query and manage business data. The plugin is loaded automatically by the OpenClaw Gateway on startup. It provides 40 tools across 10 categories: read queries, write actions with confirmation, payment management, and draft management.
 
 **Connection:** The plugin reads `PYR_API_URL` and `PYR_API_KEY` from environment variables. In Docker, these are injected via the Gateway container's environment config.
 
@@ -20,10 +20,14 @@ The PYR business assistant plugin connects to the PYR backend REST API to query 
 - `prepare_merge_guests` -- Merge two duplicate guest records (two-step confirmation)
 
 ### Bookings (4 tools)
-- `list_bookings` -- Filter by status, date range
-- `get_booking` -- Full booking detail with guest and room info
+- `list_bookings` -- Filter by status, date range. Includes payment status and all guest names per booking
+- `get_booking` -- Full booking detail with all guests, room info, payment summary, and notes
 - `prepare_update_booking` -- Update booking fields with before/after diff (two-step confirmation)
 - `prepare_cancel_booking` -- Cancel a booking with summary and warning (two-step confirmation)
+
+### Payments (2 tools)
+- `get_payment_status` -- Payment balance for a booking: total price, amount paid, balance due, payment history
+- `prepare_log_payment` -- Log a payment against a booking with amount in EUR, method, and optional date/notes (two-step confirmation)
 
 ### Rooms (3 tools)
 - `list_rooms` -- All rooms with status and type
@@ -52,11 +56,11 @@ The PYR business assistant plugin connects to the PYR backend REST API to query 
 - `update_setting` -- Update safe settings like business_name, timezone, email_signature, ai_model, briefing_time (direct execution, no confirmation)
 
 ### Actions (6 tools)
-- `prepare_create_booking` -- Search guest, check availability, calculate price, return summary for confirmation
+- `prepare_create_booking` -- Search guest(s) by name (supports multiple comma-separated names), check availability, calculate price, return summary for confirmation
 - `prepare_create_event` -- Validate event type, return summary for confirmation
 - `confirm_action` -- Execute a previously prepared action after Ines confirms
 - `cancel_action` -- Cancel a previously prepared action when Ines rejects
-- `send_invoice_reminder` -- List overdue bookings or get specific booking details for follow-up
+- `send_invoice_reminder` -- List overdue bookings (unpaid or partially paid) with payment status for follow-up
 - `update_briefing_time` -- Change the morning briefing delivery time (stored in settings)
 
 ### Drafts (5 tools)
@@ -84,7 +88,7 @@ Draft approvals also follow this pattern: `approve_draft` stores a pending actio
 - **Result cap:** List tools return a maximum of 20 items per request to avoid blowing up the context window. Use filters to narrow results.
 - **Pre-formatted:** Dates, amounts, and enum values are pre-formatted in tool responses. Dates appear as "15 Mar 2026", amounts as "EUR 450.00", statuses as "Confirmed" instead of "confirmed".
 - **Dashboard URLs:** Every entity in tool responses includes a `dashboardUrl` field (e.g., `/guests/abc123`). Include these as links in WebChat responses. Skip them in WhatsApp.
-- **Invoice automation:** Full invoice/payment features are Phase 2. The `send_invoice_reminder` tool currently surfaces overdue booking information for manual follow-up.
+- **Payment logging:** Payments can be logged via the `prepare_log_payment` tool. The tool accepts amounts in EUR (not cents) and converts internally. Supported methods: bank_transfer, cash.
 
 ## Session Management
 

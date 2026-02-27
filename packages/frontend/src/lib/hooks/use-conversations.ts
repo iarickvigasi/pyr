@@ -223,6 +223,24 @@ export function useRegenerateDraft(conversationId: string) {
   });
 }
 
+export function useGenerateDraft(conversationId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post<{ data: { jobId: string; messageId: string } }>(
+        `/api/v1/conversations/${conversationId}/drafts/generate`
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      if (conversationId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.conversations.drafts(conversationId) });
+      }
+    },
+  });
+}
+
 export function useUpdateConversation(conversationId: string) {
   const queryClient = useQueryClient();
 

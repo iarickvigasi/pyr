@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { EmailMessage } from './email-message';
 import { OtaBookingBadge } from './ota-booking-badge';
 import { DraftCard } from './draft-card';
+import { useGenerateDraft } from '@/lib/hooks/use-conversations';
 import type { Message, LinkedBooking, AiDraft } from '@/lib/hooks/use-conversations';
 
 interface ConversationThreadProps {
@@ -15,10 +19,7 @@ interface ConversationThreadProps {
   drafts?: AiDraft[];
   onApproveDraft?: (content: string) => void;
   onRejectDraft?: (draftId: string) => void;
-  onRegenerateDraft?: (draftId: string) => void;
   isApprovePending?: boolean;
-  isRejectPending?: boolean;
-  isRegeneratePending?: boolean;
 }
 
 export function ConversationThread({
@@ -30,10 +31,9 @@ export function ConversationThread({
   drafts,
   onApproveDraft,
   onRejectDraft,
-  onRegenerateDraft,
   isApprovePending,
-  isRegeneratePending,
 }: ConversationThreadProps) {
+  const generateDraft = useGenerateDraft(conversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,6 +67,19 @@ export function ConversationThread({
     }
   }
 
+  // Handler for retry/regeneration that uses the generate endpoint (more robust)
+  const handleRegenerate = (): void => {
+    generateDraft.mutate();
+  };
+
+  // Determine if the "Generate AI Draft" button should be shown:
+  // 1. The conversation has at least one inbound message
+  // 2. No pending draft exists anywhere in the drafts list
+  // 3. No generation is currently in progress
+  const hasInboundMessage = messages.some((m) => m.direction === 'in');
+  const hasPendingDraft = drafts?.some((d) => d.status === 'pending') ?? false;
+  const showGenerateButton = hasInboundMessage && !hasPendingDraft && !generateDraft.isPending;
+
   return (
     <div className="space-y-4 p-4">
       {messages.map((message, index) => {
@@ -85,10 +98,10 @@ export function ConversationThread({
                   draft={messageDraft}
                   onApprove={onApproveDraft}
                   onReject={onRejectDraft}
-                  onRegenerate={onRegenerateDraft}
+                  onRegenerate={handleRegenerate}
                   showRegenerate={messageDraft.status === 'rejected' || messageDraft.status === 'failed'}
                   isPending={isApprovePending}
-                  isRegenerating={isRegeneratePending}
+                  isRegenerating={generateDraft.isPending}
                 />
               </div>
             )}
@@ -116,13 +129,43 @@ export function ConversationThread({
                 draft={draft}
                 onApprove={onApproveDraft}
                 onReject={onRejectDraft}
-                onRegenerate={onRegenerateDraft}
+                onRegenerate={handleRegenerate}
                 showRegenerate={draft.status === 'rejected' || draft.status === 'failed'}
                 isPending={isApprovePending}
-                isRegenerating={isRegeneratePending}
+                isRegenerating={generateDraft.isPending}
               />
             </div>
           ))}
+        </div>
+      )}
+      {/* Generating spinner while draft is being created */}
+      {generateDraft.isPending && (
+        <Card className="border-2 border-primary/20 bg-primary/5">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+              <div>
+                <p className="text-sm font-medium text-primary">Generating AI draft...</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  The AI is composing a reply. This usually takes 10-30 seconds.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* Manual generate button for conversations without pending drafts */}
+      {showGenerateButton && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => generateDraft.mutate()}
+            disabled={generateDraft.isPending}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Generate AI Draft
+          </Button>
         </div>
       )}
       <div ref={messagesEndRef} />

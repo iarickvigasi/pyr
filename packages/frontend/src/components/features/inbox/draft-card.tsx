@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Check, X, Edit2, AlertTriangle, RefreshCw, AlertCircle } from 'lucide-react';
+import { Sparkles, Check, X, Edit2, AlertTriangle, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,7 @@ interface DraftCardProps {
   isRegenerating?: boolean;
   showRegenerate?: boolean;
   isPending?: boolean;
+  isGenerating?: boolean;
 }
 
 const DESTRUCTIVE_FLAGS = new Set(['complaint', 'cancellation']);
@@ -41,6 +42,7 @@ export function DraftCard({
   isRegenerating,
   showRegenerate,
   isPending,
+  isGenerating,
 }: DraftCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(draft.content);
@@ -72,6 +74,25 @@ export function DraftCard({
   const hasFlags = draft.flags && draft.flags.length > 0;
   const isRejected = draft.status === 'rejected';
   const isFailed = draft.status === 'failed';
+
+  // Generating state: show spinner while AI is composing
+  if (isGenerating) {
+    return (
+      <Card className="border-2 border-primary/20 bg-primary/5">
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 text-primary animate-spin" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-primary">Generating AI draft...</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                The AI is composing a reply. This usually takes 10-30 seconds.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Failed draft: show error card with retry
   if (isFailed) {

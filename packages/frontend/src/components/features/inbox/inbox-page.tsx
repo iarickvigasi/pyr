@@ -14,7 +14,6 @@ import {
   useSendMessage,
   useApproveDraft,
   useRejectDraft,
-  useRegenerateDraft,
 } from '@/lib/hooks/use-conversations';
 import { toast } from 'sonner';
 
@@ -29,7 +28,6 @@ export function InboxPage() {
   const sendMessage = useSendMessage(selectedConversationId ?? '');
   const approveDraft = useApproveDraft(selectedConversationId ?? '');
   const rejectDraft = useRejectDraft(selectedConversationId ?? '');
-  const regenerateDraft = useRegenerateDraft(selectedConversationId ?? '');
 
   const conversations = conversationsData ?? [];
   const conversation = conversationData;
@@ -67,15 +65,6 @@ export function InboxPage() {
       toast.info('Draft rejected. You can compose a manual reply or generate a new draft.');
     } catch {
       toast.error('Failed to reject draft');
-    }
-  };
-
-  const handleRegenerateDraft = async (draftId: string): Promise<void> => {
-    try {
-      await regenerateDraft.mutateAsync(draftId);
-      toast.success('New draft generation started');
-    } catch {
-      toast.error('Failed to regenerate draft');
     }
   };
 
@@ -159,10 +148,7 @@ export function InboxPage() {
                   drafts={drafts}
                   onApproveDraft={handleApproveDraft}
                   onRejectDraft={handleRejectDraft}
-                  onRegenerateDraft={handleRegenerateDraft}
                   isApprovePending={approveDraft.isPending}
-                  isRejectPending={rejectDraft.isPending}
-                  isRegeneratePending={regenerateDraft.isPending}
                 />
               </div>
 

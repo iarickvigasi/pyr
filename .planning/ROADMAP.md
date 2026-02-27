@@ -1,13 +1,10 @@
-# Roadmap: Puppy Yoga Retreat -- v1.1 Multi-Guest Bookings, Payments & Chat History
-
-## Overview
-
-v1.0 shipped the full MVP: CRM, email ingestion with AI-drafted replies, CalDAV calendar sync, OpenClaw AI assistant, and admin dashboard (Phases 1-11, archived). v1.1 extends bookings to support multiple guests, adds manual payment tracking with full history, and persists assistant chat conversations. The work flows schema-first (migration has 12+ callsite blast radius), then backend features in parallel tracks, then frontend assembly, then assistant integration.
+# Roadmap: Puppy Yoga Retreat — Business Automation Platform
 
 ## Milestones
 
-- v1.0 MVP -- Phases 1-11 (shipped 2026-02-24). See MILESTONES.md.
-- v1.1 Multi-Guest Bookings, Payments & Chat History -- Phases 12-17 (in progress)
+- v1.0 MVP — Phases 1-11 (shipped 2026-02-24). See milestones/v1.0-ROADMAP.md.
+- v1.1 Multi-Guest Bookings, Payments & Chat History — Phases 12-17 (shipped 2026-02-27). See milestones/v1.1-ROADMAP.md.
+- v1.2 Email System Improvements — Phases 18-22 (in progress)
 
 ## Phases
 
@@ -15,121 +12,135 @@ v1.0 shipped the full MVP: CRM, email ingestion with AI-drafted replies, CalDAV 
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-v1.0 phases (1-11) are archived in MILESTONES.md. v1.1 continues from Phase 12.
+<details>
+<summary>v1.0 MVP (Phases 1-11) — SHIPPED 2026-02-24</summary>
 
-- [x] **Phase 12: Schema Migration & Chat History** - Database migration (junction table, payment schema), Prisma regeneration, stable assistant session key, localStorage chat persistence
-- [x] **Phase 13: Backend Multi-Guest Bookings** - Booking CRUD rewrite for guestIds[], CalDAV/notification/context-builder callsite updates, guest filter via junction
-- [x] **Phase 14: Backend Payment Tracking** - Invoice stub implementation, payment CRUD endpoints, balance calculation, overdue alert fix, payment status on listing (completed 2026-02-24)
-- [x] **Phase 15: Frontend Multi-Guest & Payments** - Multi-guest booking form, guest display on detail page, payment panel (balance, logging, history), color-coded status, editable price (completed 2026-02-24)
-- [x] **Phase 16: Assistant Integration** - OpenClaw plugin updates for multi-guest bookings and payment tools (completed 2026-02-25)
-- [x] **Phase 17: Edit Booking UI Triggers** - Add "Edit Booking" button to booking detail page and "Edit" menu item to booking table row dropdown (gap closure) (completed 2026-02-25)
+- [x] Phase 1: Foundation & Infrastructure (2/2 plans)
+- [x] Phase 2: Email Ingestion Pipeline (6/6 plans)
+- [x] Phase 3: Email UI & OTA Parsing (3/3 plans)
+- [x] Phase 4: AI Communication Engine (4/4 plans)
+- [x] Phase 5: AI-Email Integration (4/4 plans)
+- [x] Phase 6: CalDAV Calendar Sync (4/4 plans)
+- [x] Phase 7: OpenClaw Assistant Core (2/2 plans)
+- [x] Phase 8: Assistant Actions & Automation (2/2 plans)
+- [x] Phase 8.1: Integration Fixes & Verification (2/2 plans) (INSERTED)
+- [x] Phase 11: Documentation, OTA Alert Fix (4/4 plans)
+
+See milestones/v1.0-ROADMAP.md for full details.
+
+</details>
+
+<details>
+<summary>v1.1 Multi-Guest Bookings, Payments & Chat History (Phases 12-17) — SHIPPED 2026-02-27</summary>
+
+- [x] Phase 12: Schema Migration & Chat History (2/2 plans) — 2026-02-24
+- [x] Phase 13: Backend Multi-Guest Bookings (2/2 plans) — 2026-02-24
+- [x] Phase 14: Backend Payment Tracking (2/2 plans) — 2026-02-24
+- [x] Phase 15: Frontend Multi-Guest & Payments (3/3 plans) — 2026-02-24
+- [x] Phase 16: Assistant Integration (2/2 plans) — 2026-02-25
+- [x] Phase 17: Edit Booking UI Triggers (1/1 plan) — 2026-02-25
+
+See milestones/v1.1-ROADMAP.md for full details.
+
+</details>
+
+### v1.2 Email System Improvements (In Progress)
+
+**Milestone Goal:** Make the email system production-ready -- fix AI draft generation, add compose capability, improve inbox UX, validate OTA auto-booking, and enable WhatsApp-based email draft approval so Ines can manage emails from her phone.
+
+- [ ] **Phase 18: AI Draft Pipeline Fix** - Fix end-to-end AI draft generation and surface errors in the UI
+- [ ] **Phase 19: Compose New Emails** - Enable composing and sending new outbound emails from the dashboard
+- [ ] **Phase 20: Inbox UX Improvements** - Add search, unread/starred, and filtering to the inbox
+- [ ] **Phase 21: OTA Email Analysis & Validation** - Analyze Tripaneer/BYR email structure, validate parsers, flag non-replyable OTA conversations
+- [ ] **Phase 22: WhatsApp Email Notifications & Draft Approval** - Notify Ines of new emails via WhatsApp and let her review/approve/reject/edit AI drafts from her phone
 
 ## Phase Details
 
-### Phase 12: Schema Migration & Chat History
-**Goal**: The database schema supports multi-guest bookings and payment tracking, the Prisma client reflects the new shape, all packages compile clean, and assistant chat persists across page refreshes
-**Depends on**: Nothing (first v1.1 phase; builds on completed v1.0)
-**Requirements**: CHAT-01, CHAT-02
+### Phase 18: AI Draft Pipeline Fix
+**Goal**: AI drafts are reliably generated for incoming guest emails and failures are visible
+**Depends on**: Nothing (first phase of v1.2 -- bug fix, unblocks Phase 22)
+**Requirements**: DRAFT-01, DRAFT-02
 **Success Criteria** (what must be TRUE):
-  1. Assistant chat session persists when Ines refreshes the dashboard page -- the same conversation continues without reset
-  2. Chat messages from the current session are visible after a page refresh (stored in localStorage and hydrated on mount)
-  3. `tsc --noEmit` passes clean across all packages (backend, frontend, assistant, shared) after Prisma client regeneration
-  4. A `booking_guests` junction table exists in the database with existing bookings backfilled from the old `guestId` column
-**Plans**: 2 plans
+  1. When a new guest inquiry email arrives, an AI draft reply appears in the inbox conversation within 30 seconds
+  2. If draft generation fails (LLM error, timeout, WebSocket disconnect), the conversation shows an error state with a retry option
+  3. The draft generation pipeline works end-to-end: IMAP poll -> message stored -> draft requested via WebSocket -> draft saved to ai_drafts table -> visible in UI
+**Plans**: 2
 
 Plans:
-- [x] 12-01-PLAN.md -- Schema migration: BookingGuest junction table, Payment model updates, backfill, Prisma regeneration, cross-package compilation
-- [x] 12-02-PLAN.md -- Chat persistence: stable session keys, localStorage message storage, hydration on mount, tool summaries, context-loss banner
+- [x] 18-01: Fix pipeline bugs (dedup, timeout, logging) and add manual draft trigger endpoint
+- [ ] 18-02: Surface draft generation status and errors in inbox UI
 
-### Phase 13: Backend Multi-Guest Bookings
-**Goal**: The booking API accepts and returns multiple guests per booking, and all downstream systems (CalDAV, notifications, AI context, email matching) correctly handle the new data shape
-**Depends on**: Phase 12
-**Requirements**: MBOOK-01, MBOOK-03, MBOOK-04
+### Phase 19: Compose New Emails
+**Goal**: Ines can start new email conversations with guests from the dashboard
+**Depends on**: Phase 18 (working email send infrastructure)
+**Requirements**: COMP-01, COMP-02
 **Success Criteria** (what must be TRUE):
-  1. `POST /api/v1/bookings` and `PATCH /api/v1/bookings/:id` accept a `guestIds` array and associate all specified guests with the booking
-  2. `GET /api/v1/bookings` supports filtering by any guest on a booking (not just a single guestId) -- searching for "Anna" returns bookings where Anna is any guest, not just the first
-  3. Apple Calendar events for bookings display all guest names (e.g., "Anna Schmidt, Max Muller -- Suite Room") instead of a single guest name
-  4. Email-to-booking matching finds bookings for guests who are secondary booking guests (not just the original single guestId)
-**Plans**: 2 plans
+  1. Ines can open a compose dialog, select or enter a guest recipient, write a subject and body, and send the email
+  2. Sending a new email creates a conversation record and stores the outbound message in the messages table
+  3. The new conversation appears in the inbox list immediately after sending
+**Plans**: TBD
 
 Plans:
-- [x] 13-01-PLAN.md -- Booking CRUD rewrite: guestIds[] schema, junction table management, list filtering via junction, multi-guest tests
-- [x] 13-02-PLAN.md -- Downstream callsite updates: CalDAV all-guest titles, notification multi-names, dashboard guestNames[], AI context junction queries, OTA junction write, guest merge dedup
+- [ ] 19-01: TBD
+- [ ] 19-02: TBD
 
-### Phase 14: Backend Payment Tracking
-**Goal**: Ines can track payments against bookings through the API -- log, list, and delete payment entries with accurate balance calculation
-**Depends on**: Phase 12
-**Requirements**: PAY-01, PAY-05, PAY-06, PAY-07
+### Phase 20: Inbox UX Improvements
+**Goal**: Ines can efficiently find, organize, and filter conversations in the inbox
+**Depends on**: Phase 18 (stable inbox foundation)
+**Requirements**: INBOX-01, INBOX-02, INBOX-03
 **Success Criteria** (what must be TRUE):
-  1. `POST /api/v1/bookings/:id/payments` creates a payment entry with date, amount (integer cents), method, and optional notes -- audit-logged
-  2. `DELETE /api/v1/bookings/:id/payments/:paymentId` removes an erroneous payment entry -- audit-logged
-  3. `GET /api/v1/bookings/:id` includes a payment summary: totalPrice, totalPaid, balanceDue (all in integer cents)
-  4. `GET /api/v1/bookings` includes a paymentStatus field per booking (paid/partial/unpaid) for list-level display
-  5. The overdue invoice alert (`processOverdueInvoiceAlert`) uses actual payment balance instead of the old heuristic, preventing false positives for paid bookings
-**Plans**: 2 plans
+  1. Ines can type a search query and find conversations by guest name, email address, or message content
+  2. Ines can mark a conversation as unread (bold in list) or starred (pinned/highlighted)
+  3. Ines can filter the conversation list by status (open/closed), classification, read/unread, and starred -- filters are combinable
+  4. Search and filter results update the conversation list in real time without a full page reload
+**Plans**: TBD
 
 Plans:
-- [x] 14-01-PLAN.md -- Payment CRUD: Prisma migration, payment service/routes/schema, test factory, integration tests
-- [x] 14-02-PLAN.md -- Booking augmentation: payment summary on detail, paymentStatus on list, overdue alert refactor, additional tests
+- [ ] 20-01: TBD
+- [ ] 20-02: TBD
 
-### Phase 15: Frontend Multi-Guest & Payments
-**Goal**: Ines can assign multiple guests to bookings, see all guests on a booking, view and manage payments, and see at-a-glance payment status -- all from the dashboard
-**Depends on**: Phase 13, Phase 14
-**Requirements**: MBOOK-02, PAY-02, PAY-03, PAY-04
+### Phase 21: OTA Email Analysis & Validation
+**Goal**: OTA booking emails from Tripaneer/BookYogaRetreats are correctly parsed and auto-bookings contain all available data
+**Depends on**: Phase 18 (working email pipeline for testing)
+**Requirements**: OTA-04, OTA-05, OTA-06
 **Success Criteria** (what must be TRUE):
-  1. The booking form dialog supports selecting multiple guests (multi-select combobox) when creating or editing a booking
-  2. The booking detail page displays all guests assigned to the booking with links to their guest profiles
-  3. The booking detail page shows a payment panel: balance display (total / paid / due), a form to log payments, and a history table of all payment entries
-  4. Balance indicators are color-coded: green when fully paid, amber when partially paid, red when unpaid
-  5. The booking list table shows a payment status column (Paid / Partial / Unpaid) with color-coded badges
-**Plans**: 3 plans
+  1. Tripaneer and BookYogaRetreats email structures are documented with real sample analysis, and parsers are validated against those samples
+  2. Auto-created OTA bookings include guest name, email, check-in/check-out dates, package type, price, and OTA reference ID where extractable
+  3. OTA conversations where replies must go through the OTA platform (not direct email) are flagged as non-replyable in the inbox UI
+**Plans**: TBD
 
 Plans:
-- [x] 15-01-PLAN.md -- Foundation: update booking types/hooks, payment hooks, PaymentStatusBadge, fix dashboard today-activity guestNames
-- [x] 15-02-PLAN.md -- Booking form multi-guest combobox, booking table payment column and multi-guest names
-- [ ] 15-03-PLAN.md -- Booking detail multi-guest display, payment panel (balance + log form + history)
+- [ ] 21-01: TBD
+- [ ] 21-02: TBD
 
-### Phase 16: Assistant Integration
-**Goal**: Ines can create multi-guest bookings and manage payments through natural language via the AI assistant
-**Depends on**: Phase 13, Phase 14
-**Requirements**: MBOOK-05, PAY-08
+### Phase 22: WhatsApp Email Notifications & Draft Approval
+**Goal**: Ines can manage email drafts entirely from WhatsApp on her phone -- get notified, review, approve, reject, or edit drafts without opening the dashboard
+**Depends on**: Phase 18 (working draft generation is prerequisite for draft approval flow)
+**Requirements**: WAEML-01, WAEML-02, WAEML-03, WAEML-04, WAEML-05
 **Success Criteria** (what must be TRUE):
-  1. Ines can tell the assistant "Book Anna and Max into the Suite for March 09-19" and it creates a booking with both guests (after confirmation)
-  2. Ines can ask "What's the payment status for booking #123?" and get the balance summary (total, paid, due)
-  3. Ines can tell the assistant "Log a 500 euro bank transfer for booking #123" and it creates the payment entry (after confirmation)
-  4. The assistant's booking query responses include all guest names and payment status (not just the old single-guest format)
-**Plans**: 2 plans
+  1. When a new guest email arrives, Ines receives a WhatsApp message with the sender name, subject line, and a short preview of the email body
+  2. When an AI draft is ready, Ines receives the full draft text on WhatsApp so she can read it without opening the dashboard
+  3. Ines can approve the draft from WhatsApp (e.g., reply "approve" or tap a button) and it sends immediately via SMTP
+  4. Ines can reject the draft from WhatsApp, which either triggers regeneration or marks it as rejected in the system
+  5. Ines can send an edited version of the draft text from WhatsApp, which replaces the draft content before sending
+**Plans**: TBD
 
 Plans:
-- [x] 16-01-PLAN.md -- Update existing booking tools for multi-guest support, fix dashboard today interface, add formatPaymentStatus, fix invoice reminder
-- [x] 16-02-PLAN.md -- Add payment query/logging tools, confirm handler, register tools, update documentation
-
-### Phase 17: Edit Booking UI Triggers
-**Goal**: The dashboard provides direct "Edit Booking" entry points so Ines can modify any booking field (including total price) without relying on the AI assistant
-**Depends on**: Phase 15
-**Requirements**: PAY-05 (UI gap closure)
-**Gap Closure**: Closes PAY-05-UI integration gap and FLOW-PAY-05 from v1.1 milestone audit
-**Success Criteria** (what must be TRUE):
-  1. Booking detail page (`booking-detail.tsx`) has an "Edit Booking" button that opens `BookingFormDialog` pre-filled with the current booking data
-  2. Booking table (`booking-table.tsx`) row dropdown menu includes an "Edit" item that opens `BookingFormDialog` for that booking
-  3. `BookingFormDialog` correctly switches to edit mode (PATCH instead of POST) when opened with existing booking data
-
-**Plans**: 1 plan
-
-Plans:
-- [x] 17-01-PLAN.md -- Wire edit triggers on detail page and table dropdown, fix form status enum for edit mode
+- [ ] 22-01: TBD
+- [ ] 22-02: TBD
+- [ ] 22-03: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
-(Phases 13 and 14 are technically parallelizable but sequenced for solo dev)
+Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 12. Schema Migration & Chat History | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
-| 13. Backend Multi-Guest Bookings | v1.1 | Complete    | 2026-02-24 | 2026-02-24 |
-| 14. Backend Payment Tracking | 2/2 | Complete    | 2026-02-24 | - |
-| 15. Frontend Multi-Guest & Payments | 3/3 | Complete    | 2026-02-24 | - |
-| 16. Assistant Integration | 2/2 | Complete    | 2026-02-25 | - |
-| 17. Edit Booking UI Triggers | 1/1 | Complete    | 2026-02-25 | 2026-02-25 |
+| Phase | Milestone | Plans | Status | Completed |
+|-------|-----------|-------|--------|-----------|
+| 1-11 | v1.0 | 38/38 | Complete | 2026-02-24 |
+| 12-17 | v1.1 | 12/12 | Complete | 2026-02-27 |
+| 18. AI Draft Pipeline Fix | v1.2 | 1/2 | In Progress | - |
+| 19. Compose New Emails | v1.2 | 0/TBD | Not started | - |
+| 20. Inbox UX Improvements | v1.2 | 0/TBD | Not started | - |
+| 21. OTA Email Analysis & Validation | v1.2 | 0/TBD | Not started | - |
+| 22. WhatsApp Email Notifications & Draft Approval | v1.2 | 0/TBD | Not started | - |

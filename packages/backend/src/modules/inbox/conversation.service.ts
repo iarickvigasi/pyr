@@ -4,7 +4,7 @@ import type { PaginatedResult } from '../../lib/pagination.js';
 import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
-import { NotFoundError, BadRequestError } from '../../lib/errors.js';
+import { AppError, NotFoundError, BadRequestError } from '../../lib/errors.js';
 import { QUEUE_NAMES } from '@pyr/shared';
 import type { AiDraftJobData } from '@pyr/shared';
 import type { CreateConversationBody, ListConversationsQuery } from './inbox.schema.js';
@@ -384,6 +384,67 @@ export async function rejectDraft(
   });
 
   return updated as AiDraft;
+}
+
+/**
+ * Manually trigger AI draft generation for the latest inbound message in a conversation.
+ * Unlike regenerateDraft, this does not require an existing draft -- it finds the latest
+ * inbound message and enqueues a new ai-draft job for it.
+ */
+export async function generateDraftForConversation(
+  prisma: PrismaClient,
+  app: FastifyInstance,
+  conversationId: string,
+  actor?: string,
+): Promise<{ jobId: string; messageId: string }> {
+  // 1. Verify conversation exists
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      guest: { select: { language: true } },
+    },
+  });
+
+  if (!conversation) {
+    throw new NotFoundError('Conversation', conversationId);
+  }
+
+  // 2. Find the latest inbound message
+  const latestInbound = await prisma.message.findFirst({
+    where: { conversationId, direction: 'in' },
+    orderBy: { sentAt: 'desc' },
+  });
+
+  if (!latestInbound) {
+    throw new BadRequestError('No inbound message in conversation to generate a draft for');
+  }
+
+  // 3. Determine guest language
+  const guestLanguage = (conversation.guest?.language === 'de' ? 'de' : 'en') as 'en' | 'de';
+
+  // 4. Get the ai-draft queue
+  const aiDraftQueue = app.queues?.getQueue(QUEUE_NAMES.AI_DRAFT);
+  if (!aiDraftQueue) {
+    throw new AppError(503, 'AI draft queue not available', 'SERVICE_UNAVAILABLE');
+  }
+
+  // 5. Enqueue ai-draft job
+  const job = await aiDraftQueue.add('ai-draft', {
+    conversationId,
+    messageId: latestInbound.id,
+    guestLanguage,
+  } satisfies AiDraftJobData);
+
+  // 6. Write audit log
+  await writeAuditLog(prisma, {
+    entityType: 'ai_draft',
+    entityId: conversationId,
+    action: 'create',
+    changes: { messageId: latestInbound.id, trigger: 'manual_generate' },
+    actor: getActor(actor),
+  });
+
+  return { jobId: job.id ?? 'unknown', messageId: latestInbound.id };
 }
 
 /**

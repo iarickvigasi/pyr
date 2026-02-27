@@ -12,6 +12,7 @@ import {
   attachmentParamsSchema,
   draftActionParamsSchema,
   approveDraftBodySchema,
+  generateDraftParamsSchema,
 } from './inbox.schema.js';
 import {
   listConversations,
@@ -23,6 +24,7 @@ import {
   approveDraft,
   rejectDraft,
   regenerateDraft,
+  generateDraftForConversation,
 } from './conversation.service.js';
 import { addMessage } from './message.service.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
@@ -238,6 +240,18 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
     const { id, draftId } = request.params as { id: string; draftId: string };
     const result = await regenerateDraft(app.prisma, app, id, draftId, request.user?.sub);
     return { data: result };
+  });
+
+  server.post('/:id/drafts/generate', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Trigger AI draft generation for the latest inbound message',
+      params: generateDraftParamsSchema,
+    },
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await generateDraftForConversation(app.prisma, app, id, request.user?.sub);
+    return reply.code(202).send({ data: result });
   });
 
   server.get('/:id/messages/:messageId/attachments/:attachmentId', {

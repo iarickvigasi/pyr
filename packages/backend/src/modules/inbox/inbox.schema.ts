@@ -67,3 +67,7 @@ export const approveDraftBodySchema = z.object({
   content: z.string().optional().openapi({ example: 'Dear Anna, thank you for your inquiry! We have the Sunset Suite available from April 15-22.' }), // If edited, the modified content
 });
 export type ApproveDraftBody = z.infer<typeof approveDraftBodySchema>;
+
+export const generateDraftParamsSchema = z.object({
+  id: z.string().min(1).openapi({ example: 'cm4x7abc00030' }),
+});

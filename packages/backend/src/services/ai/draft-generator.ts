@@ -51,6 +51,15 @@ export interface GenerateDraftParams {
 /** Maximum number of conversation messages to include in the prompt */
 const MAX_MESSAGES = 20;
 
+/**
+ * Timeout for the chat event accumulation promise (90 seconds).
+ * Separate from the Gateway's 120s RPC request timeout which covers the initial
+ * gateway.request() acknowledgment. This timeout covers the subsequent chat event
+ * stream which has no built-in timeout -- if the Gateway acknowledges the request
+ * but fails to emit final/error events, the promise would hang indefinitely.
+ */
+const CHAT_EVENT_TIMEOUT_MS = 90_000;
+
 // ─── Public API ─────────────────────────────────────────
 
 /**
@@ -96,14 +105,28 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
   // 6. Call OpenClaw Gateway via WebSocket agent method
   const startTime = Date.now();
 
+  // Pre-check: fail fast with clear error if Gateway is not connected
+  if (!gateway.isConnected) {
+    throw new Error('Gateway WebSocket not connected -- cannot generate draft');
+  }
+
   // Use a unique session key per draft to isolate concurrent jobs
   const draftSessionKey = `draft:${conversationId}:${Date.now()}`;
 
-  // Accumulate response via chat events
+  // Accumulate response via chat events (with timeout to prevent indefinite hangs)
   const result = await new Promise<{ content: string; usage: ChatEvent['usage']; model: string }>((resolve, reject) => {
     let content = '';
     let usage: ChatEvent['usage'] = undefined;
     let model = 'unknown';
+    let settled = false;
+
+    // Timeout: reject if no final/error event arrives within CHAT_EVENT_TIMEOUT_MS
+    const timeoutHandle = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsub();
+      reject(new Error(`Draft generation timed out waiting for chat events (${CHAT_EVENT_TIMEOUT_MS / 1000}s)`));
+    }, CHAT_EVENT_TIMEOUT_MS);
 
     const unsub = gateway.onChatEvent((evt) => {
       if (evt.sessionKey !== draftSessionKey) return;
@@ -114,16 +137,25 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
         if (msg.content) content += msg.content;
       }
       if (evt.state === 'final') {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutHandle);
         usage = evt.usage;
         model = evt.model ?? 'unknown';
         unsub();
         resolve({ content, usage, model });
       }
       if (evt.state === 'error') {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutHandle);
         unsub();
         reject(new Error(evt.errorMessage ?? 'Agent error during draft generation'));
       }
       if (evt.state === 'aborted') {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutHandle);
         unsub();
         reject(new Error('Draft generation aborted'));
       }
@@ -139,7 +171,13 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
       deliver: false, // Draft generation does NOT deliver to WhatsApp
       idempotencyKey: crypto.randomUUID(),
       extraSystemPrompt: systemPrompt, // Full business context injected here
-    }).catch((err) => { unsub(); reject(err); });
+    }).catch((err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutHandle);
+      unsub();
+      reject(err);
+    });
   });
   const durationMs = Date.now() - startTime;
 

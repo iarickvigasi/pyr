@@ -521,11 +521,26 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
                 { conversationId, messageId: message.id, guestLanguage },
                 'AI draft job enqueued',
               );
+            } else {
+              app.log.error(
+                { conversationId },
+                'AI draft queue not found -- queue infrastructure may not be initialized',
+              );
             }
           } catch (draftErr) {
             // Draft enqueueing failure must NOT block email processing
             app.log.warn({ error: draftErr, conversationId }, 'Failed to enqueue AI draft job');
           }
+        } else if (classification.category !== 'guest_inquiry') {
+          app.log.info(
+            { classification: classification.category, reason: classification.reason },
+            'Email classified as non-inquiry -- no AI draft generated',
+          );
+        } else if (!guestId) {
+          app.log.info(
+            { classification: classification.category },
+            'No guest matched for email -- no AI draft generated',
+          );
         }
 
         // j. Update last processed UID

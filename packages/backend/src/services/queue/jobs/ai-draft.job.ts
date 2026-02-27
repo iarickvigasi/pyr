@@ -24,24 +24,31 @@ export function createAiDraftProcessor(app: FastifyInstance) {
     if (!aiModule) {
       const { createAiModule } = await import('../../ai/index.js');
       aiModule = createAiModule(app);
+      logger.info('AI module initialized for draft generation');
     }
 
-    // Check for existing draft for this specific message to avoid duplicates
-    // Scoped to messageId (not conversationId) so each inbound message gets its own draft
+    // Check for existing pending draft for this specific message to avoid duplicates.
+    // Only skip for 'pending' -- a 'failed' draft must NOT block a new generation attempt.
+    // BullMQ handles job-level dedup; this DB check prevents duplicate pending drafts only.
     const existingDraft = await app.prisma.aiDraft.findFirst({
       where: {
         conversationId,
         messageId,
-        status: { in: ['pending', 'failed'] },
+        status: 'pending',
       },
     });
 
     if (existingDraft) {
-      logger.info({ existingDraftId: existingDraft.id }, 'Draft already exists for this message, skipping');
+      logger.info({ existingDraftId: existingDraft.id }, 'Pending draft already exists for this message, skipping');
       return;
     }
 
     try {
+      logger.info(
+        { gateway: app.gateway?.isConnected ?? false },
+        'Starting draft generation',
+      );
+
       const result = await aiModule!.generateDraft({
         conversationId,
         messageId,

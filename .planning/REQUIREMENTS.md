@@ -18,7 +18,7 @@ Requirements for milestone v1.2: Email System Improvements.
 ### AI Draft Fix
 
 - [x] **DRAFT-01**: AI draft is generated for every new guest inquiry email (end-to-end pipeline working)
-- [ ] **DRAFT-02**: Failed draft generation surfaces an error state visible in the inbox UI
+- [x] **DRAFT-02**: Failed draft generation surfaces an error state visible in the inbox UI
 
 ### Compose
 
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DRAFT-01 | Phase 18 | Complete |
-| DRAFT-02 | Phase 18 | Pending |
+| DRAFT-02 | Phase 18 | Complete |
 | COMP-01 | Phase 19 | Pending |
 | COMP-02 | Phase 19 | Pending |
 | INBOX-01 | Phase 20 | Pending |

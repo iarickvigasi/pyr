@@ -48,7 +48,7 @@ See milestones/v1.1-ROADMAP.md for full details.
 
 **Milestone Goal:** Make the email system production-ready -- fix AI draft generation, add compose capability, improve inbox UX, validate OTA auto-booking, and enable WhatsApp-based email draft approval so Ines can manage emails from her phone.
 
-- [ ] **Phase 18: AI Draft Pipeline Fix** - Fix end-to-end AI draft generation and surface errors in the UI
+- [x] **Phase 18: AI Draft Pipeline Fix** - Fix end-to-end AI draft generation and surface errors in the UI (completed 2026-02-27)
 - [ ] **Phase 19: Compose New Emails** - Enable composing and sending new outbound emails from the dashboard
 - [ ] **Phase 20: Inbox UX Improvements** - Add search, unread/starred, and filtering to the inbox
 - [ ] **Phase 21: OTA Email Analysis & Validation** - Analyze Tripaneer/BYR email structure, validate parsers, flag non-replyable OTA conversations
@@ -139,7 +139,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 |-------|-----------|-------|--------|-----------|
 | 1-11 | v1.0 | 38/38 | Complete | 2026-02-24 |
 | 12-17 | v1.1 | 12/12 | Complete | 2026-02-27 |
-| 18. AI Draft Pipeline Fix | v1.2 | 1/2 | In Progress | - |
+| 18. AI Draft Pipeline Fix | 2/2 | Complete   | 2026-02-27 | - |
 | 19. Compose New Emails | v1.2 | 0/TBD | Not started | - |
 | 20. Inbox UX Improvements | v1.2 | 0/TBD | Not started | - |
 | 21. OTA Email Analysis & Validation | v1.2 | 0/TBD | Not started | - |

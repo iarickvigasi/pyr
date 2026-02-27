@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Email System Improvements
 status: executing
-last_updated: "2026-02-27T20:12:00.000Z"
+last_updated: "2026-02-27T20:19:47.000Z"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 
 ## Current Position
 
-Phase: 18 (first of 5 in v1.2) -- AI Draft Pipeline Fix
-Plan: 18-02 (next to execute)
-Status: Executing
-Last activity: 2026-02-27 -- Plan 18-01 completed (pipeline bug fixes + manual trigger endpoint)
+Phase: 18 (first of 5 in v1.2) -- AI Draft Pipeline Fix -- COMPLETE
+Plan: All plans complete (2/2)
+Status: Phase 18 complete, ready for next phase
+Last activity: 2026-02-27 -- Plan 18-02 completed (draft generation UI with spinner, generate button, retry wiring)
 
-Progress: [..........] 0% (0/5 phases)
+Progress: [==........] 20% (1/5 phases)
 
 ## Performance Metrics
 
@@ -54,6 +54,11 @@ Current milestone decisions: see PROJECT.md Key Decisions table
 - 90-second chat event timeout separate from 120s Gateway RPC timeout
 - Used AppError(503) for queue unavailability in manual generate endpoint
 
+**Phase 18-02:**
+- ConversationThread manages draft generation internally via useGenerateDraft hook (not via parent props)
+- Failed draft retry uses generate endpoint instead of per-draft regenerate endpoint (more robust)
+- Removed unused onRegenerateDraft/isRegeneratePending props from ConversationThread
+
 ### Pending Todos
 
 None.
@@ -66,5 +71,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 18-01-PLAN.md
+Stopped at: Completed 18-02-PLAN.md (Phase 18 fully complete)
 Resume file: N/A

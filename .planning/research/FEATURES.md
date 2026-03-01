@@ -1,219 +1,214 @@
 # Feature Research
 
-**Domain:** Wellness retreat CRM — v1.1 Multi-Guest Bookings, Payment Tracking, Chat History
-**Researched:** 2026-02-24
-**Confidence:** HIGH (based on direct code inspection + hospitality domain patterns)
-
----
-
-## Context: What Already Exists
-
-This is a subsequent milestone on a live codebase. The following are the concrete constraints that shape every feature decision:
-
-**Booking model (current):** Single `guestId` FK on `bookings` table. One guest per booking. `totalPrice` is set on create, no mutation endpoint for price-only edits (only via `PATCH /:id` with all fields optional).
-
-**Payment model (current):** `Invoice` and `Payment` tables exist in schema but are entirely unimplemented — no API routes, no service logic, no frontend UI. Payments are linked through `Invoice → Payment`, requiring an invoice to exist first. The `Payment` row has: `invoiceId`, `amount`, `method` (paypal/bank_transfer/cash), `receivedAt`. No `notes` field exists yet.
-
-**Chat/session model (current):** OpenClaw manages conversation context in-process (in-memory per Gateway instance). The `sessionKey` is `dashboard:<timestamp>` — fresh on every page load, stored in `localStorage`. No persistence layer for chat history. `sessions.json` is empty `{}`. The `/chat/reset` endpoint just generates a new timestamp key. Messages in the frontend `useAssistant` hook live in React state — they vanish on refresh.
-
----
+**Domain:** AI-classified business email inbox with guest matching and draft generation for a small business CRM
+**Researched:** 2026-03-01
+**Confidence:** HIGH (based on existing codebase analysis, competitor feature analysis, established UX patterns)
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features that define the minimum useful version of each new feature area.
+Features the admin (Ines) will expect from day one. Missing any of these makes the rework feel like a regression from the current system.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Multi-guest booking: add multiple guests to one booking | Retreat rooms host couples and groups. A booking for "Room 2 — Anna & Klaus" with two guest records is the normal case, not the edge case. | MEDIUM | Requires junction table `booking_guests` (bookingId, guestId). The current `bookings.guestId` FK becomes the primary/lead guest or is dropped entirely. All existing bookings must migrate gracefully. |
-| Multi-guest booking: see all guests on booking detail | When Ines opens a booking she expects to see every guest's name, email, dietary needs — not just one person. Showing only one guest on a group booking is a data loss regression. | LOW | Frontend booking detail card currently shows one `booking.guest` object. Needs to become a list. Query must include all `BookingGuest` rows. |
-| Multi-guest booking: filter/search bookings by any guest | Ines looks up "Does Maria have a booking in April?" — the answer must come back even if Maria is not the "primary" guest. | LOW | Query layer: `listBookings` must search by guestId across the junction table, not just the direct FK. |
-| Payment tracking: log a payment with date, amount, method, notes | Ines receives bank transfers and PayPal payments and needs to record them manually. This is the core daily use. Notes field is critical for partial payments ("deposit only") and offline context. | LOW | Payments are currently tied to `Invoice`. The requirement states direct booking-level tracking without invoice creation overhead. Must decide: extend current schema or add a direct `BookingPayment` table. |
-| Payment tracking: see payment history on booking detail | Balance calculation (totalPrice - sum of payments) and a dated list of what was received is the expected minimum for any accounting workflow. | LOW | Frontend needs a "Payments" card on booking detail. Backend needs a list endpoint scoped to a booking. |
-| Payment tracking: balance clearly visible | Ines needs to know at a glance whether a booking is paid in full, partially paid, or unpaid. This drives follow-up decisions. | LOW | Computed field: `balance = totalPrice - sum(payments.amount)`. Color-coded (green=paid, amber=partial, red=unpaid). |
-| Editable booking total price | Ines negotiates custom prices. The current `totalPrice` is set on create and only editable via the general PATCH endpoint (no dedicated UI). Needs a UI affordance. | LOW | Backend already supports `totalPrice` in `updateBooking`. Frontend needs an edit button/inline field on the pricing card. Must re-compute balance after price change. |
-| Chat history: survive page refresh | A fresh `dashboard:<timestamp>` session key on every page load means all chat context is lost on refresh. Ines will lose mid-conversation context regularly. | MEDIUM | Two approaches: (1) persist messages in browser `localStorage` keyed by `sessionKey` — no backend changes; (2) persist messages in DB — requires new table + API. See Anti-Features for why option 2 is likely over-engineering. |
-| Chat history: see previous conversations | Ines should be able to scroll back through earlier conversations with Koda — at minimum the current session, ideally the last N sessions. | MEDIUM | Depends on storage approach chosen. localStorage approach gives only the current session. DB approach enables session list. |
+| **AI classification on ingest** | Every email needs a category before it reaches the inbox. Without it, emails pile up unorganized. Gmail, Front, Intercom all classify on arrival. | MEDIUM | OpenClaw agent session per email. Must handle gateway-down gracefully (queue + retry). Async via BullMQ so polling is never blocked. |
+| **Three-tab inbox (Conversations / OTA / Other)** | Ines's mental model: guest emails are primary work, OTA notifications are reference, everything else is noise. Tabs match Gmail's proven pattern (Primary/Social/Promotions). | LOW | Frontend filter on `classification` field. Conversations = `guest_inquiry`, OTA = `ota_notification`, Other = `spam_newsletter` + `admin_system`. |
+| **Classification confidence + reason** | Ines needs to trust AI decisions. Showing "why" builds trust and helps her spot misclassifications. Helpdesk tools (Freshdesk, Zendesk) all expose confidence scores. | LOW | Already in `ClassificationResult` type (`confidence`, `reason`). Store on conversation/message record. Display in UI. |
+| **Manual reclassification** | AI will get it wrong sometimes. Override must be one click, not buried in settings. Already exists in current UI (`ReclassifyDropdown`). | LOW | Already built. Enhance to move conversation between tabs immediately on reclassify. Add audit log entry for reclassification. |
+| **Guest matching during classification** | The core value proposition. When classifying, the AI should search existing guests (by email, name, phone) and link the conversation. Without this, every email is an orphan. | MEDIUM | OpenClaw has `search_guests` tool. Classification session uses it to find matches. Returns guest ID + match confidence. |
+| **Unmatched guest banner with create action** | When no guest match is found, Ines needs a clear prompt to create one. Not auto-create (that's what we're removing), but a banner: "No matching guest -- Create [Name] [Email]?" | LOW | Inline banner component. Pre-fills name and email from email headers. One-click creates guest via existing API, then links conversation. |
+| **Manual draft generation (button-triggered)** | Ines decides when she wants an AI draft, not the system. Button in conversation thread, spinner while generating, result appears inline. Already partially built. | LOW | Existing `Generate AI Draft` button + `DraftCard` component. Wire to OpenClaw hook instead of direct gateway call. |
+| **Draft review/edit/approve/reject flow** | AI drafts are never auto-sent. Ines must review, optionally edit, then explicitly approve. Two-step confirm dialog before sending. Industry standard (Superhuman, Front, Help Scout all do this). | LOW | Already fully built with `DraftCard` component: edit mode, approve with preview dialog, reject with regenerate option. |
+| **Draft cost and token display** | Ines runs a small business -- she cares about AI costs. Show model, tokens, cost per draft. Transparency builds trust. | LOW | Already built. `DraftCard` shows model, input/output tokens, cost in EUR, cache hit indicator, duration. |
+| **Conversation threading** | Emails in the same thread must stay together. Broken threading = broken inbox. Uses `In-Reply-To` and `References` headers. | MEDIUM | Existing `email-threader.ts` needs evaluation (keep/rewrite). Must correctly handle reply chains, forwarded emails, and OTA notification threading. |
+| **Unread/read state** | Basic inbox hygiene. Unread dot on conversation list, bold text for unread items. | LOW | Already built (`isRead` field, blue dot in `ConversationList`). |
+| **Email HTML rendering** | Many emails are HTML-formatted. Must render safely (sanitized) with readable formatting. | LOW | Already built (`email-html-renderer.tsx`, `sanitize-html` on backend). |
+| **OTA parsed data display** | For OTA tab, show extracted booking data (guest name, dates, room type, price) from parsed OTA emails. Not auto-create -- just display for Ines to act on. | MEDIUM | Existing OTA parsers (Tripaneer, BookYogaRetreats) extract structured data. Display in OTA conversation view as a card/panel. Ines manually creates booking from parsed data. |
+| **Search/filter within tabs** | With growing email volume, Ines needs to find specific conversations. Search by guest name, email, subject. Filter by status (open/closed). | LOW | Existing `?search=` and `?status=` query params on conversations endpoint. Add search input to tab header. |
+| **Graceful degradation when OpenClaw is down** | OpenClaw gateway may be unavailable. Classification must not lose emails. Queue unclassified emails, show them in a "Pending" state, allow manual classification. | MEDIUM | BullMQ retry with backoff. Frontend shows "Classification pending" badge. Manual classify dropdown always available as fallback. |
 
 ### Differentiators (Competitive Advantage)
 
-Features that go beyond table stakes for this specific context.
+Features that make PYR's inbox meaningfully better than a generic CRM inbox. These justify the AI investment and are where the product creates real value for Ines.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Payment status on booking list | At-a-glance "Paid / Partial / Unpaid" on the booking table view. Ines can scan 20 bookings and immediately spot who still owes. | LOW | Computed at query time: sum payments per booking and compare to totalPrice. Adds one aggregation query or denormalized status field. |
-| Assistant tools for payments | Ines asks Koda: "Who still owes me money?" or "Log a €500 bank transfer for Booking XYZ" and it works. Payments become part of the natural language workflow. | MEDIUM | Requires new OpenClaw plugin tools: `list_unpaid_bookings`, `prepare_log_payment`. Follows the existing two-step confirmation pattern. |
-| Assistant tools for multi-guest bookings | Ines says: "Create a booking for Anna and Klaus in Room 3, April 1-7" — the assistant creates the booking and attaches both guests. | MEDIUM | The `prepare_create_booking` tool needs to accept multiple guestIds. The confirmation summary must list all guests. |
-| Named chat sessions | Instead of `dashboard:1708789234567`, sessions have a label Ines can set ("Guest inquiries Feb 24", "Pricing questions"). Makes history navigable. | LOW | Store a human-readable label alongside the session key. Can be auto-generated from first message topic by AI. |
-| Partial payment tracking | First payment = deposit, second = balance. The notes field handles this but a dedicated `type` field (deposit / balance / full) would make reporting cleaner. | LOW | Optional enum field on payment entry. Not critical for MVP — notes field is sufficient initially. |
+| **OpenClaw agent sessions for classification** | Unlike rule-based or simple ML classifiers, a full agent session can use tools: search guests, check bookings, look at conversation history. Classification is contextual, not just pattern matching on sender domain. | HIGH | New `classify` hook in OpenClaw config. Agent gets email content + metadata, uses `search_guests`, `get_conversation` tools to make informed decisions. Returns category, confidence, matched guest ID, extracted language, extracted guest info. |
+| **Smart guest matching with fuzzy search** | Agent doesn't just do exact email match -- it can search by name variations, phone fragments, previous conversation subjects. Catches "Sara K." = "Sarah Khan" that exact match misses. | MEDIUM | Leverage existing `search_guests` tool which does text search. OpenClaw agent can try multiple search strategies (email, then name, then phone) and reason about results. |
+| **Language detection in classification** | The agent detects guest language (EN/DE) during classification, not as a separate step. Stored on conversation and used for draft generation. Eliminates the current regex-based `language-detector.ts`. | LOW | OpenClaw agent can detect language with high accuracy as part of classification. One agent call covers both classification and language detection. |
+| **Guest info extraction during classification** | The classification agent extracts structured info from the email: guest name, phone, dietary needs, travel dates, party size. Stored on conversation metadata. Saves Ines from re-reading emails to extract data. | MEDIUM | Agent returns extracted fields as structured JSON. Stored in a new `metadata` JSON field on conversation or message. Displayed in conversation header panel. |
+| **Draft generation as full agent session with tools** | Unlike current direct LLM call, the draft agent has access to all 40 OpenClaw tools. It can check room availability, look up booking details, check event schedules -- then compose a reply with accurate, current information. | HIGH | Already partially built (draft generator uses gateway). Key improvement: use the `draft` hook which gives full tool access, not just `extraSystemPrompt` injection. |
+| **Edge-case flags on drafts** | AI detects sensitive topics (complaints, cancellations, medical/dietary, adoption inquiries) and flags them visually on the draft card. Forces careful review of high-stakes replies. | LOW | Already built. `classifyEdgeCases()` returns flags, `DraftCard` shows amber/red badges. Consider moving edge-case detection into the OpenClaw classification session for consistency. |
+| **OTA guest matching suggestions** | For OTA emails, the agent suggests which existing guest the booking might be for (by name/email from parsed data). Helps Ines link OTA bookings to existing guest records without manual lookup. | MEDIUM | Classification agent processes OTA parsed data, runs `search_guests` with extracted guest name/email. Shows suggested matches in OTA conversation view. |
+| **Conversation-level classification audit trail** | Track classification changes over time: initial AI classification, manual overrides, re-classifications. Shows who changed what and when. Useful for tuning AI accuracy. | LOW | Use existing `audit_log` table. Log initial classification + any reclassifications. Could aggregate for classification accuracy metrics later. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
+Features that seem useful but create real problems. Deliberately NOT building these.
+
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Invoice generation before payment logging | Existing schema requires `Invoice` before `Payment`. This matches accounting workflows. | For Ines's manual tracking workflow, creating an invoice first is friction. She receives a bank transfer and wants to log it immediately against the booking — not go through an invoice creation step. Invoice system is Phase 2 (PayPal). | Add a direct `BookingPayment` table that does NOT require an invoice. Phase 2 PayPal invoicing keeps the existing `Invoice` → `Payment` path and both coexist. |
-| Lead guest / primary guest concept | Common in hotel PMS systems (one person "owns" the booking, others are guests). | For a 4-person villa with one booking, the lead guest concept adds UI complexity (who sees confirmation emails? who signs the contract?) without value for a single-admin system. Ines knows her guests. | All guests on a booking are equal. No lead/primary distinction. If one guest "matters more" for email, Ines notes it in the booking notes field. |
-| Server-side chat history persistence in PostgreSQL | Seems logical — everything else is in PostgreSQL. | Chat messages are ephemeral session artifacts, not business records. Storing every "What's available in March?" exchange in the DB adds noise to business data, complicates audit logs, creates GDPR retention questions, and provides value only if Ines actually reads old chat logs (unlikely). | Store chat history in `localStorage` with a 30-day TTL. The sessionKey stored in localStorage links client-side messages to OpenClaw's in-memory session context. On page refresh, past messages appear (they were stored client-side) but the OpenClaw context is fresh (no in-memory state). For full context continuity, Ines starts a new chat. This is the correct tradeoff: zero backend complexity, good enough UX. |
-| Full chat context replay on session restore | Restoring messages from localStorage + replaying them into OpenClaw's context on refresh to get full tool-call awareness. | Complex, expensive (re-sends full history to LLM), and unnecessary for a daily workflow tool. Koda's context window is 200K tokens — the real use case is the current working session, not archaeology. | Let OpenClaw context start fresh on page reload. localStorage shows message text so Ines can see what was discussed, but Koda starts without that history. If continuity matters, Ines pastes a brief recap ("We were discussing availability for April") — takes 5 seconds. |
-| Per-booking payment due dates / reminders | PMS systems track "deposit due by X, balance due by Y". | This is Phase 2 (PayPal invoicing) scope. Building a due-date reminder system now means building scheduling, notification logic, and UI that will be superseded when invoice automation lands. | Notes field on payment entry covers "deposit due April 15" tracking manually. |
-| Splitting totalPrice across guests | Some group booking UIs let you track who owes what portion of the total. | Adds a per-guest-per-booking amount tracking layer of significant complexity. Ines handles one group as one financial unit — she invoices whoever booked, not each member. | Single totalPrice on booking. If Ines needs to track who paid what within a group, notes field handles this adequately for MVP. |
-
----
+| **Auto-create guests from emails** | "Save Ines time by auto-creating guest records." | Creates noise: spam senders, OTA system addresses, newsletter replies all become CRM records. Current system does this and it pollutes the guest database. Ines spends time deleting ghost guests. | Banner with one-click create. Ines sees name + email, clicks "Create Guest." Two seconds vs. cleaning up junk records. |
+| **Auto-send AI drafts** | "If AI is confident, just send it." | Core business rule violation. One wrong auto-sent email to a guest with a complaint, dietary emergency, or pricing question causes real harm. Ines's personal brand is at stake. Superhuman and Front both keep human-in-the-loop. | Always require explicit approve. Two-step confirm dialog prevents accidental sends. |
+| **Auto-create bookings from OTA emails** | "OTA emails contain booking data, just create the booking automatically." | OTA parsers aren't 100% accurate. Wrong dates, wrong room types, wrong prices get committed to DB. Ines then has to find and fix them. Previous implementation did this and it caused problems. | Show parsed data in UI card. Ines reviews and clicks "Create Booking" with pre-filled form. |
+| **Real-time streaming classification** | "Show classification results as they stream in from the agent." | Classification takes 5-15 seconds. Streaming partial results is confusing (category might change mid-stream). The final result is what matters. | Show "Classifying..." spinner, then final result. No partial state. |
+| **Bulk AI draft generation** | "Generate drafts for all unresponded conversations at once." | Expensive (each draft costs tokens), wasteful (Ines may not need a draft for every email), and floods the inbox with pending drafts. | One-at-a-time manual trigger. Ines opens a conversation, decides she wants help, clicks generate. |
+| **AI confidence threshold auto-routing** | "Above 90% confidence, auto-classify. Below, ask the human." | Single-user system. Adding complexity of threshold configuration for one user adds engineering cost without proportional value. Every email gets classified; Ines can override with one click. | Always show classification with confidence. Let Ines override when she disagrees. Track overrides for future accuracy analysis (but don't build the threshold system). |
+| **Multi-model classification comparison** | "Run classification through Claude AND GPT, compare results." | Doubles cost, doubles latency, adds complexity. For a small business with moderate email volume, one model with manual override is sufficient. | Use one model (Claude via OpenClaw). If accuracy is poor, improve the classification prompt/skill rather than adding a second model. |
+| **Sentiment analysis scoring** | "Score each email's emotional tone on a 1-10 scale." | Over-engineering for small business. Ines reads the emails -- she can tell when someone is upset. A numeric score adds UI clutter without actionable insight at this scale. | Edge-case flags (complaint, cancellation) cover the high-stakes cases. The flag system is binary and actionable, not a gradient. |
 
 ## Feature Dependencies
 
 ```
-Existing: bookings.guestId (single FK)
-    └──replaces/extends──> BookingGuest junction table (new)
-                              └──required for──> multi-guest booking creation
-                              └──required for──> multi-guest booking display
-                              └──required for──> filter bookings by any guest
-                              └──required for──> assistant multi-guest booking tool
+[AI Classification (OpenClaw hook)]
+    |
+    +--requires--> [OpenClaw gateway available]
+    |
+    +--produces--> [Classification result (category, confidence, reason)]
+    |
+    +--uses-----> [Guest matching via search_guests tool]
+    |                  |
+    |                  +--enables--> [Auto-link conversation to guest]
+    |                  |
+    |                  +--enables--> [Unmatched guest banner in UI]
+    |
+    +--uses-----> [Language detection (inline)]
+    |
+    +--uses-----> [Guest info extraction (metadata)]
+    |
+    +--produces--> [Tab routing (Conversations/OTA/Other)]
 
-Existing: Invoice → Payment (schema exists, no implementation)
-    └──bypassed by──> BookingPayment (new table, no invoice required)
-                          └──required for──> log payment entry
-                          └──required for──> payment history list
-                          └──required for──> balance calculation
-                          └──enhances──> booking list (payment status column)
-                          └──required for──> assistant payment tools
+[Three-tab inbox UI]
+    |
+    +--requires--> [Classification result on each conversation]
+    |
+    +--requires--> [Search/filter within tabs]
 
-Existing: bookings.totalPrice (editable via PATCH, no UI)
-    └──requires UI for──> editable price field on booking detail
-    └──interacts with──> balance calculation (must re-derive after price change)
+[Manual draft generation]
+    |
+    +--requires--> [OpenClaw draft hook (existing)]
+    |
+    +--requires--> [Conversation linked to guest (for context)]
+    |
+    +--produces--> [DraftCard in conversation thread]
+    |
+    +--uses-----> [OpenClaw tools (availability, bookings, events)]
 
-Existing: useAssistant hook (sessionKey in localStorage, messages in React state)
-    └──extends to──> localStorage message persistence (survive refresh)
-    └──optional──> session list / named sessions (nice-to-have)
+[OTA parsed data display]
+    |
+    +--requires--> [OTA parser output (existing Tripaneer/BookYogaRetreats)]
+    |
+    +--requires--> [Classification = ota_notification]
+    |
+    +--enhances--> [OTA guest matching suggestions]
+
+[Graceful degradation]
+    |
+    +--requires--> [BullMQ retry infrastructure (existing)]
+    |
+    +--fallback--> [Manual classification dropdown (existing)]
 ```
 
 ### Dependency Notes
 
-- **BookingGuest table requires schema migration:** All existing bookings have a single `guestId`. Migration must either create `BookingGuest` rows from existing `guestId` values or keep `guestId` as a deprecated legacy field. The cleanest approach is migration + keeping `guestId` as nullable (for historical reads) while new code uses the junction table.
-
-- **BookingPayment is independent of BookingGuest:** Both can be built in parallel by separate phases. No shared state.
-
-- **Editable price requires no schema changes:** `totalPrice` is already PATCH-able. Only frontend work needed. But it must ship alongside payment tracking because balance = totalPrice - payments, and an editable price that doesn't update the balance display would be confusing.
-
-- **Chat history (localStorage) requires no backend changes:** The `sessionKey` is already stored in localStorage. Extending to also store `messages` array in localStorage is pure frontend work. No API, no schema, no migration.
-
-- **Assistant payment tools depend on BookingPayment API existing:** Tools can only be built after the backend endpoints are live.
-
----
+- **AI Classification requires OpenClaw gateway:** The entire classification pipeline depends on the gateway being available. This is the single biggest dependency and the reason graceful degradation is table stakes, not a differentiator.
+- **Three-tab inbox requires classification:** Tabs are just a filter on classification. If classification fails, conversations land in a "Pending" state. The UI must handle unclassified conversations gracefully.
+- **Draft generation requires guest linkage:** Drafts without guest context produce generic replies. The classification step (which links guest) should precede any draft generation. A draft for an unlinked conversation should warn Ines that context is limited.
+- **OTA guest matching enhances OTA display:** The OTA data card works without guest matching (just shows parsed data). Guest matching adds the "This might be [existing guest]" suggestion, which is additive not blocking.
+- **Edge-case flags work independently:** The flag system (complaint, cancellation, medical, dietary, adoption) can run during classification OR during draft generation. Moving it to classification means flags appear earlier (before Ines even opens the conversation).
 
 ## MVP Definition
 
-### Launch With (v1.1)
+### Launch With (v1)
 
-All five of these must ship together — they are the explicit milestone scope:
+Minimum viable rework -- what's needed to replace the current rules-based system without regression.
 
-- [ ] **Multi-guest bookings** — Junction table, migration, create/update endpoints, booking detail UI showing all guests, filter by guest
-- [ ] **Payment tracking** — `BookingPayment` table, CRUD API (no invoice required), payment history UI on booking detail, balance display
-- [ ] **Editable booking price** — Frontend edit affordance on pricing card (backend already works)
-- [ ] **Dashboard payment UI** — Balance summary, "Add Payment" form, payment history list on booking detail
-- [ ] **Assistant chat history** — localStorage persistence of messages across page refreshes (current session only)
+- [ ] **OpenClaw classification hook** -- Agent session that classifies emails, searches guests, returns category + confidence + matched guest ID + language
+- [ ] **Three-tab inbox UI** -- Conversations / OTA / Other tabs filtering by classification
+- [ ] **Guest matching in classification** -- Agent uses `search_guests` to find and auto-link guests during classification
+- [ ] **Unmatched guest banner** -- "No matching guest found -- Create [Name] [Email]?" inline banner with one-click create
+- [ ] **Manual draft generation** -- Existing button-triggered flow, rewired to use OpenClaw draft hook with full tool access
+- [ ] **Draft review/edit/approve/reject** -- Already built, keep as-is
+- [ ] **Remove auto-guest-creation** -- Delete `contact-matcher.ts` auto-create path
+- [ ] **Remove auto-draft generation** -- Remove BullMQ job that auto-triggers drafts on email arrival
+- [ ] **Graceful degradation** -- Queue + retry when gateway is down, "Pending" state in UI, manual classify fallback
+- [ ] **Classification confidence display** -- Show confidence + reason in conversation header
 
 ### Add After Validation (v1.x)
 
-- [ ] **Payment status on booking list** — Triggered when: Ines opens the bookings list and has to open individual bookings to check payment status repeatedly. Indicator: she mentions this friction.
-- [ ] **Assistant tools for payments** — Triggered when: Ines starts using the assistant regularly and finds payment queries missing. Easy add-on after core payment API exists.
-- [ ] **Assistant tools for multi-guest bookings** — Triggered when: Ines tries to create a group booking via Koda and it fails. The current `prepare_create_booking` tool only accepts one guestId.
-- [ ] **Named chat sessions** — Triggered when: Ines wants to find a previous conversation she remembers by topic.
+Features to add once the core rework is stable and Ines has used it for a week.
+
+- [ ] **Guest info extraction in classification** -- Agent extracts name, phone, dates, party size, dietary needs from email body. Add when classification accuracy is validated.
+- [ ] **OTA guest matching suggestions** -- "This booking might be for [existing guest]" in OTA tab. Add after OTA classification is working reliably.
+- [ ] **Edge-case flags in classification** -- Move flag detection from draft-time to classification-time so flags appear in conversation list. Add after core classification is solid.
+- [ ] **Classification accuracy tracking** -- Log initial classification vs. manual overrides. Dashboard widget showing accuracy over time. Add when enough data exists to be meaningful.
 
 ### Future Consideration (v2+)
 
-- [ ] **Server-side chat persistence** — Defer until there is a demonstrated need (unlikely given the single-user, ephemeral-conversation nature of the assistant).
-- [ ] **Partial payment type (deposit/balance enum)** — Defer until Ines has actually used manual payment tracking for a season and identifies this gap herself.
-- [ ] **Payment due date reminders** — Defer to Phase 2 (PayPal invoicing) — natural fit with invoice automation.
+Features to defer until the inbox rework has been in production for weeks.
 
----
+- [ ] **Batch reclassification** -- Select multiple conversations, reclassify in bulk. Defer until volume justifies it.
+- [ ] **Classification prompt tuning UI** -- Let Ines provide feedback that improves the classification prompt. Defer because prompt engineering is developer work for now.
+- [ ] **AI-suggested actions in conversation** -- Beyond drafting: "This guest is asking about availability -- want me to check?" Defer because it blurs the line between inbox and assistant (Koda already does this in chat).
+- [ ] **Multi-channel classification** -- WhatsApp and Instagram messages going through same classification pipeline. Defer to Phase 3 channel expansion.
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Multi-guest bookings (schema + API) | HIGH | MEDIUM | P1 |
-| Multi-guest booking detail UI | HIGH | LOW | P1 |
-| BookingPayment table + API | HIGH | LOW | P1 |
-| Payment history UI on booking detail | HIGH | LOW | P1 |
-| Balance display (totalPrice - paid) | HIGH | LOW | P1 |
-| Editable price UI | MEDIUM | LOW | P1 |
-| Chat history (localStorage) | MEDIUM | LOW | P1 |
-| Payment status on booking list | MEDIUM | LOW | P2 |
-| Assistant payment tools | MEDIUM | MEDIUM | P2 |
-| Assistant multi-guest tools | MEDIUM | LOW | P2 |
-| Named chat sessions | LOW | LOW | P3 |
-| Server-side chat persistence | LOW | HIGH | P3 |
+| AI classification (OpenClaw hook) | HIGH | HIGH | P1 |
+| Three-tab inbox UI | HIGH | LOW | P1 |
+| Guest matching in classification | HIGH | MEDIUM | P1 |
+| Unmatched guest banner | HIGH | LOW | P1 |
+| Manual draft generation (rewired) | HIGH | MEDIUM | P1 |
+| Remove auto-guest-creation | HIGH | LOW | P1 |
+| Remove auto-draft generation | HIGH | LOW | P1 |
+| Graceful degradation | HIGH | MEDIUM | P1 |
+| Classification confidence display | MEDIUM | LOW | P1 |
+| Draft review/edit/approve flow | HIGH | LOW | P1 (already built) |
+| Guest info extraction | MEDIUM | MEDIUM | P2 |
+| OTA guest matching suggestions | MEDIUM | MEDIUM | P2 |
+| Edge-case flags in classification | MEDIUM | LOW | P2 |
+| Classification accuracy tracking | LOW | MEDIUM | P2 |
+| Batch reclassification | LOW | MEDIUM | P3 |
+| Classification prompt tuning UI | LOW | HIGH | P3 |
+| AI-suggested actions | LOW | HIGH | P3 |
+| Multi-channel classification | MEDIUM | HIGH | P3 |
 
 **Priority key:**
-- P1: Ships in v1.1
-- P2: Ships when friction is observed
-- P3: Deferred / needs stronger signal
+- P1: Must have for launch (the rework is incomplete without these)
+- P2: Should have, add in the first iteration after launch
+- P3: Nice to have, future consideration
 
----
+## Competitor Feature Analysis
 
-## Implementation Notes by Feature
-
-### Multi-Guest Bookings
-
-**Schema decision:** Add `booking_guests` junction table with `(booking_id, guest_id, created_at)`. Keep `bookings.guest_id` as a nullable legacy column (do not drop — it would break existing service code and audit log references). Populate `booking_guests` from existing `guest_id` values via a migration. New bookings must require at least one guest in `booking_guests`.
-
-**API surface needed:**
-- `POST /bookings` — body accepts `guestIds: string[]` (min 1) instead of `guestId: string`
-- `PATCH /bookings/:id` — accept `guestIds` to replace all guests (or addGuestId / removeGuestId for granular control)
-- `GET /bookings` — `?guestId=` filter queries junction table
-- `GET /bookings/:id` — includes all guests from junction table
-
-**CalDAV impact:** Calendar event descriptions currently embed the single guest name. With multi-guest, must join all guest names (e.g., "Anna Müller, Klaus Müller"). Existing CalDAV sync service needs to be updated for the enriched query.
-
-**Availability engine:** No change needed. Availability is room-based (`roomId` + date range), not guest-based.
-
-### Payment Tracking
-
-**Schema decision:** Add `booking_payments` table (not `invoice_payments`) with:
-- `id`, `booking_id`, `amount` (cents), `method` (paypal/bank_transfer/cash), `paid_at` (date), `notes` (text, nullable), `created_at`
-
-Do NOT touch the existing `Invoice` / `Payment` tables — those are Phase 2 scope and remain intact for future PayPal integration.
-
-**Balance derivation:** Always computed, never stored. `balance = booking.totalPrice - SUM(booking_payments.amount WHERE booking_id = X)`. Return as computed field on `GET /bookings/:id` and the payment list response.
-
-**API surface needed:**
-- `GET /bookings/:id/payments` — list all payment entries with balance summary
-- `POST /bookings/:id/payments` — log new payment entry
-- `DELETE /bookings/:id/payments/:paymentId` — remove erroneous entry (no edit — delete and re-add)
-
-**Why no PATCH on individual payment:** Editing a payment is rare and error-prone. The correct workflow is: delete the wrong entry, create the correct one. This produces a clean audit trail.
-
-### Editable Booking Price
-
-**Backend:** No changes needed. `PATCH /bookings/:id` with `{ totalPrice: number }` already works.
-
-**Frontend:** Add an edit icon on the "Room & Pricing" card in `booking-detail.tsx`. Clicking opens an inline number input (or a small dialog) pre-filled with `totalPrice`. On save, calls `PATCH`. The balance display must re-query (or optimistically update) after the price changes.
-
-### Chat History (localStorage)
-
-**Approach:** In `useAssistant` hook, persist `messages` array to `localStorage` under key `pyr_chat_messages:<sessionKey>`. Load on mount. Clear when `resetSession()` is called (which already generates a new sessionKey). Apply a max message count (e.g., 100) to prevent unbounded localStorage growth.
-
-**SessionKey continuity:** Currently `sessionKey` is set to `dashboard:<timestamp>` on every page load (line 88 of `use-assistant.ts`). Change this: if a stored sessionKey exists in localStorage, use it on mount (instead of generating fresh). Only generate a new one on explicit "New Conversation" reset. This preserves both the message display AND the OpenClaw context within the same browser session.
-
-**OpenClaw context on refresh:** Even with sessionKey continuity, OpenClaw's in-memory session state may be lost if the Gateway restarts. The localStorage messages will show correctly in the UI (Ines sees the conversation history), but Koda won't have tool-call context from previous turns. This is acceptable — the visual history is the primary value, not replay of tool state.
-
-**Session list UI (P3):** Not needed for v1.1. The single-session persistence is sufficient.
-
----
+| Feature | Gmail AI Inbox (2026) | Front | Intercom | Superhuman | PYR Approach |
+|---------|----------------------|-------|----------|------------|--------------|
+| AI classification | Personalized categories with summaries | Smart QA scoring, keyword routing | Intent + language + sentiment auto-triage | Auto-categorization by priority | OpenClaw agent session with tool access (contextual, not just NLP) |
+| Confidence/reasoning | Hidden (auto-routes) | Not exposed | Confidence thresholds configurable | Not exposed | Visible confidence + reason (transparency for single admin) |
+| Draft generation | Smart Reply (short), Gemini compose | Team templates + AI | Copilot drafts in inbox | Instant Reply in your voice | Full agent session with business tools (availability, bookings, pricing) |
+| Human approval | Drafts in compose, user sends | Shared draft review | Agent review queue | One-click send | Two-step approve dialog, edit mode, reject + regenerate |
+| Contact matching | Google Contacts auto-link | CRM contact lookup | Company/user auto-match | No CRM | AI agent searches CRM guests with fuzzy matching during classification |
+| Tabbed categories | Primary/Social/Promotions/Updates | Tags and views | Inbox segments | Split inbox | 3 tabs (Conversations/OTA/Other) matching business categories |
+| Graceful AI failure | Falls back to chronological | Manual workflows | Human escalation | Degrades to basic inbox | Queue + retry, manual classify, "Pending" state |
+| Cost tracking | Hidden | Not applicable | Not exposed | Not applicable | Per-draft cost in EUR, token counts, cache hit indicators |
 
 ## Sources
 
-- Direct code inspection: `packages/backend/prisma/schema.prisma` — current Booking, Invoice, Payment models
-- Direct code inspection: `packages/backend/src/modules/bookings/booking.service.ts` — current single-guest create flow
-- Direct code inspection: `packages/frontend/src/lib/hooks/use-assistant.ts` — current sessionKey/messages state management
-- Direct code inspection: `packages/backend/src/modules/assistant/assistant.routes.ts` — SSE proxy, session key generation
-- Direct code inspection: `openclaw/workspace/TOOLS.md` — current 38 tools, confirmation flow pattern
-- Direct code inspection: `openclaw/agents/main/sessions/sessions.json` — confirmed empty (no persistence)
-- `.planning/PROJECT.md` — v1.1 milestone scope, out-of-scope boundaries
+- [Gmail AI Inbox Categorization Guide](https://www.getmailbird.com/gmail-ai-inbox-categorization-guide/) -- Gmail's 2026 AI Inbox features and categories
+- [Gmail AI Inbox -- TechCrunch](https://techcrunch.com/2026/01/08/gmail-debuts-a-personalized-ai-inbox-ai-overviews-in-search-and-more/) -- Gmail AI Inbox launch announcement
+- [EmailTree AI Classification](https://emailtree.ai/ai-email-classification/) -- Enterprise email classification capabilities
+- [Superhuman AI Features](https://superhuman.com/products/mail/ai) -- Instant Reply, Auto Summarize, AI-native email
+- [Front Review 2026](https://efficient.app/apps/front) -- Front shared inbox features and AI capabilities
+- [Intercom AI Review 2026](https://reply.io/blog/intercom-ai-review/) -- Intercom AI Copilot, triage, routing
+- [Freshdesk AI Features](https://www.eesel.ai/blog/freshdesk-ai-features) -- AI classification, agent assist
+- [Setting Confidence Thresholds for AI Responses](https://www.eesel.ai/blog/setting-confidence-thresholds-for-ai-responses) -- Confidence threshold patterns
+- [Fuzzy Matching Guide](https://winpure.com/fuzzy-matching-guide/) -- Fuzzy matching techniques for CRM data
+- [CRM Email Integration Patterns](https://www.aurinko.io/blog/crm-email-integration-recreating-inbox-mistake/) -- CRM inbox integration anti-patterns
+- [AI Email Draft Reply Workflows](https://www.relay.app/blog/how-to-use-ai-to-automatically-draft-email-replies) -- Draft generation and approval workflows
+- Existing PYR codebase analysis: `email-classifier.ts`, `contact-matcher.ts`, `draft-generator.ts`, `inbox-page.tsx`, `draft-card.tsx`, `conversation-thread.tsx`, `reclassify-dropdown.tsx`, OpenClaw plugin tools
 
 ---
-
-*Feature research for: v1.1 Multi-Guest Bookings, Payments & Chat History*
-*Researched: 2026-02-24*
+*Feature research for: AI-classified business inbox with guest matching and draft generation*
+*Researched: 2026-03-01*

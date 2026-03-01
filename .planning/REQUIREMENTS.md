@@ -1,104 +1,84 @@
-# Requirements: Puppy Yoga Retreat -- Business Automation Platform
+# Requirements: PYR Inbox & AI Pipeline Rework
 
-**Defined:** 2026-02-27
-**Core Value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
+**Defined:** 2026-03-01
+**Core Value:** Emails are correctly classified and routed by an AI agent that can reason about context, with Ines always in control of guest creation and draft sending.
 
-## v1.0 Requirements (Complete)
+## v1 Requirements
 
-All v1.0 MVP requirements shipped. See MILESTONES.md for details.
+Requirements for the inbox rework. Each maps to roadmap phases.
 
-## v1.1 Requirements (Complete)
+### Classification
 
-All v1.1 requirements shipped. See MILESTONES.md for details.
+- [ ] **CLSF-01**: OpenClaw classify skill with classification prompt, instructions, and examples (`skills/classify/SKILL.md`)
+- [ ] **CLSF-02**: New `classify_email` tool registered in OpenClaw plugin for structured classification output
+- [ ] **CLSF-03**: Every inbound email triggers an OpenClaw agent classification session (conversation / OTA / other)
+- [ ] **CLSF-04**: Classification agent uses `search_guests` tool to match emails to existing guest records
+- [ ] **CLSF-05**: Classification agent detects language (EN/DE) from email content
+- [ ] **CLSF-06**: Classification agent extracts guest info (name, phone, dates, dietary needs) from email body
+- [ ] **CLSF-07**: Classification runs async via BullMQ (decoupled from email polling)
+- [ ] **CLSF-08**: Graceful degradation when OpenClaw gateway is down (queue + retry, manual classify fallback)
 
-## v1.2 Requirements
+### Inbox UI
 
-Requirements for milestone v1.2: Email System Improvements.
+- [ ] **INBX-01**: Three-tab inbox layout: Conversations, OTA, Other
+- [ ] **INBX-02**: Inline banner for unmatched guests ("No matching guest — Create [Name] [Email]?") with one-click create
+- [ ] **INBX-03**: "Pending classification" state shown while AI classifies (spinner/badge)
+- [ ] **INBX-04**: Manual reclassification moves conversation between tabs immediately
+- [ ] **INBX-05**: Search and filter within each tab (by guest name, email, subject, status)
 
-### AI Draft Fix
+### Pipeline Cleanup
 
-- [x] **DRAFT-01**: AI draft is generated for every new guest inquiry email (end-to-end pipeline working)
-- [x] **DRAFT-02**: Failed draft generation surfaces an error state visible in the inbox UI
+- [ ] **PIPE-01**: Remove automatic guest creation from email pipeline
+- [ ] **PIPE-02**: Remove automatic draft generation on email arrival
+- [ ] **PIPE-03**: Remove automatic booking creation from OTA emails
+- [ ] **PIPE-04**: New `ai-classify` BullMQ queue for classification jobs
+- [ ] **PIPE-05**: Email polling stores messages immediately, enqueues classification separately
+- [ ] **PIPE-06**: Email threading evaluated and preserved or improved
 
-### Compose
+### Testing & Documentation
 
-- [ ] **COMP-01**: Ines can compose and send a new email to a guest from the dashboard
-- [ ] **COMP-02**: New outbound email creates a conversation and stores the sent message
-
-### Inbox UX
-
-- [ ] **INBOX-01**: Ines can search conversations by guest name, email address, or message content
-- [ ] **INBOX-02**: Ines can mark conversations as unread or starred
-- [ ] **INBOX-03**: Ines can filter conversations by status (open/closed), classification, read/unread, starred
-
-### OTA Email
-
-- [ ] **OTA-04**: Tripaneer/BookYogaRetreats email structure is analyzed and parser validated against real email samples
-- [ ] **OTA-05**: OTA auto-created bookings include all extractable fields (guest, dates, package, price, OTA reference)
-- [ ] **OTA-06**: OTA conversations are flagged as non-replyable if replies must go through the OTA platform
-
-### WhatsApp Email Flow
-
-- [ ] **WAEML-01**: Ines receives a WhatsApp notification when a new guest email arrives (sender, subject, preview)
-- [ ] **WAEML-02**: When AI draft is ready, WhatsApp shows the full draft text to Ines
-- [ ] **WAEML-03**: Ines can approve the draft from WhatsApp and it sends immediately via SMTP
-- [ ] **WAEML-04**: Ines can reject the draft from WhatsApp (triggers regeneration or marks rejected)
-- [ ] **WAEML-05**: Ines can edit the draft text from WhatsApp before approving
+- [ ] **TEST-01**: Real integration tests against running OpenClaw instance (no mocks)
+- [ ] **TEST-02**: Unit tests for classification job processing and error handling
+- [ ] **TEST-03**: Frontend tests for three-tab inbox and guest banner
+- [ ] **TEST-04**: Gateway-down scenario testing (graceful degradation verification)
+- [ ] **TEST-05**: Full documentation of OpenClaw classification skill and pipeline architecture
 
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
 
-### Multi-Channel Messaging
+### Draft Generation Rework
 
-- **MSG-01**: Instagram DM integration via Meta Graph API
-- **MSG-02**: Signal messaging via OpenClaw
-- **MSG-03**: iMessage integration via OpenClaw + BlueBubbles
+- **DRFT-01**: Draft generation triggered manually by Ines (button click, not auto)
+- **DRFT-02**: Draft generation runs as full OpenClaw agent session with tool access
+- **DRFT-03**: Existing draft review/edit/approve/reject flow preserved
+- **DRFT-04**: Draft cost and token display preserved
 
-### Advanced AI
+### Enhanced Classification
 
-- **ADV-00**: Automatic language detection (EN/DE) for incoming messages with response in same language
-- **ADV-01**: AI-generated social media post drafts
-- **ADV-02**: Guest follow-up automation (thank-you emails, review requests, return-visit offers)
-- **ADV-03**: Sentiment analysis on guest messages for satisfaction tracking
+- **CLSF-09**: Edge-case flags during classification (complaints, cancellations, medical)
+- **CLSF-10**: Classification accuracy tracking (log initial vs. manual overrides)
 
-### Website Booking
+### Enhanced Inbox
 
-- **BOOK-01**: Embeddable React booking widget for WordPress site
-- **BOOK-02**: PayPal Checkout SDK integration for online payments
-- **BOOK-03**: PayPal Invoicing API for bank transfer bookings
-- **BOOK-04**: Booking confirmation emails with branded templates
-
-### Accounting
-
-- **ACCT-01**: Revenue tracking by channel with OTA commission calculations
-- **ACCT-02**: Expense categorization and P&L reports
-- **ACCT-03**: Month-over-month revenue comparison
-
-### Chat Enhancements
-
-- **CHAT-03**: Ines can browse/view previous chat conversations (session list)
-- **CHAT-04**: Chat sessions have human-readable names
-- **CHAT-05**: Server-side chat persistence in PostgreSQL
-
-### Payment Enhancements
-
-- **PAY-09**: Payment type field (deposit/balance/full) for cleaner reporting
-- **PAY-10**: Payment due date reminders (Phase 2 PayPal invoicing scope)
-- **PAY-11**: Per-guest payment splitting within a group booking
+- **INBX-06**: OTA parsed data display card showing extracted booking info
+- **INBX-07**: OTA guest matching suggestions ("This might be [existing guest]")
 
 ## Out of Scope
 
+Explicitly excluded. Documented to prevent scope creep.
+
 | Feature | Reason |
 |---------|--------|
-| Multi-user / multi-tenancy | Single admin (Ines) -- not needed for MVP or foreseeable future |
-| Mobile native app | Web dashboard is sufficient; OpenClaw handles mobile via WhatsApp |
-| Two-way calendar sync | DB is the source of truth; reading from Apple Calendar would create conflicts |
-| Auto-send AI drafts | Human approval is a core business rule -- AI drafts must never auto-send |
-| PayPal/Stripe payment integration | Phase 2 scope -- v1.2 is email improvements only |
-| OTA API integrations (GetYourGuide, Viator) | Phase 4 -- v1.2 focuses on email-based OTA parsing only |
-| Email template builder | Deferred -- Ines can use AI drafts for now; templates add complexity |
-| Conversation merging | Nice-to-have but not critical for v1.2 |
+| Auto-create guests from emails | Pollutes CRM with spam senders and system addresses. Replaced by inline banner with one-click create. |
+| Auto-send AI drafts | Core business rule: Ines must always approve before sending. |
+| Auto-create bookings from OTA emails | OTA parsers aren't 100% accurate. Show parsed data for manual action instead. |
+| Rules-based pre-filter before AI classification | User chose simplicity: all emails go through OpenClaw. One classification path. |
+| Confidence score storage and display | Single admin doesn't need confidence numbers. Override with one click if wrong. |
+| Real-time streaming classification results | Partial results are confusing. Show spinner then final result. |
+| Bulk AI draft generation | Expensive and wasteful. One-at-a-time manual trigger when needed. |
+| Multi-channel classification (WhatsApp/Instagram) | Phase 3 channel expansion. Channel field ready in schema. |
+| Sentiment analysis scoring | Over-engineering for single admin. Edge-case flags cover high-stakes cases. |
 
 ## Traceability
 
@@ -106,27 +86,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DRAFT-01 | Phase 18 | Complete |
-| DRAFT-02 | Phase 18 | Complete |
-| COMP-01 | Phase 19 | Pending |
-| COMP-02 | Phase 19 | Pending |
-| INBOX-01 | Phase 20 | Pending |
-| INBOX-02 | Phase 20 | Pending |
-| INBOX-03 | Phase 20 | Pending |
-| OTA-04 | Phase 21 | Pending |
-| OTA-05 | Phase 21 | Pending |
-| OTA-06 | Phase 21 | Pending |
-| WAEML-01 | Phase 22 | Pending |
-| WAEML-02 | Phase 22 | Pending |
-| WAEML-03 | Phase 22 | Pending |
-| WAEML-04 | Phase 22 | Pending |
-| WAEML-05 | Phase 22 | Pending |
+| CLSF-01 | — | Pending |
+| CLSF-02 | — | Pending |
+| CLSF-03 | — | Pending |
+| CLSF-04 | — | Pending |
+| CLSF-05 | — | Pending |
+| CLSF-06 | — | Pending |
+| CLSF-07 | — | Pending |
+| CLSF-08 | — | Pending |
+| INBX-01 | — | Pending |
+| INBX-02 | — | Pending |
+| INBX-03 | — | Pending |
+| INBX-04 | — | Pending |
+| INBX-05 | — | Pending |
+| PIPE-01 | — | Pending |
+| PIPE-02 | — | Pending |
+| PIPE-03 | — | Pending |
+| PIPE-04 | — | Pending |
+| PIPE-05 | — | Pending |
+| PIPE-06 | — | Pending |
+| TEST-01 | — | Pending |
+| TEST-02 | — | Pending |
+| TEST-03 | — | Pending |
+| TEST-04 | — | Pending |
+| TEST-05 | — | Pending |
 
 **Coverage:**
-- v1.2 requirements: 15 total
-- Mapped to phases: 15
-- Unmapped: 0
+- v1 requirements: 24 total
+- Mapped to phases: 0
+- Unmapped: 24 ⚠️
 
 ---
-*Requirements defined: 2026-02-27*
-*Last updated: 2026-02-27 after roadmap creation*
+*Requirements defined: 2026-03-01*
+*Last updated: 2026-03-01 after initial definition*

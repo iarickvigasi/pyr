@@ -51,5 +51,3 @@ openclaw/workspace/.openclaw/
 openclaw/update-check.json
 openclaw/*.log
 
-# GSD Planning
-.planning/

@@ -1,116 +1,119 @@
-# Puppy Yoga Retreat — Business Automation Platform
+# PYR Inbox & AI Pipeline Rework
 
 ## What This Is
 
-A centralized CRM/PMS and communication platform for Puppy Yoga Retreat, a wellness retreat in Peyia, Cyprus combining yoga, meditation, and rescued puppy interaction. Replaces manual Excel spreadsheets and copy-paste workflows across 8+ platforms with a single system — covering guest management, bookings, events, email with AI-drafted replies, calendar sync, and a personal AI assistant accessible from Ines's phone.
+A complete rework of the Puppy Yoga Retreat platform's email inbox, classification, and AI draft systems. Replaces the current rules-based classifier and auto-creation pipeline with OpenClaw-powered agent sessions that classify emails, match guests, and generate drafts through full LLM reasoning with tool access. The existing email connection code (IMAP/SMTP) is preserved; everything above it is rebuilt from scratch.
 
 ## Core Value
 
-Ines can manage her entire business from one system — see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything from her phone via the AI assistant.
+Emails are correctly classified and routed by an AI agent that can reason about context (guest history, booking data, OTA patterns), with Ines always in control of guest creation and draft sending.
 
 ## Requirements
 
 ### Validated
 
-<!-- Shipped and confirmed working. -->
+<!-- Existing capabilities that work and must not break -->
 
-- ✓ PostgreSQL schema with 16 tables (guests, bookings, rooms, events, conversations, messages, ai_drafts, calendar_events, invoices, payments, audit_log, etc.) — E2
-- ✓ Backend REST API (Fastify 5) with all CRUD modules: guests, bookings, rooms/room-types/seasons, events, conversations/messages, dashboard stats, settings — E2
-- ✓ JWT auth for dashboard + API key auth for AI assistant — E2
-- ✓ Cursor-based pagination on all list endpoints — E2
-- ✓ Audit logging on all mutations (entity write + audit log atomic in transactions) — E2
-- ✓ Soft deletes for guests and bookings — E2
-- ✓ Availability engine with per-night seasonal pricing — E2
-- ✓ Season overlap detection — E2
-- ✓ Admin dashboard (Next.js 15): login, bookings, events, guests, inbox, calendar (month + week views), settings — E5
-- ✓ CRM: guest profiles with full detail, search/filter/tag, merge duplicates, activity timeline — E3
-- ✓ Swagger API documentation — E2
-- ✓ Docker Compose (PostgreSQL 16 + Redis 7), CI/CD via GitHub Actions — E1
-- ✓ Rate limiting on login (5/min) — E2
-- ✓ Deep health check (DB + Redis) — E1
+- ✓ IMAP email polling (connect-per-poll, UID-based incremental, GMX support) — existing
+- ✓ SMTP outbound sending (threading headers, signature injection) — existing
+- ✓ Email parsing and HTML sanitization (mailparser + sanitize-html) — existing
+- ✓ OTA email parsing (Tripaneer/BookYogaRetreats strategy pattern) — existing
+- ✓ OpenClaw agent runtime with 40 tools (gateway WebSocket + RPC) — existing
+- ✓ Two-step confirmation flow for write operations — existing
+- ✓ Dashboard chat with Koda (SSE streaming) — existing
+- ✓ WhatsApp channel integration — existing
+- ✓ Attachment storage in PostgreSQL — existing
 
 ### Active
 
-<!-- Current scope — MVP remaining work. -->
+<!-- Current scope. Building toward these. -->
 
-- [ ] IMAP polling service for GMX inbox (imap.gmx.net:993)
-- [ ] Email parsing, threading (In-Reply-To/References), and CRM contact matching
-- [ ] SMTP sending service (mail.gmx.net:587) with threading headers
-- [ ] Unified inbox UI with live email data (currently UI exists but no email backend)
-- [ ] AI draft generation integrated into email flow (auto-draft on new inbound)
-- [ ] Approve/edit/send workflow for AI drafts in inbox UI
-- [ ] OTA email notification parsing (Tripaneer/BookYogaRetreats booking emails)
-- [ ] AI system prompt with business context injection (guest data, availability, pricing, FAQ, brand voice)
-- [ ] LLM API integration (Claude primary, OpenAI fallback) with model-agnostic abstraction
-- [ ] Language detection and multi-lingual response generation (EN/DE)
-- [ ] FAQ & knowledge base management (admin UI for question/answer pairs)
-- [ ] Edge case detection & flagging (complaints, medical/dietary, cancellations)
-- [ ] CalDAV sync service — one-way push to Apple Calendar (iCloud)
-- [ ] Calendar event enrichment on booking/event updates
-- [ ] AI assistant core agent (NLU + action routing via function-calling)
-- [ ] Telegram Bot API integration for assistant
-- [ ] Query capabilities (bookings, availability, revenue, guests)
-- [ ] Action capabilities with confirmation flow (create bookings, events, send reminders)
-- [ ] Scheduled briefings (morning briefing at 7:30 AM) and proactive alerts
-- [ ] Message draft approval via assistant ("Reply OK to send")
-- [ ] Unit and integration tests for remaining modules
-- [ ] Excel data migration (real guest/booking data)
-- [ ] End-to-end workflow testing
-- [ ] UAT with Ines
-- [ ] Performance tuning and security hardening
-- [ ] Production deployment and go-live
+- [ ] OpenClaw-powered email classification (full agent session with tools, not rules-based)
+- [ ] Three-tab inbox UI: Conversations, OTA, Other
+- [ ] Guest matching via OpenClaw (search existing guests using tools during classification)
+- [ ] Inline banner UI for unmatched guests ("No matching guest found — Create [Name] [Email]?")
+- [ ] Language detection and guest info extraction in classification session
+- [ ] OTA emails: parsed booking data displayed in UI but no auto-creation of bookings or guests
+- [ ] OpenClaw suggests guest matches for OTA emails
+- [ ] Manual draft generation triggered by Ines (no auto-drafts)
+- [ ] Draft generation as full OpenClaw agent session with context and tools
+- [ ] Remove all automatic guest creation from email pipeline
+- [ ] Remove automatic draft generation on email arrival
+- [ ] Email threading: research and implement best approach (keep current, library, or rewrite)
+- [ ] Production-ready with comprehensive test coverage
+- [ ] Full documentation (OpenClaw workspace docs, API docs, architecture)
 
 ### Out of Scope
 
-<!-- Explicit boundaries — Phases 2-5. -->
+<!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- Website booking widget with payments — Phase 2 (PayPal + SEPA bank transfer)
-- WhatsApp Business API integration — Phase 3 (requires Meta Business verification)
-- Instagram DM API integration — Phase 3 (requires Meta Business verification)
-- OTA API integrations (GetYourGuide, Viator, BookRetreats) — Phase 4
-- AI bot fallback for platforms without API access — Phase 4
-- Accounting & reporting module (revenue by channel, P&L) — Phase 5
-- Guest follow-up automation (thank-you emails, review requests) — Phase 5
-- Multi-user/multi-tenancy — not needed (single admin: Ines)
-- Mobile native app — web-first, mobile later
+- Auto-sending emails without Ines approval — core business rule, never auto-send
+- Auto-creating bookings from OTA emails — removed; show parsed data for manual action
+- Auto-creating guests from incoming emails — removed; Ines decides via UI
+- WhatsApp/Instagram inbox channels — Phase 3, channel field ready but no connector
+- Multi-user/multi-tenant — single admin (Ines) for MVP
+- New OTA parsers beyond Tripaneer/BookYogaRetreats — existing parsers sufficient for now
 
 ## Context
 
-- **Business:** Wellness retreat in Peyia (8560), Paphos, Cyprus. Timezone: Europe/Nicosia (EET/EEST).
-- **Owner:** Ines Brendel — sole admin user. Manages everything personally.
-- **Offerings:** 4-day and 7-day retreat packages (accommodation, yoga, vegetarian meals, puppy interaction) + standalone events (Puppy Yoga 90min, Beach Walks, Coffee/Cake/Cuddles).
-- **Animal welfare:** All puppies are rescues. This is core to the brand identity.
-- **Languages:** EN and DE with equal quality. Detect from guest messages or profile.
-- **Current pain:** Manual Excel tracking, copy-paste across 8+ platforms, repetitive message drafting.
-- **Existing code:** E1 (infrastructure), E2 (database + API), E3 (CRM), E5 (dashboard) are complete. 151 backend + 28 frontend tests passing. Post-audit: 49+57 issues fixed.
-- **Brand voice for AI:** Warm, welcoming, mindful, calming, animal-welfare focused, concise. Sign off as Ines (not as a bot).
+### Existing System (What We're Replacing)
+
+The current inbox pipeline is rules-based and over-automated:
+
+1. **Classifier** (`email-classifier.ts`): Pattern matching on sender domains and subjects. Fixed rules, no AI reasoning. Categories: guest_inquiry, ota_notification, spam_newsletter, admin_system.
+2. **Contact Matcher** (`contact-matcher.ts`): Auto-creates guest CRM records from email senders. No human confirmation. Creates noise in guest database.
+3. **AI Drafts** (`draft-generator.ts`): Auto-generates drafts for every guest_inquiry via BullMQ job. Builds prompts directly and calls gateway RPC. Not a full agent session — no tool access during drafting.
+4. **OTA Pipeline**: Auto-creates bookings from parsed OTA emails. Too aggressive — creates records before Ines reviews.
+
+### OpenClaw Architecture
+
+OpenClaw is the AI agent runtime powering Koda (the business assistant). Key integration points:
+
+- **Gateway**: WebSocket + HTTP at `localhost:18789`. RPC protocol v3.
+- **Hooks**: Named endpoints (`draft`, `briefing`, `alert`) that trigger agent sessions. A new `classify` hook is needed.
+- **Plugin**: `packages/assistant/openclaw-plugin/` — 40 tools across 10 categories. Tools like `search_guests`, `update_conversation`, `get_conversation` are directly relevant to classification.
+- **Skills**: `openclaw/workspace/skills/` — domain knowledge files that inform agent behavior. Draft generation skill exists at `skills/draft/SKILL.md`.
+- **Config**: `openclaw/openclaw.json` — agent config, hook mappings, plugin loading.
+
+### What Gets Rewritten vs Preserved
+
+| Component | Action | Location |
+|-----------|--------|----------|
+| IMAP service | **Keep** | `services/email/imap.service.ts` |
+| SMTP service | **Keep** | `services/email/smtp.service.ts` |
+| Email parser | **Keep** | `services/email/email-parser.ts` |
+| Language detector | **Evaluate** | `services/email/language-detector.ts` (OpenClaw may replace) |
+| Email classifier | **Remove** | `services/email/email-classifier.ts` |
+| Contact matcher | **Remove** | `services/email/contact-matcher.ts` |
+| Email threader | **Research** | `services/email/email-threader.ts` (keep/lib/rewrite TBD) |
+| OTA parsers | **Keep** | `services/email/ota-parsers/` (parse but don't auto-act) |
+| Draft generator | **Rewrite** | `services/ai/draft-generator.ts` (full agent session) |
+| Email module orchestrator | **Rewrite** | `services/email/index.ts` |
+| Inbox routes | **Rewrite** | `modules/inbox/` |
+| Inbox frontend | **Rewrite** | `components/features/inbox/` |
+| BullMQ jobs | **Modify** | `queue/jobs/ai-draft.job.ts` (remove auto-trigger) |
 
 ## Constraints
 
-- **Tech stack**: TypeScript strict, Fastify 5, Next.js 15, Prisma + PostgreSQL 16, Redis 7 + BullMQ — locked, already in use
-- **Hosting**: Hetzner Cloud EU — GDPR compliance required
-- **Email**: GMX (imap.gmx.net:993 / mail.gmx.net:587) — puppyyogaretreat@gmx.de
-- **Calendar**: Apple Calendar via CalDAV — one-way push only (DB is source of truth)
-- **AI**: Claude API primary, OpenAI fallback — model-agnostic abstraction
-- **Financial**: All amounts in EUR, stored as integer cents
-- **Auth**: Single admin user, JWT for dashboard, API key for assistant
-- **AI safety**: All AI-generated content is a draft — never auto-send without human approval
-- **Assistant writes**: All write operations from AI assistant require Ines's explicit confirmation
+- **OpenClaw dependency**: Classification and drafting depend on OpenClaw gateway being available. Must handle gateway-down gracefully (queue and retry, or fall back to manual classification).
+- **Latency**: Full agent sessions take 5-30 seconds. Classification must not block email polling. Use async queue (BullMQ).
+- **Token cost**: Every email triggers an agent session for classification. Must track costs. Consider batching or caching for duplicate/similar emails.
+- **Existing data**: Database has existing conversations, messages, drafts. Migration must preserve data integrity.
+- **Single admin**: Ines is the only user. UI optimized for her workflow.
+- **Tech stack**: TypeScript strict, Fastify, Next.js, Prisma, BullMQ, shadcn/ui — all existing stack constraints apply.
 
 ## Key Decisions
 
+<!-- Decisions that constrain future work. Add throughout project lifecycle. -->
+
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Fastify 5 over Express | Better TypeScript support, schema-first with Zod, faster | ✓ Good |
-| Prisma over Knex/raw SQL | Type-safe queries, migration management, schema visualization | ✓ Good |
-| scrypt over bcrypt | Node.js built-in, no native dependencies | ✓ Good |
-| Cursor pagination everywhere | Consistent, performant for large datasets | ✓ Good |
-| Integer cents for money | Avoids floating-point issues | ✓ Good |
-| Telegram first for assistant | No approval process needed (unlike WhatsApp) | — Pending |
-| shadcn/ui (new-york) + Tailwind v4 | Composable, modern, good DX | ✓ Good |
-| pnpm + Turborepo monorepo | Efficient installs, parallel builds | ✓ Good |
-| Soft deletes for guests/bookings | Data preservation, audit compliance | ✓ Good |
-| BullMQ for job queue | Redis-backed, reliable, good for email polling and scheduled tasks | — Pending |
+| OpenClaw for classification (not rules) | AI reasoning with tool access beats pattern matching for accuracy; can cross-reference guest data | — Pending |
+| Remove auto guest creation | Too much noise in CRM; Ines should control who becomes a guest record | — Pending |
+| Manual draft trigger only | Auto-drafts generate unnecessary AI costs; Ines may not need a draft for every email | — Pending |
+| Full agent sessions for both classify and draft | Consistent architecture; both benefit from tool access and full context | — Pending |
+| Three tabs (Conversations/OTA/Other) | Clear information architecture matching Ines's mental model | — Pending |
+| OTA: parse but don't auto-create | Show extracted data for Ines to act on manually; reduces errors from bad parses | — Pending |
 
 ---
-*Last updated: 2026-02-19 after GSD initialization*
+*Last updated: 2026-03-01 after initialization*

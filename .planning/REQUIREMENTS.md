@@ -21,7 +21,7 @@ Requirements for the inbox rework. Each maps to roadmap phases.
 ### Inbox UI
 
 - [ ] **INBX-01**: Three-tab inbox layout: Conversations, OTA, Other
-- [ ] **INBX-02**: Inline banner for unmatched guests ("No matching guest — Create [Name] [Email]?") with one-click create
+- [ ] **INBX-02**: Inline banner for unmatched guests ("No matching guest -- Create [Name] [Email]?") with one-click create
 - [ ] **INBX-03**: "Pending classification" state shown while AI classifies (spinner/badge)
 - [ ] **INBX-04**: Manual reclassification moves conversation between tabs immediately
 - [ ] **INBX-05**: Search and filter within each tab (by guest name, email, subject, status)
@@ -86,36 +86,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLSF-01 | — | Pending |
-| CLSF-02 | — | Pending |
-| CLSF-03 | — | Pending |
-| CLSF-04 | — | Pending |
-| CLSF-05 | — | Pending |
-| CLSF-06 | — | Pending |
-| CLSF-07 | — | Pending |
-| CLSF-08 | — | Pending |
-| INBX-01 | — | Pending |
-| INBX-02 | — | Pending |
-| INBX-03 | — | Pending |
-| INBX-04 | — | Pending |
-| INBX-05 | — | Pending |
-| PIPE-01 | — | Pending |
-| PIPE-02 | — | Pending |
-| PIPE-03 | — | Pending |
-| PIPE-04 | — | Pending |
-| PIPE-05 | — | Pending |
-| PIPE-06 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
+| CLSF-01 | Phase 1 | Pending |
+| CLSF-02 | Phase 1 | Pending |
+| CLSF-03 | Phase 2 | Pending |
+| CLSF-04 | Phase 2 | Pending |
+| CLSF-05 | Phase 2 | Pending |
+| CLSF-06 | Phase 2 | Pending |
+| CLSF-07 | Phase 2 | Pending |
+| CLSF-08 | Phase 2 | Pending |
+| INBX-01 | Phase 3 | Pending |
+| INBX-02 | Phase 3 | Pending |
+| INBX-03 | Phase 3 | Pending |
+| INBX-04 | Phase 3 | Pending |
+| INBX-05 | Phase 3 | Pending |
+| PIPE-01 | Phase 2 | Pending |
+| PIPE-02 | Phase 2 | Pending |
+| PIPE-03 | Phase 2 | Pending |
+| PIPE-04 | Phase 1 | Pending |
+| PIPE-05 | Phase 2 | Pending |
+| PIPE-06 | Phase 1 | Pending |
+| TEST-01 | Phase 4 | Pending |
+| TEST-02 | Phase 4 | Pending |
+| TEST-03 | Phase 4 | Pending |
+| TEST-04 | Phase 4 | Pending |
+| TEST-05 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 ⚠️
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after initial definition*
+*Last updated: 2026-03-01 after roadmap creation*

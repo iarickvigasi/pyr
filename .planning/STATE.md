@@ -1,75 +1,60 @@
----
-gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Email System Improvements
-status: executing
-last_updated: "2026-02-27T20:19:47.000Z"
-progress:
-  total_phases: 5
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
----
-
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-27)
+See: .planning/PROJECT.md (updated 2026-03-01)
 
-**Core value:** Ines can manage her entire business from one system -- see every guest, booking, and message in one place, get AI-drafted replies she approves with one tap, and control everything via the AI assistant.
-**Current focus:** Phase 18 -- AI Draft Pipeline Fix
+**Core value:** Emails are correctly classified and routed by an AI agent that can reason about context, with Ines always in control of guest creation and draft sending.
+**Current focus:** Phase 1: Foundation & Schema
 
 ## Current Position
 
-Phase: 18 (first of 5 in v1.2) -- AI Draft Pipeline Fix -- COMPLETE
-Plan: All plans complete (2/2)
-Status: Phase 18 complete, ready for next phase
-Last activity: 2026-02-27 -- Plan 18-02 completed (draft generation UI with spinner, generate button, retry wiring)
+Phase: 1 of 4 (Foundation & Schema)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-03-01 -- Roadmap created
 
-Progress: [==........] 20% (1/5 phases)
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-**Velocity (v1.0):**
-- Total plans completed: 31
-- Average duration: 6min
-- Total execution time: 2.98 hours
+**Velocity:**
+- Total plans completed: 0
+- Average duration: -
+- Total execution time: 0 hours
 
-**Velocity (v1.1):**
-- Total plans completed: 12
-- Average duration: 5min
-- Total execution time: 0.76 hours
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: -
+- Trend: -
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
-v1.0 decisions: see milestones/v1.0-ROADMAP.md
-v1.1 decisions: see milestones/v1.1-ROADMAP.md
-Current milestone decisions: see PROJECT.md Key Decisions table
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
 
-**Phase 18-01:**
-- Dedup check only blocks on 'pending' drafts, not 'failed' -- failed drafts should be retryable
-- 90-second chat event timeout separate from 120s Gateway RPC timeout
-- Used AppError(503) for queue unavailability in manual generate endpoint
-
-**Phase 18-02:**
-- ConversationThread manages draft generation internally via useGenerateDraft hook (not via parent props)
-- Failed draft retry uses generate endpoint instead of per-draft regenerate endpoint (more robust)
-- Removed unused onRegenerateDraft/isRegeneratePending props from ConversationThread
+- [Roadmap]: Four phases derived from dependency chain (foundation -> backend pipeline -> frontend UI -> testing/cleanup)
+- [Roadmap]: DRFT-01 through DRFT-04 deferred to v2 per REQUIREMENTS.md (draft generation rework is out of v1 scope)
 
 ### Pending Todos
 
-None.
+None yet.
 
 ### Blockers/Concerns
 
-- AI draft generation is broken (no drafts generated) -- root cause investigation is first task in Phase 18
-- WhatsApp email flow (Phase 22) depends on Phase 18 fix -- cannot test draft approval without working drafts
+- OpenClaw gateway availability needed for Phase 2 integration testing -- confirm gateway is running in dev environment before starting Phase 2
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Completed 18-02-PLAN.md (Phase 18 fully complete)
-Resume file: N/A
+Last session: 2026-03-01
+Stopped at: Roadmap created, ready to plan Phase 1
+Resume file: None

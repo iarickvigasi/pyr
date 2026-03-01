@@ -1,10 +1,8 @@
-# Roadmap: Puppy Yoga Retreat — Business Automation Platform
+# Roadmap: PYR Inbox & AI Pipeline Rework
 
-## Milestones
+## Overview
 
-- v1.0 MVP — Phases 1-11 (shipped 2026-02-24). See milestones/v1.0-ROADMAP.md.
-- v1.1 Multi-Guest Bookings, Payments & Chat History — Phases 12-17 (shipped 2026-02-27). See milestones/v1.1-ROADMAP.md.
-- v1.2 Email System Improvements — Phases 18-22 (in progress)
+Replace the rules-based email classifier and auto-creation pipeline with OpenClaw-powered agent classification. The rework follows a strict dependency chain: schema and OpenClaw artifacts first (foundation), then the async backend pipeline (the core change), then the three-tab inbox UI (visible to Ines), then testing and cleanup (validation and dead code removal). Every phase delivers a coherent, independently verifiable capability.
 
 ## Phases
 
@@ -12,135 +10,88 @@
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-<details>
-<summary>v1.0 MVP (Phases 1-11) — SHIPPED 2026-02-24</summary>
+Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] Phase 1: Foundation & Infrastructure (2/2 plans)
-- [x] Phase 2: Email Ingestion Pipeline (6/6 plans)
-- [x] Phase 3: Email UI & OTA Parsing (3/3 plans)
-- [x] Phase 4: AI Communication Engine (4/4 plans)
-- [x] Phase 5: AI-Email Integration (4/4 plans)
-- [x] Phase 6: CalDAV Calendar Sync (4/4 plans)
-- [x] Phase 7: OpenClaw Assistant Core (2/2 plans)
-- [x] Phase 8: Assistant Actions & Automation (2/2 plans)
-- [x] Phase 8.1: Integration Fixes & Verification (2/2 plans) (INSERTED)
-- [x] Phase 11: Documentation, OTA Alert Fix (4/4 plans)
-
-See milestones/v1.0-ROADMAP.md for full details.
-
-</details>
-
-<details>
-<summary>v1.1 Multi-Guest Bookings, Payments & Chat History (Phases 12-17) — SHIPPED 2026-02-27</summary>
-
-- [x] Phase 12: Schema Migration & Chat History (2/2 plans) — 2026-02-24
-- [x] Phase 13: Backend Multi-Guest Bookings (2/2 plans) — 2026-02-24
-- [x] Phase 14: Backend Payment Tracking (2/2 plans) — 2026-02-24
-- [x] Phase 15: Frontend Multi-Guest & Payments (3/3 plans) — 2026-02-24
-- [x] Phase 16: Assistant Integration (2/2 plans) — 2026-02-25
-- [x] Phase 17: Edit Booking UI Triggers (1/1 plan) — 2026-02-25
-
-See milestones/v1.1-ROADMAP.md for full details.
-
-</details>
-
-### v1.2 Email System Improvements (In Progress)
-
-**Milestone Goal:** Make the email system production-ready -- fix AI draft generation, add compose capability, improve inbox UX, validate OTA auto-booking, and enable WhatsApp-based email draft approval so Ines can manage emails from her phone.
-
-- [x] **Phase 18: AI Draft Pipeline Fix** - Fix end-to-end AI draft generation and surface errors in the UI (completed 2026-02-27)
-- [ ] **Phase 19: Compose New Emails** - Enable composing and sending new outbound emails from the dashboard
-- [ ] **Phase 20: Inbox UX Improvements** - Add search, unread/starred, and filtering to the inbox
-- [ ] **Phase 21: OTA Email Analysis & Validation** - Analyze Tripaneer/BYR email structure, validate parsers, flag non-replyable OTA conversations
-- [ ] **Phase 22: WhatsApp Email Notifications & Draft Approval** - Notify Ines of new emails via WhatsApp and let her review/approve/reject/edit AI drafts from her phone
+- [ ] **Phase 1: Foundation & Schema** - Database migration, OpenClaw classify skill, plugin tool, queue definition, and email threading resolution
+- [ ] **Phase 2: Backend Classification Pipeline** - Async classify pipeline via BullMQ, email poll rework, auto-creation removal, graceful degradation
+- [ ] **Phase 3: Inbox UI Rework** - Three-tab inbox, guest-match banner, pending classification state, search/filter, manual reclassification
+- [ ] **Phase 4: Testing, Cleanup & Documentation** - Integration tests, gateway-down scenarios, dead code removal, full documentation
 
 ## Phase Details
 
-### Phase 18: AI Draft Pipeline Fix
-**Goal**: AI drafts are reliably generated for incoming guest emails and failures are visible
-**Depends on**: Nothing (first phase of v1.2 -- bug fix, unblocks Phase 22)
-**Requirements**: DRAFT-01, DRAFT-02
+### Phase 1: Foundation & Schema
+**Goal**: All schema, OpenClaw artifacts, and infrastructure are in place so that classification sessions can run and write results to the database
+**Depends on**: Nothing (first phase)
+**Requirements**: CLSF-01, CLSF-02, PIPE-04, PIPE-06
 **Success Criteria** (what must be TRUE):
-  1. When a new guest inquiry email arrives, an AI draft reply appears in the inbox conversation within 30 seconds
-  2. If draft generation fails (LLM error, timeout, WebSocket disconnect), the conversation shows an error state with a retry option
-  3. The draft generation pipeline works end-to-end: IMAP poll -> message stored -> draft requested via WebSocket -> draft saved to ai_drafts table -> visible in UI
-**Plans**: 2
-
-Plans:
-- [x] 18-01: Fix pipeline bugs (dedup, timeout, logging) and add manual draft trigger endpoint
-- [ ] 18-02: Surface draft generation status and errors in inbox UI
-
-### Phase 19: Compose New Emails
-**Goal**: Ines can start new email conversations with guests from the dashboard
-**Depends on**: Phase 18 (working email send infrastructure)
-**Requirements**: COMP-01, COMP-02
-**Success Criteria** (what must be TRUE):
-  1. Ines can open a compose dialog, select or enter a guest recipient, write a subject and body, and send the email
-  2. Sending a new email creates a conversation record and stores the outbound message in the messages table
-  3. The new conversation appears in the inbox list immediately after sending
+  1. Prisma migration applied with new classification fields (classifiedAt, classifyJobId, guestMatchSource, otaParsedData, classificationConfidence, classificationSource, classificationMeta) and the PATCH conversations endpoint accepts classification data
+  2. The `classify_email` plugin tool is registered in the OpenClaw plugin and can be called by the agent with a typed parameter schema to write classification results to the database
+  3. The classify skill (`skills/classify/SKILL.md`) exists with classification instructions, category definitions, and tool usage guidance, and the `classify` hook is mapped in `openclaw.json`
+  4. The `AI_CLASSIFY` BullMQ queue name is defined in shared types and the queue is instantiated in the backend worker infrastructure
+  5. Email threading approach is evaluated and either preserved, improved with a library, or rewritten -- with the chosen approach working correctly for reply chains
 **Plans**: TBD
 
 Plans:
-- [ ] 19-01: TBD
-- [ ] 19-02: TBD
+- [ ] 01-01: Schema migration and API updates
+- [ ] 01-02: OpenClaw classify skill, plugin tool, and hook mapping
+- [ ] 01-03: BullMQ queue infrastructure and email threading resolution
 
-### Phase 20: Inbox UX Improvements
-**Goal**: Ines can efficiently find, organize, and filter conversations in the inbox
-**Depends on**: Phase 18 (stable inbox foundation)
-**Requirements**: INBOX-01, INBOX-02, INBOX-03
+### Phase 2: Backend Classification Pipeline
+**Goal**: Every inbound email is stored immediately and classified asynchronously by an OpenClaw agent session, with all auto-creation behavior removed
+**Depends on**: Phase 1
+**Requirements**: CLSF-03, CLSF-04, CLSF-05, CLSF-06, CLSF-07, CLSF-08, PIPE-01, PIPE-02, PIPE-03, PIPE-05
 **Success Criteria** (what must be TRUE):
-  1. Ines can type a search query and find conversations by guest name, email address, or message content
-  2. Ines can mark a conversation as unread (bold in list) or starred (pinned/highlighted)
-  3. Ines can filter the conversation list by status (open/closed), classification, read/unread, and starred -- filters are combinable
-  4. Search and filter results update the conversation list in real time without a full page reload
+  1. When a new email arrives via IMAP polling, it is stored in the database immediately (with classification: null) and a classify job is enqueued -- the poll loop never blocks on classification
+  2. The classify worker runs an OpenClaw agent session that classifies the email (conversation / OTA / other), matches it to an existing guest via `search_guests`, detects language (EN/DE), and extracts guest info (name, phone, dates, dietary needs)
+  3. No automatic guest creation, no automatic draft generation, and no automatic OTA booking creation occurs anywhere in the email pipeline
+  4. When the OpenClaw gateway is unavailable, classification jobs retry with exponential backoff and conversations show a failed classification state after retries are exhausted -- manual classification remains available as fallback
 **Plans**: TBD
 
 Plans:
-- [ ] 20-01: TBD
-- [ ] 20-02: TBD
+- [ ] 02-01: Email poll worker rework (store-then-enqueue, remove auto-creation)
+- [ ] 02-02: Classify worker and OpenClaw agent session runner
+- [ ] 02-03: Graceful degradation and draft generator verification
 
-### Phase 21: OTA Email Analysis & Validation
-**Goal**: OTA booking emails from Tripaneer/BookYogaRetreats are correctly parsed and auto-bookings contain all available data
-**Depends on**: Phase 18 (working email pipeline for testing)
-**Requirements**: OTA-04, OTA-05, OTA-06
+### Phase 3: Inbox UI Rework
+**Goal**: Ines sees a three-tab inbox that reflects AI classification results, can create guests from unmatched emails with one click, and can search, filter, and manually reclassify conversations
+**Depends on**: Phase 2
+**Requirements**: INBX-01, INBX-02, INBX-03, INBX-04, INBX-05
 **Success Criteria** (what must be TRUE):
-  1. Tripaneer and BookYogaRetreats email structures are documented with real sample analysis, and parsers are validated against those samples
-  2. Auto-created OTA bookings include guest name, email, check-in/check-out dates, package type, price, and OTA reference ID where extractable
-  3. OTA conversations where replies must go through the OTA platform (not direct email) are flagged as non-replyable in the inbox UI
+  1. The inbox displays three tabs (Conversations, OTA, Other) filtering conversations by their AI classification, with correct counts per tab
+  2. Conversations awaiting classification show a spinner/pending badge, and classification results appear within seconds via React Query polling without page refresh
+  3. Unmatched guest conversations display an inline banner ("No matching guest -- Create [Name] [Email]?") with a one-click button that creates the guest record and links it to the conversation
+  4. Manual reclassification moves a conversation between tabs immediately, and late-arriving async classification results do not overwrite a manual reclassification
+  5. Each tab supports search and filtering by guest name, email, subject, and status
 **Plans**: TBD
 
 Plans:
-- [ ] 21-01: TBD
-- [ ] 21-02: TBD
+- [ ] 03-01: Three-tab inbox layout and classification state display
+- [ ] 03-02: Guest-match banner, manual reclassification, and search/filter
 
-### Phase 22: WhatsApp Email Notifications & Draft Approval
-**Goal**: Ines can manage email drafts entirely from WhatsApp on her phone -- get notified, review, approve, reject, or edit drafts without opening the dashboard
-**Depends on**: Phase 18 (working draft generation is prerequisite for draft approval flow)
-**Requirements**: WAEML-01, WAEML-02, WAEML-03, WAEML-04, WAEML-05
+### Phase 4: Testing, Cleanup & Documentation
+**Goal**: The new pipeline is validated with comprehensive tests, dead code is removed, and the system is fully documented
+**Depends on**: Phase 3
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
 **Success Criteria** (what must be TRUE):
-  1. When a new guest email arrives, Ines receives a WhatsApp message with the sender name, subject line, and a short preview of the email body
-  2. When an AI draft is ready, Ines receives the full draft text on WhatsApp so she can read it without opening the dashboard
-  3. Ines can approve the draft from WhatsApp (e.g., reply "approve" or tap a button) and it sends immediately via SMTP
-  4. Ines can reject the draft from WhatsApp, which either triggers regeneration or marks it as rejected in the system
-  5. Ines can send an edited version of the draft text from WhatsApp, which replaces the draft content before sending
+  1. Integration tests run against a live OpenClaw instance covering the full email-arrive -> classify -> guest-link -> draft pipeline
+  2. Unit tests cover classification job processing, error handling, retry logic, and edge cases
+  3. Frontend tests verify three-tab inbox rendering, tab switching, pending classification state, and guest banner interaction
+  4. Gateway-down scenario is tested end-to-end: emails are stored, classification retries exhaust, failed state is displayed, and manual classification works as fallback
+  5. Documentation covers the OpenClaw classification skill design, pipeline architecture, API changes, and operational runbook
 **Plans**: TBD
 
 Plans:
-- [ ] 22-01: TBD
-- [ ] 22-02: TBD
-- [ ] 22-03: TBD
+- [ ] 04-01: Backend integration and unit tests
+- [ ] 04-02: Frontend tests, dead code removal, and documentation
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
-| Phase | Milestone | Plans | Status | Completed |
-|-------|-----------|-------|--------|-----------|
-| 1-11 | v1.0 | 38/38 | Complete | 2026-02-24 |
-| 12-17 | v1.1 | 12/12 | Complete | 2026-02-27 |
-| 18. AI Draft Pipeline Fix | 2/2 | Complete   | 2026-02-27 | - |
-| 19. Compose New Emails | v1.2 | 0/TBD | Not started | - |
-| 20. Inbox UX Improvements | v1.2 | 0/TBD | Not started | - |
-| 21. OTA Email Analysis & Validation | v1.2 | 0/TBD | Not started | - |
-| 22. WhatsApp Email Notifications & Draft Approval | v1.2 | 0/TBD | Not started | - |
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Foundation & Schema | 0/3 | Not started | - |
+| 2. Backend Classification Pipeline | 0/3 | Not started | - |
+| 3. Inbox UI Rework | 0/2 | Not started | - |
+| 4. Testing, Cleanup & Documentation | 0/2 | Not started | - |

@@ -41,6 +41,7 @@ export function createImapService(logger: Logger) {
   async function pollNewEmails(
     config: ImapConfig,
     lastUid?: number,
+    minDate?: Date,
   ): Promise<RawEmail[]> {
     const client = new ImapFlow({
       host: config.host,
@@ -57,7 +58,7 @@ export function createImapService(logger: Logger) {
     });
 
     logger.info(
-      { host: config.host, port: config.port, lastUid },
+      { host: config.host, port: config.port, lastUid, minDate: minDate?.toISOString() },
       'IMAP poll starting',
     );
 
@@ -68,10 +69,19 @@ export function createImapService(logger: Logger) {
       try {
         lock = await client.getMailboxLock('INBOX');
 
-        // Build the search query
+        // Build the search query.
+        // - Incremental mode: UID > lastUid
+        // - First run mode: only unseen
+        // - Optional minDate: discard older messages at IMAP search level
         const searchQuery = lastUid !== undefined
-          ? { uid: `${lastUid + 1}:*` as const }
-          : { seen: false };
+          ? {
+              uid: `${lastUid + 1}:*` as const,
+              ...(minDate ? { since: minDate } : {}),
+            }
+          : {
+              seen: false,
+              ...(minDate ? { since: minDate } : {}),
+            };
 
         const uids = await client.search(searchQuery, { uid: true });
 

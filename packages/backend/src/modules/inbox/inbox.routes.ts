@@ -13,6 +13,12 @@ import {
   draftActionParamsSchema,
   approveDraftBodySchema,
   generateDraftParamsSchema,
+  customerSuggestionSchema,
+  linkConversationGuestBodySchema,
+  createConversationGuestBodySchema,
+  conversationBookingAnalysisResponseSchema,
+  createConversationBookingBodySchema,
+  type CreateConversationBookingBody,
 } from './inbox.schema.js';
 import {
   listConversations,
@@ -25,6 +31,11 @@ import {
   rejectDraft,
   regenerateDraft,
   generateDraftForConversation,
+  getConversationCustomerSuggestion,
+  linkConversationToGuest,
+  createGuestFromConversation,
+  getConversationBookingAnalysis,
+  createBookingFromConversation,
 } from './conversation.service.js';
 import { addMessage } from './message.service.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
@@ -57,6 +68,123 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Inbox'], summary: 'Get conversation with all messages', params: idParamSchema },
   }, async (request) => {
     return { data: await getConversation(app.prisma, request.params.id) };
+  });
+
+  server.get('/:id/customer-suggestion', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Get customer linking/creation suggestion for a conversation',
+      params: idParamSchema,
+      response: {
+        200: customerSuggestionSchema,
+      },
+    },
+  }, async (request) => {
+    const suggestion = await getConversationCustomerSuggestion(app.prisma, request.params.id);
+    return { data: suggestion };
+  });
+
+  server.post('/:id/booking-analysis', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Analyze booking potential from conversation thread using OpenClaw',
+      params: idParamSchema,
+      response: {
+        200: conversationBookingAnalysisResponseSchema,
+      },
+    },
+  }, async (request) => {
+    const analysis = await getConversationBookingAnalysis(app.prisma, app, request.params.id);
+    return { data: analysis };
+  });
+
+  server.post('/:id/bookings', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Create booking from inbox conversation using booking wizard payload',
+      params: idParamSchema,
+      body: createConversationBookingBodySchema,
+    },
+  }, async (request, reply) => {
+    const conversationId = request.params.id;
+    const body = request.body as CreateConversationBookingBody;
+    app.log.info(
+      {
+        conversationId,
+        guestMode: body.guest.mode,
+      },
+      'Creating booking from inbox conversation',
+    );
+
+    try {
+      const result = await createBookingFromConversation(
+        app.prisma,
+        conversationId,
+        body,
+        request.user?.sub,
+      );
+      app.log.info(
+        {
+          conversationId,
+          guestMode: body.guest.mode,
+          bookingId: result.booking.id,
+          guestId: result.guest.id,
+        },
+        'Created booking from inbox conversation',
+      );
+      return reply.code(201).send({ data: result });
+    } catch (err) {
+      app.log.warn(
+        {
+          conversationId,
+          guestMode: body.guest.mode,
+          err,
+        },
+        'Failed to create booking from inbox conversation',
+      );
+      throw err;
+    }
+  });
+
+  server.post('/:id/link-guest', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Link an existing guest to a conversation',
+      params: idParamSchema,
+      body: linkConversationGuestBodySchema,
+    },
+  }, async (request) => {
+    const body = request.body as { guestId: string };
+    const conversation = await linkConversationToGuest(
+      app.prisma,
+      request.params.id,
+      body.guestId,
+      request.user?.sub,
+    );
+    return { data: conversation };
+  });
+
+  server.post('/:id/create-guest', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Create a new guest from conversation sender data and link it',
+      params: idParamSchema,
+      body: createConversationGuestBodySchema,
+    },
+  }, async (request, reply) => {
+    const body = request.body as {
+      name?: string;
+      email?: string;
+      phone?: string;
+      language?: 'en' | 'de';
+    };
+    const result = await createGuestFromConversation(
+      app.prisma,
+      request.params.id,
+      body,
+      request.user?.sub,
+    );
+    return reply.code(201).send({ data: result });
   });
 
   server.post('/', {

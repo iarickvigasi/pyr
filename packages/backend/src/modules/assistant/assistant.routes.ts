@@ -67,7 +67,7 @@ export default async function assistantRoutes(app: FastifyInstance): Promise<voi
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-sonnet-4-5-20250929',
+          model: app.config.AI_DEFAULT_MODEL,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: message },

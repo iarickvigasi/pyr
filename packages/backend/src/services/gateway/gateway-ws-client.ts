@@ -31,6 +31,11 @@ interface PendingRequest {
 
 type ChatEventHandler = (event: ChatEvent) => void;
 
+interface AgentRunState {
+  sessionKey?: string;
+  text: string;
+}
+
 /**
  * Persistent WebSocket client for the OpenClaw Gateway RPC protocol v3.
  *
@@ -41,6 +46,7 @@ export class GatewayWsClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private pending = new Map<string, PendingRequest>();
   private chatListeners = new Set<ChatEventHandler>();
+  private agentRuns = new Map<string, AgentRunState>();
   private connected = false;
   private closed = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -85,6 +91,7 @@ export class GatewayWsClient extends EventEmitter {
     this.clearReconnectTimer();
     this.clearTickTimer();
     this.rejectAllPending('Client closing');
+    this.agentRuns.clear();
 
     if (this.ws) {
       try {
@@ -230,15 +237,16 @@ export class GatewayWsClient extends EventEmitter {
       return;
     }
 
+    // OpenClaw protocol v3 uses `agent` events for streaming run output.
+    // Normalize these to legacy ChatEvent shape expected by AI draft workers.
+    if (event === 'agent') {
+      this.handleAgentEvent(payload);
+      return;
+    }
+
     if (event === 'chat') {
       const chatEvent = payload as ChatEvent;
-      for (const handler of this.chatListeners) {
-        try {
-          handler(chatEvent);
-        } catch (err) {
-          this.log.error({ err }, 'Chat event handler error');
-        }
-      }
+      this.emitChatEvent(chatEvent);
       return;
     }
 
@@ -252,6 +260,161 @@ export class GatewayWsClient extends EventEmitter {
     }
 
     // Other events (e.g., tick) are handled by the tick timer reset above
+  }
+
+  private emitChatEvent(chatEvent: ChatEvent): void {
+    for (const handler of this.chatListeners) {
+      try {
+        handler(chatEvent);
+      } catch (err) {
+        this.log.error({ err }, 'Chat event handler error');
+      }
+    }
+  }
+
+  /**
+   * Map protocol v3 `agent` event payloads to legacy ChatEvent states.
+   *
+   * Agent payload shape:
+   * {
+   *   runId: string,
+   *   seq: number,
+   *   stream: "assistant" | "lifecycle" | "error" | ...,
+   *   data: { sessionKey?: string, text?: string, phase?: string, ... }
+   * }
+   */
+  private handleAgentEvent(payload: unknown): void {
+    const evt = payload as {
+      runId?: string;
+      seq?: number;
+      stream?: string;
+      sessionKey?: string;
+      data?: Record<string, unknown>;
+    };
+
+    const runId = evt.runId;
+    const stream = evt.stream;
+    if (!runId || !stream) return;
+
+    const data = (evt.data ?? {}) as Record<string, unknown>;
+    const seq = typeof evt.seq === 'number' ? evt.seq : 0;
+
+    const existing = this.agentRuns.get(runId) ?? { text: '' };
+    const sessionKey = typeof evt.sessionKey === 'string'
+      ? evt.sessionKey
+      : typeof data.sessionKey === 'string'
+        ? data.sessionKey
+        : typeof data.session === 'string'
+          ? data.session
+          : existing.sessionKey;
+    const state: AgentRunState = { ...existing, sessionKey };
+    this.agentRuns.set(runId, state);
+
+    if (stream === 'assistant') {
+      const fullText = typeof data.text === 'string' ? data.text : null;
+      const deltaFromPayload = typeof data.delta === 'string' ? data.delta : '';
+      if (!sessionKey || (!fullText && !deltaFromPayload)) return;
+
+      // Some OpenClaw agents emit delta as a full snapshot, not an incremental token.
+      // To avoid duplicated accumulation downstream, prefer snapshot semantics whenever
+      // cumulative text is present; only use delta append when text is unavailable.
+      let emittedContent = '';
+      let snapshot = false;
+
+      if (fullText !== null) {
+        if (fullText === state.text) return; // unchanged snapshot, no-op
+        state.text = fullText;
+        emittedContent = fullText;
+        snapshot = true;
+      } else if (deltaFromPayload.length > 0) {
+        state.text += deltaFromPayload;
+        emittedContent = deltaFromPayload;
+        snapshot = false;
+      }
+      this.agentRuns.set(runId, state);
+
+      if (emittedContent.length > 0) {
+        this.emitChatEvent({
+          runId,
+          sessionKey,
+          seq,
+          state: 'delta',
+          message: { content: emittedContent, snapshot },
+        });
+      }
+      return;
+    }
+
+    if (stream === 'lifecycle' && sessionKey) {
+      const phase = typeof data.phase === 'string' ? data.phase : '';
+
+      if (phase === 'end') {
+        this.emitChatEvent({
+          runId,
+          sessionKey,
+          seq,
+          state: 'final',
+          message: { content: state.text, snapshot: true },
+          model: typeof data.model === 'string' ? data.model : undefined,
+          usage: this.normalizeUsage(data.usage),
+        });
+        this.agentRuns.delete(runId);
+        return;
+      }
+
+      if (phase === 'aborted' || phase === 'cancelled') {
+        this.emitChatEvent({
+          runId,
+          sessionKey,
+          seq,
+          state: 'aborted',
+        });
+        this.agentRuns.delete(runId);
+        return;
+      }
+      return;
+    }
+
+    if (stream === 'error' && sessionKey) {
+      const errorMessage = typeof data.error === 'string'
+        ? data.error
+        : typeof data.message === 'string'
+          ? data.message
+          : 'Agent stream error';
+
+      this.emitChatEvent({
+        runId,
+        sessionKey,
+        seq,
+        state: 'error',
+        errorMessage,
+      });
+      this.agentRuns.delete(runId);
+    }
+  }
+
+  private normalizeUsage(
+    usage: unknown,
+  ): ChatEvent['usage'] {
+    if (!usage || typeof usage !== 'object') return undefined;
+    const data = usage as Record<string, unknown>;
+
+    const prompt = typeof data.prompt_tokens === 'number' ? data.prompt_tokens : undefined;
+    const completion = typeof data.completion_tokens === 'number' ? data.completion_tokens : undefined;
+    const cacheRead = typeof data.cache_read_input_tokens === 'number'
+      ? data.cache_read_input_tokens
+      : undefined;
+    const cacheWrite = typeof data.cache_creation_input_tokens === 'number'
+      ? data.cache_creation_input_tokens
+      : undefined;
+
+    if (prompt === undefined || completion === undefined) return undefined;
+    return {
+      prompt_tokens: prompt,
+      completion_tokens: completion,
+      cache_read_input_tokens: cacheRead,
+      cache_creation_input_tokens: cacheWrite,
+    };
   }
 
   private handleResponse(
@@ -323,7 +486,8 @@ export class GatewayWsClient extends EventEmitter {
       minProtocol: 3,
       maxProtocol: 3,
       client: {
-        id: 'pyr-backend',
+        // Must match OpenClaw's allowed client-id enum.
+        id: 'gateway-client',
         version: '1.0.0',
         platform: process.platform,
         mode: 'backend',
@@ -353,6 +517,7 @@ export class GatewayWsClient extends EventEmitter {
     this.connected = false;
     this.clearTickTimer();
     this.rejectAllPending('Gateway connection lost');
+    this.agentRuns.clear();
 
     if (!this.closed) {
       this.scheduleReconnect();

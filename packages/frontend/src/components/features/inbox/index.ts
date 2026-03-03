@@ -8,3 +8,6 @@ export { EmailMessage } from './email-message';
 export { AttachmentList } from './attachment-list';
 export { ClassificationBadge } from './classification-badge';
 export { ReclassifyDropdown } from './reclassify-dropdown';
+export { CustomerSuggestionCard } from './customer-suggestion-card';
+export { BookingAnalysisCard } from './booking-analysis-card';
+export { InboxBookingWizardDialog } from './inbox-booking-wizard-dialog';

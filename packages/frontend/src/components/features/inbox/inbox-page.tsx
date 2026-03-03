@@ -10,6 +10,8 @@ import { ConversationThread } from './conversation-thread';
 import { MessageComposer } from './message-composer';
 import { ReclassifyDropdown } from './reclassify-dropdown';
 import { CustomerSuggestionCard } from './customer-suggestion-card';
+import { BookingAnalysisCard } from './booking-analysis-card';
+import { InboxBookingWizardDialog } from './inbox-booking-wizard-dialog';
 import {
   useConversations,
   useConversation,
@@ -20,8 +22,21 @@ import {
   useConversationCustomerSuggestion,
   useLinkConversationGuest,
   useCreateConversationGuest,
+  useAnalyzeConversationBooking,
+  useCreateConversationBooking,
+  type ConversationBookingAnalysis,
+  type CreateConversationBookingPayload,
 } from '@/lib/hooks/use-conversations';
 import { toast } from 'sonner';
+
+const BOOKING_ANALYSIS_CLASSIFICATIONS = new Set([
+  'conversation',
+  'ota_tripaneer',
+  'ota_bookyogaretreats',
+  'ota_other',
+  'guest_inquiry',
+  'ota_notification',
+]);
 
 export function InboxPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string>();
@@ -31,6 +46,8 @@ export function InboxPage() {
     draftId: string;
     originalContent: string;
   } | null>(null);
+  const [bookingAnalysis, setBookingAnalysis] = useState<ConversationBookingAnalysis | null>(null);
+  const [bookingWizardOpen, setBookingWizardOpen] = useState(false);
 
   const { data: conversationsData, isLoading: conversationsLoading } =
     useConversations({ bucket: activeBucket });
@@ -45,10 +62,17 @@ export function InboxPage() {
   const rejectDraft = useRejectDraft(selectedConversationId ?? '');
   const linkGuest = useLinkConversationGuest(selectedConversationId);
   const createGuest = useCreateConversationGuest(selectedConversationId);
+  const analyzeBooking = useAnalyzeConversationBooking(selectedConversationId);
+  const createConversationBooking = useCreateConversationBooking(selectedConversationId);
 
   const conversations = conversationsData ?? [];
   const conversation = conversationData;
   const drafts = draftsData ?? [];
+  const canAnalyzeBooking = !!conversation
+    && (
+      conversation.classification === null
+      || BOOKING_ANALYSIS_CLASSIFICATIONS.has(conversation.classification)
+    );
 
   useEffect(() => {
     setSelectedConversationId(undefined);
@@ -57,6 +81,8 @@ export function InboxPage() {
   useEffect(() => {
     setComposerContent('');
     setPreparedDraft(null);
+    setBookingAnalysis(null);
+    setBookingWizardOpen(false);
   }, [selectedConversationId]);
 
   const handleSendMessage = async (content: string): Promise<void> => {
@@ -125,6 +151,36 @@ export function InboxPage() {
       toast.success('Customer created and linked');
     } catch {
       toast.error('Failed to create customer');
+    }
+  };
+
+  const handleAnalyzeBooking = async (): Promise<void> => {
+    try {
+      const analysis = await analyzeBooking.mutateAsync();
+      setBookingAnalysis(analysis);
+      if (analysis.status === 'ready') {
+        toast.success('Booking details extracted. Review and create booking.');
+      } else if (analysis.status === 'not_applicable') {
+        toast.info('OpenClaw did not find booking intent in this thread.');
+      } else if (analysis.status === 'insufficient_data') {
+        toast.info('Booking intent found but some fields are missing.');
+      } else {
+        toast.error(analysis.reason || 'Booking analysis failed');
+      }
+    } catch {
+      toast.error('Failed to analyze booking potential');
+    }
+  };
+
+  const handleCreateConversationBooking = async (
+    payload: CreateConversationBookingPayload,
+  ): Promise<void> => {
+    try {
+      await createConversationBooking.mutateAsync(payload);
+      toast.success('Booking created from conversation');
+      setBookingWizardOpen(false);
+    } catch {
+      toast.error('Failed to create booking from conversation');
     }
   };
 
@@ -233,8 +289,8 @@ export function InboxPage() {
                 </div>
               </div>
 
-              {!conversation.guest && (
-                <div className="shrink-0 border-b px-4 py-2">
+              <div className="shrink-0 border-b px-4 py-2 space-y-2">
+                {!conversation.guest && (
                   <CustomerSuggestionCard
                     suggestion={suggestionData}
                     isLoading={suggestionLoading}
@@ -243,8 +299,16 @@ export function InboxPage() {
                     isLinking={linkGuest.isPending}
                     isCreating={createGuest.isPending}
                   />
-                </div>
-              )}
+                )}
+                {canAnalyzeBooking && (
+                  <BookingAnalysisCard
+                    analysis={bookingAnalysis}
+                    isLoading={analyzeBooking.isPending}
+                    onAnalyze={handleAnalyzeBooking}
+                    onOpenWizard={() => setBookingWizardOpen(true)}
+                  />
+                )}
+              </div>
 
               {/* Message Thread (drafts now rendered inline) */}
               <div className="flex-1 overflow-y-auto">
@@ -279,6 +343,15 @@ export function InboxPage() {
           ) : null}
         </div>
       </div>
+
+      <InboxBookingWizardDialog
+        open={bookingWizardOpen}
+        onOpenChange={setBookingWizardOpen}
+        conversation={conversation}
+        analysis={bookingAnalysis}
+        isSubmitting={createConversationBooking.isPending}
+        onSubmit={handleCreateConversationBooking}
+      />
     </div>
   );
 }

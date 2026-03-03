@@ -77,14 +77,16 @@ export const EDGE_CASE_PATTERNS: Record<string, RegExp[]> = {
   ],
   adoption: [
     // English
-    /\badopt/i,
-    /take.*home/i,
-    /keep.?the.?puppy/i,
-    /rescue.?dogs?.?available/i,
+    /\badopt(?:ion|ing|ed)?\b/i,
+    /take\s+(?:a\s+)?(?:puppy|dog)\s+home/i,
+    /keep\s+(?:the\s+)?(?:puppy|dog)/i,
+    /rescue\s+dogs?\s+available/i,
     // German
-    /adoptieren/i,
-    /mitnehmen/i,
-    /behalten/i,
+    /adoptier(?:en|ung|t)?/i,
+    /(?:welpen?|hunde?|puppy).{0,30}\bmitnehmen\b/i,
+    /\bmitnehmen\b.{0,30}(?:welpen?|hunde?|puppy)/i,
+    /(?:welpen?|hunde?|puppy).{0,30}\bbehalten\b/i,
+    /\bbehalten\b.{0,30}(?:welpen?|hunde?|puppy)/i,
   ],
 };
 

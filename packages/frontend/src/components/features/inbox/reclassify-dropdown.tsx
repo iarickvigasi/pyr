@@ -16,10 +16,15 @@ interface ReclassifyDropdownProps {
 }
 
 const CLASSIFICATION_OPTIONS = [
-  { value: 'guest_inquiry', label: 'Guest Inquiry' },
-  { value: 'ota_notification', label: 'OTA Notification' },
-  { value: 'spam_newsletter', label: 'Spam/Newsletter' },
-  { value: 'admin_system', label: 'Admin/System' },
+  { value: 'conversation', label: 'Conversation' },
+  { value: 'ota_tripaneer', label: 'OTA (Tripaneer)' },
+  { value: 'ota_bookyogaretreats', label: 'OTA (BookYogaRetreats)' },
+  { value: 'ota_other', label: 'OTA (Other)' },
+  { value: 'other', label: 'Other' },
+  { value: 'guest_inquiry', label: 'Legacy: Guest Inquiry' },
+  { value: 'ota_notification', label: 'Legacy: OTA Notification' },
+  { value: 'spam_newsletter', label: 'Legacy: Spam/Newsletter' },
+  { value: 'admin_system', label: 'Legacy: Admin/System' },
 ];
 
 export function ReclassifyDropdown({ conversationId, currentClassification }: ReclassifyDropdownProps) {

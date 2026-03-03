@@ -9,6 +9,7 @@ This document defines the new minimal/robust inbox pipeline:
 - Use OpenClaw as primary classifier runtime with deterministic fallback.
 - Remove automatic guest creation from inbound email processing.
 - Stop OTA auto-booking side effects in inbox ingestion.
+- Add manual booking analysis + booking wizard flow from Inbox conversation view.
 
 ## OpenClaw Control Surface in This Project
 
@@ -104,6 +105,8 @@ Updated/added in `packages/backend/src/modules/inbox`:
   - `GET /api/v1/conversations/:id/customer-suggestion`
   - `POST /api/v1/conversations/:id/link-guest`
   - `POST /api/v1/conversations/:id/create-guest`
+  - `POST /api/v1/conversations/:id/booking-analysis`
+  - `POST /api/v1/conversations/:id/bookings`
 
 ### Frontend
 
@@ -125,11 +128,29 @@ Updated in `packages/frontend/src/components/features/inbox` and hooks:
     - `submitting` -> `queued` -> `waiting` -> `ready` (or `error`)
   - Regeneration from rejected/failed cards calls `POST /api/v1/conversations/:id/drafts/:draftId/regenerate`.
   - Manual generation button calls `POST /api/v1/conversations/:id/drafts/generate`.
+  - Manual generation is allowed only when the latest thread message is inbound.
   - UI keeps a persistent status card with loader and queue/wait messaging until a new draft appears (or timeout/error).
   - While generation is in flight, actions are disabled to prevent duplicate requests.
+- AI draft output format (MVP-safe):
+  - System prompt explicitly requires plain-text email output (no Markdown syntax).
+  - System prompt now always injects current Cyprus date (`Europe/Nicosia`) and recent conversation history context.
+  - Backend normalizes AI output by stripping Markdown-like syntax before storing drafts.
+  - Approve/send path also normalizes content before SMTP send as a safety fallback.
 - Conversation header links:
   - Linked customer name opens `/guests/:id`.
   - Linked booking badges open `/bookings/:id`.
+- Manual booking analysis + wizard:
+  - `BookingAnalysisCard` is shown in Inbox detail view for conversation/OTA threads.
+  - States: idle, loading, ready, insufficient data, not applicable, error.
+  - Analysis is user-triggered only (`Analyze for booking`), never automatic.
+  - Booking extraction uses OpenClaw only (no deterministic fallback extractor).
+  - `Create booking` opens `InboxBookingWizardDialog` with editable prefilled values.
+  - Guest flow supports:
+    - linked guest,
+    - existing guest selection,
+    - guest creation inside wizard.
+  - Booking creation links `booking.sourceConversationId` and links conversation guest if needed.
+  - Successful create refreshes conversation + booking queries and booking links appear in header.
 
 ## OTA Parsing And Booking Suggestion Status
 
@@ -140,9 +161,12 @@ Current production behavior:
    - Ingestion usage: `packages/backend/src/services/email/index.ts`
    - Customer suggestion usage: `packages/backend/src/modules/inbox/conversation.service.ts`
 2. Inbox does not auto-create bookings from email ingestion.
-3. Inbox currently does not expose a dedicated "create booking suggestion" endpoint/UI card.
+3. Inbox exposes manual booking analysis and booking creation in conversation detail:
+   - analyze: `POST /api/v1/conversations/:id/booking-analysis`
+   - create: `POST /api/v1/conversations/:id/bookings`
+4. Duplicate-booking prevention beyond existing overlap validation is intentionally out of scope.
 
-This is deliberate in the current MVP to avoid unsafe auto-booking side effects from partial OTA emails.
+This is deliberate in the current MVP to avoid unsafe auto-booking side effects from partial OTA emails while still enabling controlled manual booking creation.
 
 ## OpenClaw Classifier Contract
 
@@ -154,6 +178,22 @@ Implemented in `packages/backend/src/services/email/openclaw-classifier.ts`:
 - Normalizes legacy category outputs.
 - Falls back to deterministic rules if gateway is unavailable or output is invalid.
 
+## OpenClaw Booking Analyzer Contract
+
+Implemented in `packages/backend/src/services/email/openclaw-booking-analyzer.ts`:
+
+- Calls gateway `agent` with isolated session key:
+  - `booking-analyze:<conversationId>:<timestamp>`
+- Uses `deliver: false`.
+- Sends conversation classification + subject + latest inbound + recent thread context.
+- Requires strict JSON contract validated by Zod.
+- Returns normalized result states:
+  - `ready`
+  - `insufficient_data`
+  - `not_applicable`
+  - `error`
+- No deterministic fallback extractor is used for booking analysis.
+
 ## Verification Performed
 
 Executed checks:
@@ -163,6 +203,8 @@ Executed checks:
 - `pnpm --filter @pyr/backend test -- src/services/email/__tests__/email-classifier.test.ts src/services/email/__tests__/contact-matcher.test.ts src/services/email/__tests__/pipeline.integration.test.ts`
 - `pnpm --filter @pyr/backend test -- src/services/email/__tests__/ota-calendar-sync.test.ts`
 - `pnpm --filter @pyr/backend test -- src/modules/inbox/inbox.test.ts src/modules/inbox/__tests__/draft-workflow.test.ts`
+- `pnpm --filter @pyr/backend test -- src/modules/inbox/inbox.test.ts -t "Booking analysis workflow|Create booking from conversation workflow"`
+- `pnpm --filter @pyr/frontend test -- src/components/features/inbox/__tests__`
 
 Additional focused checks:
 
@@ -172,9 +214,9 @@ Additional focused checks:
 - OTA booking side effects remain disabled:
   - `ota-calendar-sync.test.ts` verifies no auto guest/booking creation from OTA ingestion.
 
-Full backend suite status at verification time:
+Full backend suite status:
 
-- `pnpm --filter @pyr/backend test` currently fails in unrelated modules (`assistant`, `dashboard`) with 6 failing tests total.
+- Full `pnpm --filter @pyr/backend test` was not re-run in this pass; focused inbox/email checks above were used for this feature.
 
 ## External OpenClaw references
 

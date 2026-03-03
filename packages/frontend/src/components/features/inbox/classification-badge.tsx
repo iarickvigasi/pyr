@@ -7,6 +7,11 @@ interface ClassificationBadgeProps {
 }
 
 const CLASSIFICATION_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  conversation: { label: 'Conversation', variant: 'default' },
+  ota_tripaneer: { label: 'OTA Tripaneer', variant: 'outline' },
+  ota_bookyogaretreats: { label: 'OTA BookYogaRetreats', variant: 'outline' },
+  ota_other: { label: 'OTA', variant: 'outline' },
+  other: { label: 'Other', variant: 'secondary' },
   guest_inquiry: { label: 'Guest Inquiry', variant: 'default' },
   ota_notification: { label: 'OTA Notification', variant: 'outline' },
   spam_newsletter: { label: 'Spam/Newsletter', variant: 'destructive' },

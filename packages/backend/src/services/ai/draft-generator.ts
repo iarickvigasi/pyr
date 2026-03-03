@@ -18,6 +18,7 @@ import { buildSystemPrompt } from './prompts/system.js';
 import { classifyEdgeCases } from './classifier.js';
 import { calculateCost } from './cost-calculator.js';
 import { writeAuditLog } from '../../lib/audit.js';
+import { stripMarkdownToPlainText } from '../../lib/markdown.js';
 import type { GatewayWsClient } from '../gateway/gateway-ws-client.js';
 import type { ChatEvent } from '../gateway/types.js';
 
@@ -43,13 +44,11 @@ export interface GenerateDraftParams {
   conversationId: string;
   messageId: string;
   guestLanguage: 'en' | 'de';
+  defaultModel?: string;
   logger: FastifyBaseLogger;
 }
 
 // ─── Constants ──────────────────────────────────────────
-
-/** Maximum number of conversation messages to include in the prompt */
-const MAX_MESSAGES = 20;
 
 /**
  * Timeout for the chat event accumulation promise (90 seconds).
@@ -69,15 +68,22 @@ const CHAT_EVENT_TIMEOUT_MS = 90_000;
  * 1. Build business context (guest, bookings, availability, events)
  * 2. Assemble system prompt with brand voice and guardrails
  * 3. Classify the latest inbound message for edge cases
- * 4. Build conversation message history (capped at 20)
- * 5. Call OpenClaw's HTTP API (POST /v1/chat/completions)
- * 6. Calculate cost from token usage
- * 7. Write AiDraft record and audit log in a transaction
+ * 4. Call OpenClaw gateway agent with contextual system prompt + latest inbound message
+ * 5. Calculate cost from token usage
+ * 6. Write AiDraft record and audit log in a transaction
  *
  * @throws If conversation/message not found or OpenClaw API returns non-2xx
  */
 export async function generateDraft(params: GenerateDraftParams): Promise<GenerateDraftResult> {
-  const { prisma, gateway, conversationId, messageId, guestLanguage, logger } = params;
+  const {
+    prisma,
+    gateway,
+    conversationId,
+    messageId,
+    guestLanguage,
+    defaultModel,
+    logger,
+  } = params;
 
   // 1. Build business context
   const context = await buildDraftContext(prisma, conversationId);
@@ -95,14 +101,7 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
   // 4. Classify edge cases
   const flags = classifyEdgeCases(messageContent);
 
-  // 5. Build chat messages array (cap at last MAX_MESSAGES)
-  const recentMessages = context.conversation.messages.slice(-MAX_MESSAGES);
-  const chatMessages = recentMessages.map((m) => ({
-    role: m.direction === 'in' ? ('user' as const) : ('assistant' as const),
-    content: m.content,
-  }));
-
-  // 6. Call OpenClaw Gateway via WebSocket agent method
+  // 5. Call OpenClaw Gateway via WebSocket agent method
   const startTime = Date.now();
 
   // Pre-check: fail fast with clear error if Gateway is not connected
@@ -112,6 +111,7 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
 
   // Use a unique session key per draft to isolate concurrent jobs
   const draftSessionKey = `draft:${conversationId}:${Date.now()}`;
+  const draftSessionKeyAgentScoped = `agent:main:${draftSessionKey}`;
 
   // Accumulate response via chat events (with timeout to prevent indefinite hangs)
   const result = await new Promise<{ content: string; usage: ChatEvent['usage']; model: string }>((resolve, reject) => {
@@ -119,6 +119,7 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
     let usage: ChatEvent['usage'] = undefined;
     let model = 'unknown';
     let settled = false;
+    let sawScopedSessionEvent = false;
 
     // Timeout: reject if no final/error event arrives within CHAT_EVENT_TIMEOUT_MS
     const timeoutHandle = setTimeout(() => {
@@ -129,12 +130,26 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
     }, CHAT_EVENT_TIMEOUT_MS);
 
     const unsub = gateway.onChatEvent((evt) => {
-      if (evt.sessionKey !== draftSessionKey) return;
+      // `agent` RPC session keys are typically emitted as "agent:<agentId>:<sessionKey>".
+      // Keep backward compatibility for older/unscoped emitters used in tests while
+      // preferring scoped events to avoid duplicate accumulation from mixed streams.
+      const isScopedSession = evt.sessionKey === draftSessionKeyAgentScoped;
+      const isUnscopedSession = evt.sessionKey === draftSessionKey;
+      if (!isScopedSession && !isUnscopedSession) {
+        return;
+      }
+      if (isScopedSession) {
+        sawScopedSessionEvent = true;
+      }
+      if (isUnscopedSession && sawScopedSessionEvent) {
+        return;
+      }
 
       if (evt.state === 'delta' && evt.message) {
-        // Extract delta content from message
-        const msg = evt.message as { content?: string };
-        if (msg.content) content += msg.content;
+        const { text: deltaText, snapshot } = extractMessagePayload(evt.message);
+        if (deltaText) {
+          content = snapshot ? deltaText : (content + deltaText);
+        }
       }
       if (evt.state === 'final') {
         if (settled) return;
@@ -142,6 +157,13 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
         clearTimeout(timeoutHandle);
         usage = evt.usage;
         model = evt.model ?? 'unknown';
+        // Prefer final snapshot text when present to avoid partial accumulation artifacts.
+        if (evt.message) {
+          const { text: finalText, snapshot } = extractMessagePayload(evt.message);
+          if (finalText) {
+            content = snapshot ? finalText : (content + finalText);
+          }
+        }
         unsub();
         resolve({ content, usage, model });
       }
@@ -161,11 +183,8 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
       }
     });
 
-    // The last user message is the latest inbound email
-    const lastUserMessage = chatMessages[chatMessages.length - 1]?.content ?? messageContent;
-
     gateway.request('agent', {
-      message: lastUserMessage,
+      message: messageContent,
       agentId: 'main',
       sessionKey: draftSessionKey,
       deliver: false, // Draft generation does NOT deliver to WhatsApp
@@ -181,12 +200,18 @@ export async function generateDraft(params: GenerateDraftParams): Promise<Genera
   });
   const durationMs = Date.now() - startTime;
 
-  const draftContent = result.content;
-  if (!draftContent) {
+  const rawDraftContent = result.content;
+  if (!rawDraftContent) {
     throw new Error('Gateway returned empty response (no content from agent)');
   }
+  const draftContent = stripMarkdownToPlainText(rawDraftContent);
+  if (!draftContent) {
+    throw new Error('Gateway returned empty response after markdown normalization');
+  }
 
-  const model = result.model;
+  const model = result.model !== 'unknown'
+    ? result.model
+    : (defaultModel ?? 'unknown');
   const usage = result.usage;
   const inputTokens = usage?.prompt_tokens ?? 0;
   const outputTokens = usage?.completion_tokens ?? 0;
@@ -294,6 +319,9 @@ function stripProviderPrefix(model: string): string {
  * OpenClaw returns model names prefixed with provider (e.g., "anthropic/claude-sonnet-4-5-20250929").
  */
 function deriveProvider(model: string): string {
+  if (model.includes('codex') || model.startsWith('openai-codex/')) {
+    return 'openai-codex';
+  }
   if (model.includes('claude') || model.startsWith('anthropic/')) {
     return 'anthropic';
   }
@@ -301,4 +329,29 @@ function deriveProvider(model: string): string {
     return 'openai';
   }
   return 'unknown';
+}
+
+function extractMessagePayload(message: unknown): { text: string; snapshot: boolean } {
+  if (!message || typeof message !== 'object') return { text: '', snapshot: false };
+  const msg = message as Record<string, unknown>;
+  const content = msg.content;
+  const snapshot = msg.snapshot === true;
+
+  if (typeof content === 'string') {
+    return { text: content, snapshot };
+  }
+
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) => {
+        if (!part || typeof part !== 'object') return '';
+        const block = part as Record<string, unknown>;
+        if (typeof block.text === 'string') return block.text;
+        return '';
+      })
+      .join('');
+    return { text, snapshot };
+  }
+
+  return { text: '', snapshot };
 }

@@ -23,6 +23,33 @@ export interface SendReplyParams {
 // ─── Constants ──────────────────────────────────────────────
 
 const MAX_REFERENCES = 20;
+const HTML_TAG_RE = /<\/?[a-z][\s\S]*>/i;
+
+function looksLikeHtml(input: string): boolean {
+  return HTML_TAG_RE.test(input);
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Render plain text as safe HTML while preserving spaces/newlines.
+ */
+function plainTextToHtml(input: string): string {
+  const normalized = input.replace(/\r\n/g, '\n');
+  return `<div style="white-space: pre-wrap;">${escapeHtml(normalized)}</div>`;
+}
+
+function normalizeHtmlContent(input: string): string {
+  if (looksLikeHtml(input)) return input;
+  return plainTextToHtml(input);
+}
 
 // ─── Factory ────────────────────────────────────────────────
 
@@ -62,7 +89,8 @@ export function createSmtpService(config: SmtpConfig, logger: Logger) {
    * Append signature to HTML body.
    */
   function appendSignature(html: string, signature: string): string {
-    return `${html}<br/><br/>--<br/>${signature}`;
+    const signatureHtml = normalizeHtmlContent(signature);
+    return `${html}<br/><br/>--<br/>${signatureHtml}`;
   }
 
   /**
@@ -74,7 +102,7 @@ export function createSmtpService(config: SmtpConfig, logger: Logger) {
     signature: string,
   ): Promise<string> {
     const reSubject = ensureRePrefix(params.subject);
-    const htmlWithSignature = appendSignature(params.html, signature);
+    const htmlWithSignature = appendSignature(normalizeHtmlContent(params.html), signature);
 
     const mailOptions: nodemailer.SendMailOptions = {
       from: fromAddress,
@@ -118,7 +146,7 @@ export function createSmtpService(config: SmtpConfig, logger: Logger) {
     params: { to: string; subject: string; html: string },
     signature: string,
   ): Promise<string> {
-    const htmlWithSignature = appendSignature(params.html, signature);
+    const htmlWithSignature = appendSignature(normalizeHtmlContent(params.html), signature);
 
     try {
       const info = await transporter.sendMail({

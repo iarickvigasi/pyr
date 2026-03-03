@@ -80,6 +80,7 @@ export interface ConversationFilters extends Record<string, string | number | bo
   status?: string;
   channel?: string;
   guestId?: string;
+  bucket?: 'conversation_ota' | 'other';
   cursor?: string;
   limit?: number;
 }
@@ -92,6 +93,64 @@ export interface SendMessageData {
 export interface ApproveDraftData {
   draftId: string;
   content?: string; // If edited
+}
+
+export interface CustomerSuggestion {
+  status: 'linked' | 'matched_existing' | 'needs_create' | 'insufficient_data' | 'not_applicable';
+  classification: string | null;
+  reason: string;
+  matchedGuest?: {
+    id: string;
+    name: string;
+    email: string | null;
+  } | null;
+  candidate?: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    shouldCreate: boolean;
+  } | null;
+}
+
+export interface ConversationBookingAnalysis {
+  status: 'ready' | 'insufficient_data' | 'not_applicable' | 'error';
+  reason: string;
+  classification: string | null;
+  missingFields: Array<'checkIn' | 'checkOut'>;
+  candidate: {
+    checkIn: string | null;
+    checkOut: string | null;
+    totalPrice: number | null;
+    currency: 'EUR' | null;
+    source: string | null;
+    notes: string | null;
+    guest: {
+      name: string | null;
+      email: string | null;
+      phone: string | null;
+    };
+    confidence: number | null;
+  } | null;
+}
+
+export interface CreateConversationBookingPayload {
+  guest: {
+    mode: 'linked' | 'existing' | 'create';
+    guestId?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    language?: 'en' | 'de';
+  };
+  booking: {
+    roomId: string;
+    checkIn: string;
+    checkOut: string;
+    totalPrice: number;
+    status?: 'inquiry' | 'confirmed';
+    source?: string | null;
+    notes?: string | null;
+  };
 }
 
 // Hooks
@@ -255,6 +314,106 @@ export function useUpdateConversation(conversationId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+    },
+  });
+}
+
+export function useConversationCustomerSuggestion(conversationId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.conversations.suggestion(conversationId ?? ''),
+    queryFn: async () => {
+      const response = await api.get<{ data: CustomerSuggestion }>(
+        `/api/v1/conversations/${conversationId}/customer-suggestion`
+      );
+      return response.data;
+    },
+    enabled: !!conversationId,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useLinkConversationGuest(conversationId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (guestId: string) => {
+      const response = await api.post<{ data: Conversation }>(
+        `/api/v1/conversations/${conversationId}/link-guest`,
+        { guestId }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      if (!conversationId) return;
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.suggestion(conversationId) });
+    },
+  });
+}
+
+export function useCreateConversationGuest(conversationId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { name?: string; email?: string; phone?: string; language?: 'en' | 'de' }) => {
+      const response = await api.post<{ data: { guest: { id: string }; conversation: Conversation } }>(
+        `/api/v1/conversations/${conversationId}/create-guest`,
+        payload
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      if (!conversationId) return;
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.suggestion(conversationId) });
+    },
+  });
+}
+
+export function useAnalyzeConversationBooking(conversationId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post<{ data: ConversationBookingAnalysis }>(
+        `/api/v1/conversations/${conversationId}/booking-analysis`
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      if (!conversationId) return;
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.bookingAnalysis(conversationId) });
+    },
+  });
+}
+
+export function useCreateConversationBooking(conversationId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateConversationBookingPayload) => {
+      const response = await api.post<{
+        data: {
+          booking: { id: string; sourceConversationId: string | null };
+          guest: { id: string; name: string; email: string | null };
+          conversation: Conversation;
+        };
+      }>(
+        `/api/v1/conversations/${conversationId}/bookings`,
+        payload
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      if (!conversationId) return;
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.suggestion(conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.today });
     },
   });
 }

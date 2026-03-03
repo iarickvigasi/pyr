@@ -165,8 +165,27 @@ function createMockPrisma() {
     },
 
     guest: {
-      findFirst: vi.fn(async (args: { where: { email: string; deletedAt: null } }) => {
-        return guests.find((g) => g.email === args.where.email) ?? null;
+      findFirst: vi.fn(async (args: { where: Record<string, unknown> }) => {
+        const where = args.where as {
+          email?: string | { equals?: string; mode?: string };
+          name?: string | { equals?: string; mode?: string };
+        };
+
+        const emailEquals = typeof where.email === 'string'
+          ? where.email
+          : where.email?.equals;
+        if (emailEquals) {
+          return guests.find((g) => g.email.toLowerCase() === emailEquals.toLowerCase()) ?? null;
+        }
+
+        const nameEquals = typeof where.name === 'string'
+          ? where.name
+          : where.name?.equals;
+        if (nameEquals) {
+          return guests.find((g) => g.name.toLowerCase() === nameEquals.toLowerCase()) ?? null;
+        }
+
+        return null;
       }),
       create: vi.fn(async (args: { data: Record<string, unknown> }) => {
         guestCounter++;
@@ -207,8 +226,24 @@ function createMockPrisma() {
                   guests.push(guest);
                   return guest;
                 },
-                findFirst: async (findArgs: { where: { email: string; deletedAt: null } }) => {
-                  return guests.find((g) => g.email === findArgs.where.email) ?? null;
+                findFirst: async (findArgs: { where: Record<string, unknown> }) => {
+                  const where = findArgs.where as {
+                    email?: string | { equals?: string; mode?: string };
+                    name?: string | { equals?: string; mode?: string };
+                  };
+                  const emailEquals = typeof where.email === 'string'
+                    ? where.email
+                    : where.email?.equals;
+                  if (emailEquals) {
+                    return guests.find((g) => g.email.toLowerCase() === emailEquals.toLowerCase()) ?? null;
+                  }
+                  const nameEquals = typeof where.name === 'string'
+                    ? where.name
+                    : where.name?.equals;
+                  if (nameEquals) {
+                    return guests.find((g) => g.name.toLowerCase() === nameEquals.toLowerCase()) ?? null;
+                  }
+                  return null;
                 },
               };
             }
@@ -365,7 +400,7 @@ describe('Pipeline Integration Tests', () => {
 
   // ─── Scenario 1: Single email ingestion ──────────────────
 
-  it('processes a single email and stores message, conversation, and guest', async () => {
+  it('processes a single email and stores message/conversation without auto-creating a guest', async () => {
     const rawEmails = [
       {
         uid: 1,
@@ -389,7 +424,7 @@ describe('Pipeline Integration Tests', () => {
     const msg = prisma._data.messages[0]!;
     expect(msg.fromAddress).toBe('anna@example.com');
     expect(msg.subject).toBe('Retreat inquiry');
-    expect(msg.classification).toBe('guest_inquiry');
+    expect(msg.classification).toBe('conversation');
     expect(msg.direction).toBe('in');
     expect(msg.channel).toBe('email');
 
@@ -397,14 +432,12 @@ describe('Pipeline Integration Tests', () => {
     expect(prisma._data.conversations).toHaveLength(1);
     const conv = prisma._data.conversations[0]!;
     expect(conv.subject).toBe('Retreat inquiry');
-    expect(conv.classification).toBe('guest_inquiry');
+    expect(conv.classification).toBe('conversation');
     expect(conv.channel).toBe('email');
+    expect(conv.guestId).toBeNull();
 
-    // Verify guest created
-    expect(prisma._data.guests).toHaveLength(1);
-    const guest = prisma._data.guests[0]!;
-    expect(guest.name).toBe('Anna Schmidt');
-    expect(guest.email).toBe('anna@example.com');
+    // Verify guest was NOT auto-created
+    expect(prisma._data.guests).toHaveLength(0);
   });
 
   // ─── Scenario 2: Duplicate email rejection ──────────────
@@ -529,9 +562,9 @@ describe('Pipeline Integration Tests', () => {
 
     expect(result.processed).toBe(1);
 
-    // Message stored with ota_notification classification
+    // Message stored with ota classification
     expect(prisma._data.messages).toHaveLength(1);
-    expect(prisma._data.messages[0]!.classification).toBe('ota_notification');
+    expect(prisma._data.messages[0]!.classification).toBe('ota_tripaneer');
 
     // No guest created
     expect(prisma._data.guests).toHaveLength(0);
@@ -556,9 +589,9 @@ describe('Pipeline Integration Tests', () => {
 
     expect(result.processed).toBe(1);
 
-    // Message stored with spam_newsletter classification
+    // Message stored with non-actionable classification
     expect(prisma._data.messages).toHaveLength(1);
-    expect(prisma._data.messages[0]!.classification).toBe('spam_newsletter');
+    expect(prisma._data.messages[0]!.classification).toBe('other');
 
     // No guest created
     expect(prisma._data.guests).toHaveLength(0);

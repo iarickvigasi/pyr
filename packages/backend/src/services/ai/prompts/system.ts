@@ -11,6 +11,7 @@
  */
 
 import type { DraftContext } from '../context-builder.js';
+import { TZ, nicosiaToday } from '../../../lib/date-helpers.js';
 
 // ─── Brand voice ─────────────────────────────────────────
 
@@ -99,9 +100,14 @@ You MUST follow these rules in every response:
 
 6. **Never make guarantees about weather or experience quality.** While Cyprus generally has wonderful weather, never promise sunshine or specific conditions. Instead, emphasize the overall experience and the indoor/rooftop options available.
 
-7. **No unauthorized commitments.** Do not make promises about special arrangements, custom packages, exceptions to policies, or anything that has not been explicitly authorized. When unsure, say you will discuss with the team and follow up.`;
+7. **No unauthorized commitments.** Do not make promises about special arrangements, custom packages, exceptions to policies, or anything that has not been explicitly authorized. When unsure, say you will discuss with the team and follow up.
+
+8. **Plain text only (no Markdown).** Output plain email text only. Do not use Markdown syntax such as headings (#), bold/italic markers (**, __, _), code fences/backticks, or markdown links.`;
 
 // ─── Formatting helpers ──────────────────────────────────
+
+const HISTORY_MESSAGES_LIMIT = 20;
+const MESSAGE_SNIPPET_MAX_CHARS = 500;
 
 /**
  * Format guest profile for system prompt context.
@@ -196,6 +202,45 @@ export function formatFaqs(faqs: Array<{ question: string; answer: string }>): s
     .join('\n\n');
 }
 
+function formatCyprusDateTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+function clipMessageForPrompt(content: string): string {
+  const compact = content.replace(/\s+/g, ' ').trim();
+  if (compact.length <= MESSAGE_SNIPPET_MAX_CHARS) return compact;
+  return `${compact.slice(0, MESSAGE_SNIPPET_MAX_CHARS)}...`;
+}
+
+/**
+ * Format conversation history for prompt context.
+ * Includes the most recent messages in chronological order.
+ */
+export function formatConversationHistory(
+  messages: DraftContext['conversation']['messages'],
+): string {
+  if (messages.length === 0) {
+    return 'No conversation messages available.';
+  }
+
+  const recent = messages.slice(-HISTORY_MESSAGES_LIMIT);
+  return recent
+    .map((m) => {
+      const who = m.direction === 'in' ? 'Guest' : 'Ines';
+      const at = formatCyprusDateTime(m.sentAt);
+      return `- [${at} ${TZ}] ${who}: ${clipMessageForPrompt(m.content)}`;
+    })
+    .join('\n');
+}
+
 // ─── Prompt assembly ─────────────────────────────────────
 
 /**
@@ -210,8 +255,13 @@ export function buildSystemPrompt(context: DraftContext, language: 'en' | 'de'):
   const langInstruction = language === 'de'
     ? 'Respond in German. Sign off as Ines.'
     : 'Respond in English. Sign off as Ines.';
+  const todayCyprus = nicosiaToday();
 
   return `${BRAND_VOICE_PREFIX}
+
+## Current Date
+
+Today in Cyprus (${TZ}) is ${todayCyprus}.
 
 ## Current Guest
 
@@ -234,6 +284,12 @@ ${formatEvents(context.events)}
 Use these pre-approved answers when the guest's question matches. Adapt the tone and language to the guest's context. If responding in German, translate the FAQ answer naturally.
 
 ${formatFaqs(context.faqs)}
+
+## Conversation History (Most Recent Context)
+
+Use this thread history to avoid repeating answered points and to maintain context continuity.
+
+${formatConversationHistory(context.conversation.messages)}
 
 ${GUARDRAILS}
 

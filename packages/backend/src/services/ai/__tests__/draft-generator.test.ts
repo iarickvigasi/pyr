@@ -16,12 +16,13 @@ function makeConversation(overrides?: {
   latestContent?: string;
 }) {
   const messageCount = overrides?.messageCount ?? 3;
+  const baseTime = new Date('2026-03-15T10:00:00Z');
   const messages = Array.from({ length: messageCount }, (_, i) => ({
+    sentAt: new Date(baseTime.getTime() + i * 60 * 60 * 1000),
     direction: i % 2 === 0 ? 'in' : 'out',
     content: i === messageCount - 1
       ? (overrides?.latestContent ?? 'I would like to book a 4-day retreat in April.')
       : `Message ${i + 1}`,
-    sentAt: new Date(`2026-03-15T${10 + i}:00:00Z`),
   }));
 
   return {
@@ -284,6 +285,30 @@ describe('generateDraft', () => {
       expect.objectContaining({ flags: expect.arrayContaining(['cancellation', 'dietary']) }),
       'Sensitive message detected -- review draft carefully',
     );
+  });
+
+  it('normalizes markdown output to plain text', async () => {
+    const gateway = makeGateway({
+      content: 'Hi **Maria**,\n\nThanks for your message.\n\n- We have availability.\n[Book here](https://example.com)',
+    });
+    const prisma = makePrisma({});
+    const logger = makeLogger();
+
+    const result = await generateDraft({
+      prisma: prisma as never,
+      gateway: gateway as never,
+      conversationId: 'conv-1',
+      messageId: 'msg-1',
+      guestLanguage: 'en',
+      logger: logger as never,
+    });
+
+    expect(result.content).toContain('Hi Maria');
+    expect(result.content).toContain('We have availability.');
+    expect(result.content).toContain('Book here');
+    expect(result.content).not.toContain('**');
+    expect(result.content).not.toContain('[Book here]');
+    expect(result.content).not.toContain('https://example.com');
   });
 
   it('generates a draft for unknown guest (null guestId)', async () => {

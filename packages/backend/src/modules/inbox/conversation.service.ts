@@ -5,10 +5,25 @@ import { clampLimit } from '../../lib/pagination.js';
 import { notDeleted } from '../../lib/prisma-helpers.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { AppError, NotFoundError, BadRequestError } from '../../lib/errors.js';
+import { stripMarkdownToPlainText } from '../../lib/markdown.js';
 import { QUEUE_NAMES } from '@pyr/shared';
 import type { AiDraftJobData } from '@pyr/shared';
 import type { CreateConversationBody, ListConversationsQuery } from './inbox.schema.js';
-import type { Conversation, ConversationWithMessages, AiDraft, Message } from '../../types/entities.js';
+import type { Conversation, ConversationWithMessages, AiDraft, Message, Booking } from '../../types/entities.js';
+import {
+  CONVERSATION_OTA_CLASSIFICATIONS,
+  OTHER_CLASSIFICATIONS,
+  normalizePrimaryClassification,
+  isOtaClassification,
+} from '../../services/email/inbox-classification.js';
+import { parseOtaEmail } from '../../services/email/ota-parsers/index.js';
+import { detectLanguage } from '../../services/email/language-detector.js';
+import { createBooking } from '../bookings/booking.service.js';
+import {
+  analyzeBookingWithOpenClaw,
+  type BookingAnalysisCandidate,
+  type BookingMissingField,
+} from '../../services/email/openclaw-booking-analyzer.js';
 
 export async function listConversations(
   prisma: PrismaClient,
@@ -24,6 +39,15 @@ export async function listConversations(
 
   if (query.status) where.status = query.status as ConversationStatus;
   if (query.guestId) where.guestId = query.guestId;
+  if (query.bucket === 'conversation_ota') {
+    where.OR = [
+      { classification: { in: [...CONVERSATION_OTA_CLASSIFICATIONS] } },
+      { classification: null },
+    ];
+  }
+  if (query.bucket === 'other') {
+    where.classification = { in: [...OTHER_CLASSIFICATIONS] };
+  }
 
   const conversations = await prisma.conversation.findMany({
     where,
@@ -116,6 +140,606 @@ export async function getUnreadCount(
 ): Promise<number> {
   return prisma.conversation.count({
     where: { isRead: false, status: 'open' },
+  });
+}
+
+export type CustomerSuggestionStatus =
+  | 'linked'
+  | 'matched_existing'
+  | 'needs_create'
+  | 'insufficient_data'
+  | 'not_applicable';
+
+export interface ConversationCustomerSuggestion {
+  status: CustomerSuggestionStatus;
+  classification: string | null;
+  reason: string;
+  matchedGuest?: { id: string; name: string; email: string | null } | null;
+  candidate?: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    shouldCreate: boolean;
+  } | null;
+}
+
+function guessNameFromEmail(email: string | null): string | null {
+  if (!email) return null;
+  const local = email.split('@')[0]?.trim();
+  return local ? local : null;
+}
+
+export async function getConversationCustomerSuggestion(
+  prisma: PrismaClient,
+  conversationId: string,
+): Promise<ConversationCustomerSuggestion> {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      guest: { select: { id: true, name: true, email: true } },
+      messages: {
+        orderBy: { sentAt: 'desc' },
+        take: 8,
+        select: {
+          direction: true,
+          fromAddress: true,
+          fromName: true,
+          subject: true,
+          htmlContent: true,
+          content: true,
+        },
+      },
+    },
+  });
+
+  if (!conversation) {
+    throw new NotFoundError('Conversation', conversationId);
+  }
+
+  if (conversation.guest) {
+    return {
+      status: 'linked',
+      classification: conversation.classification,
+      reason: 'Conversation is already linked to a guest',
+      matchedGuest: conversation.guest,
+      candidate: null,
+    };
+  }
+
+  const primary = normalizePrimaryClassification(conversation.classification);
+  if (primary === 'other') {
+    return {
+      status: 'not_applicable',
+      classification: conversation.classification,
+      reason: 'Conversation classification is non-actionable',
+      candidate: null,
+    };
+  }
+
+  const latestInbound = conversation.messages.find((m) => m.direction === 'in');
+  if (!latestInbound) {
+    return {
+      status: 'insufficient_data',
+      classification: conversation.classification,
+      reason: 'No inbound message available to infer customer data',
+      candidate: null,
+    };
+  }
+
+  const otaData = isOtaClassification(conversation.classification)
+    ? parseOtaEmail(
+        latestInbound.fromAddress ?? '',
+        latestInbound.subject ?? '',
+        latestInbound.htmlContent ?? '',
+        latestInbound.content,
+      )
+    : null;
+
+  const candidate = {
+    name: otaData?.guestName ?? latestInbound.fromName ?? guessNameFromEmail(latestInbound.fromAddress),
+    email: otaData?.guestEmail ?? latestInbound.fromAddress ?? null,
+    phone: otaData?.guestPhone ?? null,
+    shouldCreate: true,
+  };
+
+  let matchedGuest: { id: string; name: string; email: string | null } | null = null;
+  if (candidate.email) {
+    matchedGuest = await prisma.guest.findFirst({
+      where: {
+        email: { equals: candidate.email, mode: 'insensitive' },
+        deletedAt: null,
+      },
+      select: { id: true, name: true, email: true },
+    });
+  }
+
+  if (!matchedGuest && candidate.name) {
+    matchedGuest = await prisma.guest.findFirst({
+      where: {
+        name: { equals: candidate.name, mode: 'insensitive' },
+        deletedAt: null,
+      },
+      select: { id: true, name: true, email: true },
+    });
+  }
+
+  if (matchedGuest) {
+    return {
+      status: 'matched_existing',
+      classification: conversation.classification,
+      reason: 'Existing guest match found from inbound email data',
+      matchedGuest,
+      candidate,
+    };
+  }
+
+  if (!candidate.name && !candidate.email) {
+    return {
+      status: 'insufficient_data',
+      classification: conversation.classification,
+      reason: 'Not enough customer data to suggest a guest record',
+      candidate: { ...candidate, shouldCreate: false },
+    };
+  }
+
+  return {
+    status: 'needs_create',
+    classification: conversation.classification,
+    reason: 'No existing guest matched; suggest creating a new guest',
+    candidate,
+  };
+}
+
+export type ConversationBookingAnalysisStatus =
+  | 'ready'
+  | 'insufficient_data'
+  | 'not_applicable'
+  | 'error';
+
+export interface ConversationBookingAnalysis {
+  status: ConversationBookingAnalysisStatus;
+  reason: string;
+  classification: string | null;
+  missingFields: BookingMissingField[];
+  candidate: BookingAnalysisCandidate | null;
+}
+
+export interface CreateConversationBookingPayload {
+  guest: {
+    mode: 'linked' | 'existing' | 'create';
+    guestId?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    language?: 'en' | 'de';
+  };
+  booking: {
+    roomId: string;
+    checkIn: string;
+    checkOut: string;
+    totalPrice: number;
+    status?: 'inquiry' | 'confirmed';
+    source?: string | null;
+    notes?: string | null;
+  };
+}
+
+export async function getConversationBookingAnalysis(
+  prisma: PrismaClient,
+  app: FastifyInstance,
+  conversationId: string,
+): Promise<ConversationBookingAnalysis> {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      id: true,
+      classification: true,
+      subject: true,
+      messages: {
+        orderBy: { sentAt: 'desc' },
+        take: 8,
+        select: {
+          direction: true,
+          fromAddress: true,
+          fromName: true,
+          subject: true,
+          content: true,
+        },
+      },
+    },
+  });
+
+  if (!conversation) {
+    throw new NotFoundError('Conversation', conversationId);
+  }
+
+  const latestInbound = conversation.messages.find((m) => m.direction === 'in');
+  if (!latestInbound) {
+    return {
+      status: 'insufficient_data',
+      reason: 'No inbound message available to analyze booking data',
+      classification: conversation.classification,
+      missingFields: ['checkIn', 'checkOut'],
+      candidate: null,
+    };
+  }
+
+  if (!app.gateway) {
+    return {
+      status: 'error',
+      reason: 'OpenClaw gateway is not available',
+      classification: conversation.classification,
+      missingFields: [],
+      candidate: null,
+    };
+  }
+
+  const analysis = await analyzeBookingWithOpenClaw({
+    gateway: app.gateway,
+    logger: app.log,
+    conversationId,
+    classification: conversation.classification,
+    subject: conversation.subject,
+    latestInboundMessage: {
+      fromName: latestInbound.fromName,
+      fromAddress: latestInbound.fromAddress,
+      subject: latestInbound.subject,
+      content: latestInbound.content,
+    },
+    recentMessages: [...conversation.messages]
+      .reverse()
+      .map((message) => ({
+        direction: message.direction,
+        content: message.content,
+      })),
+  });
+
+  return {
+    ...analysis,
+    classification: conversation.classification,
+  };
+}
+
+export async function createBookingFromConversation(
+  prisma: PrismaClient,
+  conversationId: string,
+  payload: CreateConversationBookingPayload,
+  actorId?: string,
+): Promise<{
+  booking: Booking;
+  guest: { id: string; name: string; email: string | null };
+  conversation: Conversation;
+}> {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      guest: { select: { id: true, name: true, email: true } },
+      messages: {
+        where: { direction: 'in' },
+        orderBy: { sentAt: 'desc' },
+        take: 1,
+        select: { fromAddress: true, fromName: true, content: true },
+      },
+    },
+  });
+
+  if (!conversation) {
+    throw new NotFoundError('Conversation', conversationId);
+  }
+
+  const latestInbound = conversation.messages[0];
+  let resolvedGuest: { id: string; name: string; email: string | null } | null = null;
+
+  if (payload.guest.mode === 'linked') {
+    if (!conversation.guestId) {
+      throw new BadRequestError('Conversation has no linked guest');
+    }
+    const linkedGuest = await prisma.guest.findFirst({
+      where: { id: conversation.guestId, ...notDeleted },
+      select: { id: true, name: true, email: true },
+    });
+    if (!linkedGuest) {
+      throw new NotFoundError('Guest', conversation.guestId);
+    }
+    resolvedGuest = linkedGuest;
+  }
+
+  if (payload.guest.mode === 'existing') {
+    const targetGuestId = payload.guest.guestId?.trim();
+    if (!targetGuestId) {
+      throw new BadRequestError('guest.guestId is required when mode=existing');
+    }
+    const existingGuest = await prisma.guest.findFirst({
+      where: { id: targetGuestId, ...notDeleted },
+      select: { id: true, name: true, email: true },
+    });
+    if (!existingGuest) {
+      throw new NotFoundError('Guest', targetGuestId);
+    }
+    resolvedGuest = existingGuest;
+  }
+
+  if (payload.guest.mode === 'create') {
+    const fallbackName = latestInbound?.fromName ?? guessNameFromEmail(latestInbound?.fromAddress ?? null);
+    const name = payload.guest.name?.trim() || fallbackName;
+    const email = payload.guest.email?.trim() || latestInbound?.fromAddress || null;
+    const phone = payload.guest.phone?.trim() || null;
+    const language = payload.guest.language
+      ?? (latestInbound?.content ? detectLanguage(latestInbound.content) : 'en');
+
+    if (!name) {
+      throw new BadRequestError('Guest name is required to create a guest');
+    }
+
+    if (email) {
+      const existingByEmail = await prisma.guest.findFirst({
+        where: {
+          email: { equals: email, mode: 'insensitive' },
+          deletedAt: null,
+        },
+        select: { id: true, name: true, email: true },
+      });
+      if (existingByEmail) {
+        resolvedGuest = existingByEmail;
+      }
+    }
+
+    if (!resolvedGuest) {
+      const createdGuest = await prisma.guest.create({
+        data: {
+          name,
+          email,
+          phone,
+          language,
+          source: isOtaClassification(conversation.classification) ? 'ota-email' : 'email',
+        },
+        select: { id: true, name: true, email: true },
+      });
+      resolvedGuest = createdGuest;
+
+      await writeAuditLog(prisma, {
+        entityType: 'guest',
+        entityId: createdGuest.id,
+        action: 'create',
+        changes: {
+          name: createdGuest.name,
+          email: createdGuest.email,
+          phone,
+          language,
+          source: isOtaClassification(conversation.classification) ? 'ota-email' : 'email',
+          trigger: 'manual_create_from_inbox_booking_wizard',
+        },
+        actor: getActor(actorId),
+      });
+    }
+  }
+
+  if (!resolvedGuest) {
+    throw new BadRequestError('Unable to resolve guest for booking creation');
+  }
+
+  let updatedConversation = conversation as unknown as Conversation;
+  if (conversation.guestId !== resolvedGuest.id) {
+    const previousGuestId = conversation.guestId;
+    updatedConversation = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { guestId: resolvedGuest.id },
+    }) as Conversation;
+
+    await writeAuditLog(prisma, {
+      entityType: 'conversation',
+      entityId: conversationId,
+      action: 'update',
+      changes: {
+        guestId: { from: previousGuestId, to: resolvedGuest.id },
+        trigger: 'manual_guest_link_for_booking_creation',
+      },
+      actor: getActor(actorId),
+    });
+  }
+
+  const createdBooking = await createBooking(prisma, {
+    guestIds: [resolvedGuest.id],
+    roomId: payload.booking.roomId,
+    checkIn: payload.booking.checkIn,
+    checkOut: payload.booking.checkOut,
+    status: payload.booking.status ?? 'inquiry',
+    totalPrice: payload.booking.totalPrice,
+    source: payload.booking.source ?? null,
+    notes: payload.booking.notes ?? null,
+  }, actorId);
+
+  const bookingWithSourceConversation = await prisma.booking.update({
+    where: { id: createdBooking.id },
+    data: { sourceConversationId: conversationId },
+  });
+
+  await writeAuditLog(prisma, {
+    entityType: 'booking',
+    entityId: createdBooking.id,
+    action: 'update',
+    changes: {
+      sourceConversationId: {
+        from: createdBooking.sourceConversationId,
+        to: conversationId,
+      },
+      trigger: 'manual_inbox_booking_link',
+    },
+    actor: getActor(actorId),
+  });
+
+  const refreshedConversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+  });
+  if (!refreshedConversation) {
+    throw new NotFoundError('Conversation', conversationId);
+  }
+  updatedConversation = refreshedConversation as Conversation;
+
+  return {
+    booking: bookingWithSourceConversation as Booking,
+    guest: resolvedGuest,
+    conversation: updatedConversation,
+  };
+}
+
+export async function linkConversationToGuest(
+  prisma: PrismaClient,
+  conversationId: string,
+  guestId: string,
+  actorId?: string,
+): Promise<Conversation> {
+  return prisma.$transaction(async (tx) => {
+    const [conversation, guest] = await Promise.all([
+      tx.conversation.findUnique({ where: { id: conversationId } }),
+      tx.guest.findFirst({ where: { id: guestId, ...notDeleted } }),
+    ]);
+
+    if (!conversation) throw new NotFoundError('Conversation', conversationId);
+    if (!guest) throw new NotFoundError('Guest', guestId);
+
+    const updated = await tx.conversation.update({
+      where: { id: conversationId },
+      data: { guestId },
+    });
+
+    await writeAuditLog(tx, {
+      entityType: 'conversation',
+      entityId: conversationId,
+      action: 'update',
+      changes: {
+        guestId: { from: conversation.guestId, to: guestId },
+        trigger: 'manual_guest_link',
+      },
+      actor: getActor(actorId),
+    });
+
+    return updated as Conversation;
+  });
+}
+
+export async function createGuestFromConversation(
+  prisma: PrismaClient,
+  conversationId: string,
+  payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    language?: 'en' | 'de';
+  },
+  actorId?: string,
+): Promise<{ guest: { id: string; name: string; email: string | null }; conversation: Conversation }> {
+  return prisma.$transaction(async (tx) => {
+    const conversation = await tx.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        guest: { select: { id: true } },
+        messages: {
+          where: { direction: 'in' },
+          orderBy: { sentAt: 'desc' },
+          take: 1,
+          select: { fromAddress: true, fromName: true, content: true },
+        },
+      },
+    });
+
+    if (!conversation) throw new NotFoundError('Conversation', conversationId);
+    if (conversation.guest) {
+      throw new BadRequestError('Conversation is already linked to a guest');
+    }
+
+    const latestInbound = conversation.messages[0];
+    const fallbackName = latestInbound?.fromName ?? guessNameFromEmail(latestInbound?.fromAddress ?? null);
+    const name = payload.name?.trim() || fallbackName;
+    const email = payload.email?.trim() || latestInbound?.fromAddress || null;
+    const phone = payload.phone?.trim() || null;
+
+    if (!name) {
+      throw new BadRequestError('Guest name is required to create a new guest');
+    }
+
+    if (email) {
+      const existingByEmail = await tx.guest.findFirst({
+        where: {
+          email: { equals: email, mode: 'insensitive' },
+          deletedAt: null,
+        },
+        select: { id: true, name: true, email: true },
+      });
+
+      if (existingByEmail) {
+        const linkedConversation = await tx.conversation.update({
+          where: { id: conversationId },
+          data: { guestId: existingByEmail.id },
+        });
+
+        await writeAuditLog(tx, {
+          entityType: 'conversation',
+          entityId: conversationId,
+          action: 'update',
+          changes: {
+            guestId: { from: null, to: existingByEmail.id },
+            trigger: 'auto_link_existing_by_email',
+          },
+          actor: getActor(actorId),
+        });
+
+        return {
+          guest: existingByEmail,
+          conversation: linkedConversation as Conversation,
+        };
+      }
+    }
+
+    const language = payload.language
+      ?? (latestInbound?.content ? detectLanguage(latestInbound.content) : 'en');
+
+    const guest = await tx.guest.create({
+      data: {
+        name,
+        email,
+        phone,
+        language,
+        source: isOtaClassification(conversation.classification) ? 'ota-email' : 'email',
+      },
+      select: { id: true, name: true, email: true },
+    });
+
+    const updatedConversation = await tx.conversation.update({
+      where: { id: conversationId },
+      data: { guestId: guest.id },
+    });
+
+    await writeAuditLog(tx, {
+      entityType: 'guest',
+      entityId: guest.id,
+      action: 'create',
+      changes: {
+        name: guest.name,
+        email: guest.email,
+        phone,
+        language,
+        source: isOtaClassification(conversation.classification) ? 'ota-email' : 'email',
+        trigger: 'manual_create_from_inbox',
+      },
+      actor: getActor(actorId),
+    });
+
+    await writeAuditLog(tx, {
+      entityType: 'conversation',
+      entityId: conversationId,
+      action: 'update',
+      changes: {
+        guestId: { from: null, to: guest.id },
+        trigger: 'manual_guest_create',
+      },
+      actor: getActor(actorId),
+    });
+
+    return {
+      guest,
+      conversation: updatedConversation as Conversation,
+    };
   });
 }
 
@@ -244,7 +868,11 @@ export async function approveDraft(
   }
 
   // Determine final content and status
-  const finalContent = editedContent ?? draft.content;
+  const rawFinalContent = editedContent ?? draft.content;
+  const finalContent = stripMarkdownToPlainText(rawFinalContent);
+  if (!finalContent) {
+    throw new BadRequestError('Cannot send: draft content is empty');
+  }
   const finalStatus = editedContent ? 'edited' : 'approved';
 
   // Get conversation with guest and messages for threading
@@ -410,13 +1038,17 @@ export async function generateDraftForConversation(
   }
 
   // 2. Find the latest inbound message
-  const latestInbound = await prisma.message.findFirst({
-    where: { conversationId, direction: 'in' },
-    orderBy: { sentAt: 'desc' },
+  const latestMessage = await prisma.message.findFirst({
+    where: { conversationId },
+    orderBy: [{ sentAt: 'desc' }, { createdAt: 'desc' }],
+    select: { id: true, direction: true },
   });
 
-  if (!latestInbound) {
-    throw new BadRequestError('No inbound message in conversation to generate a draft for');
+  if (!latestMessage) {
+    throw new BadRequestError('No messages in conversation to generate a draft for');
+  }
+  if (latestMessage.direction !== 'in') {
+    throw new BadRequestError('Latest message is outbound -- wait for a new inbound message before generating a draft');
   }
 
   // 3. Determine guest language
@@ -431,7 +1063,7 @@ export async function generateDraftForConversation(
   // 5. Enqueue ai-draft job
   const job = await aiDraftQueue.add('ai-draft', {
     conversationId,
-    messageId: latestInbound.id,
+    messageId: latestMessage.id,
     guestLanguage,
   } satisfies AiDraftJobData);
 
@@ -440,11 +1072,11 @@ export async function generateDraftForConversation(
     entityType: 'ai_draft',
     entityId: conversationId,
     action: 'create',
-    changes: { messageId: latestInbound.id, trigger: 'manual_generate' },
+    changes: { messageId: latestMessage.id, trigger: 'manual_generate' },
     actor: getActor(actor),
   });
 
-  return { jobId: job.id ?? 'unknown', messageId: latestInbound.id };
+  return { jobId: job.id ?? 'unknown', messageId: latestMessage.id };
 }
 
 /**

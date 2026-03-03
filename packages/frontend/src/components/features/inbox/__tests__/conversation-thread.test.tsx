@@ -206,4 +206,30 @@ describe('ConversationThread', () => {
     expect(screen.getByText('Newest pending draft content')).toBeInTheDocument();
     expect(screen.queryByText('Older rejected draft content')).not.toBeInTheDocument();
   });
+
+  it('does not show generate button when latest message is outbound', async () => {
+    renderWithProviders(
+      <ConversationThread
+        messages={[
+          baseMessage,
+          {
+            ...baseMessage,
+            id: 'msg-2',
+            direction: 'out',
+            content: 'Already replied',
+            sentAt: '2026-03-03T10:10:00.000Z',
+            createdAt: '2026-03-03T10:10:00.000Z',
+          },
+        ]}
+        guestName="Guest"
+        conversationId="conv-1"
+        drafts={[]}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /generate ai draft/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Latest message is your reply. Wait for a new inbound message before generating another draft.')
+    ).toBeInTheDocument();
+  });
 });

@@ -336,11 +336,14 @@ export function ConversationThread({
 
   // Determine if the "Generate AI Draft" button should be shown:
   // 1. The conversation has at least one inbound message
-  // 2. No pending draft exists anywhere in the drafts list
-  // 3. No generation is currently in progress
+  // 2. Latest message is inbound (prevents drafting again after already replying)
+  // 3. No pending draft exists anywhere in the drafts list
+  // 4. No generation is currently in progress
   const hasInboundMessage = messages.some((m) => m.direction === 'in');
+  const latestMessage = messages[messages.length - 1];
+  const latestMessageIsInbound = latestMessage?.direction === 'in';
   const hasPendingDraft = drafts?.some((d) => d.status === 'pending') ?? false;
-  const showGenerateButton = hasInboundMessage && !hasPendingDraft && !generationInFlight;
+  const showGenerateButton = hasInboundMessage && latestMessageIsInbound && !hasPendingDraft && !generationInFlight;
   const showGenerationStatus = generationState && (generationInFlight || generationState.phase === 'ready' || generationState.phase === 'error');
   const statusCopy = generationState ? getGenerationStatusCopy(generationState) : null;
   const hasGenerationError = generationState?.phase === 'error';
@@ -492,6 +495,15 @@ export function ConversationThread({
           <CardContent className="py-3">
             <p className="text-xs text-muted-foreground">
               A pending draft already exists. Review or reject it before generating a new one.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      {hasInboundMessage && !latestMessageIsInbound && !hasPendingDraft && (
+        <Card className="border border-muted bg-muted/20">
+          <CardContent className="py-3">
+            <p className="text-xs text-muted-foreground">
+              Latest message is your reply. Wait for a new inbound message before generating another draft.
             </p>
           </CardContent>
         </Card>

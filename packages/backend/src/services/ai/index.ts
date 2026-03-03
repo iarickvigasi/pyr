@@ -23,6 +23,7 @@ export function createAiModule(app: FastifyInstance): AiModuleContract {
         conversationId: params.conversationId,
         messageId: params.messageId,
         guestLanguage: params.guestLanguage,
+        defaultModel: app.config.AI_DEFAULT_MODEL,
         logger,
       });
       return {

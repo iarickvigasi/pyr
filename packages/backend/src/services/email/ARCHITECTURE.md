@@ -1,5 +1,9 @@
 # Email Module Architecture
 
+> Note: Inbox ingestion behavior was reworked in March 2026. For the current
+> OpenClaw-driven classification and customer-link flow, see
+> `docs/inbox-openclaw-rework.md`.
+
 ## Overview
 
 The email module is the primary inbound communication pipeline for Puppy Yoga Retreat. It handles the complete lifecycle of email processing: polling IMAP for new messages, parsing MIME content with sanitization, deduplicating by Message-ID, classifying emails into categories (guest inquiry, OTA notification, spam, system), matching senders to CRM guest records, threading conversations using RFC 5322 headers (In-Reply-To, References), storing messages with attachments, and triggering downstream actions -- AI draft generation for guest inquiries and automatic booking creation for OTA notifications.

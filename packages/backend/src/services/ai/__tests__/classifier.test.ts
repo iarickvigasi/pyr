@@ -92,6 +92,18 @@ describe('classifyEdgeCases', () => {
     it('detects German "Kann ich einen Welpen adoptieren?" as adoption', () => {
       expect(classifyEdgeCases('Kann ich einen Welpen adoptieren?')).toContain('adoption');
     });
+
+    it('detects German "Darf ich einen Welpen behalten?" as adoption', () => {
+      expect(classifyEdgeCases('Darf ich einen Welpen behalten?')).toContain('adoption');
+    });
+
+    it('does not detect adoption for "einbehalten" in cancellation/refund policy text', () => {
+      expect(
+        classifyEdgeCases(
+          'Bei einer Stornierung 29–15 Tage vor Anreise werden 50 % des Gesamtpreises einbehalten.',
+        ),
+      ).not.toContain('adoption');
+    });
   });
 
   describe('multiple flags', () => {

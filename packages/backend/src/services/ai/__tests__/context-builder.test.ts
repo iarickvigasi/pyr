@@ -3,6 +3,7 @@ import {
   BRAND_VOICE_PREFIX,
   GUARDRAILS,
   buildSystemPrompt,
+  formatConversationHistory,
   formatGuestProfile,
   formatBookings,
   formatAvailability,
@@ -109,7 +110,7 @@ describe('BRAND_VOICE_PREFIX', () => {
 // ─── GUARDRAILS tests ────────────────────────────────────
 
 describe('GUARDRAILS', () => {
-  it('includes all 7 guardrails', () => {
+  it('includes critical guardrails', () => {
     expect(GUARDRAILS).toContain('No pricing commitments without checking availability');
     expect(GUARDRAILS).toContain('No medical or dietary advice');
     expect(GUARDRAILS).toContain('No promises about specific puppies');
@@ -117,6 +118,7 @@ describe('GUARDRAILS', () => {
     expect(GUARDRAILS).toContain('Never share personal information about other guests');
     expect(GUARDRAILS).toContain('Never make guarantees about weather');
     expect(GUARDRAILS).toContain('No unauthorized commitments');
+    expect(GUARDRAILS).toContain('Plain text only (no Markdown)');
   });
 });
 
@@ -226,6 +228,31 @@ describe('formatFaqs', () => {
   });
 });
 
+describe('formatConversationHistory', () => {
+  it('formats message direction, timestamp, and content', () => {
+    const result = formatConversationHistory([
+      {
+        direction: 'in',
+        content: 'Hello, I have a question about availability.',
+        sentAt: new Date('2026-03-15T10:00:00Z'),
+      },
+      {
+        direction: 'out',
+        content: 'Thanks for your message! We have options in April.',
+        sentAt: new Date('2026-03-15T10:05:00Z'),
+      },
+    ]);
+
+    expect(result).toContain('Guest: Hello, I have a question about availability.');
+    expect(result).toContain('Ines: Thanks for your message! We have options in April.');
+    expect(result).toContain('Europe/Nicosia');
+  });
+
+  it('returns fallback for empty history', () => {
+    expect(formatConversationHistory([])).toContain('No conversation messages available');
+  });
+});
+
 // ─── buildSystemPrompt tests ─────────────────────────────
 
 describe('buildSystemPrompt', () => {
@@ -283,6 +310,15 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(ctx, 'en');
     expect(prompt).toContain('Communication Guardrails');
     expect(prompt).toContain('No pricing commitments');
+  });
+
+  it('includes Cyprus current date and conversation history', () => {
+    const ctx = makeDraftContext();
+    const prompt = buildSystemPrompt(ctx, 'en');
+    expect(prompt).toContain('Today in Cyprus');
+    expect(prompt).toContain('Europe/Nicosia');
+    expect(prompt).toContain('Conversation History');
+    expect(prompt).toContain('Guest: I would like to book a 4-day retreat in April.');
   });
 
   it('says "Respond in German" when language is de', () => {

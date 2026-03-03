@@ -34,7 +34,7 @@ vi.mock('../../../services/email/email-threader.js', () => ({
 
 // ---- Imports (after mocks) -------------------------------------------
 
-import { approveDraft, rejectDraft, regenerateDraft } from '../conversation.service.js';
+import { approveDraft, rejectDraft, regenerateDraft, generateDraftForConversation } from '../conversation.service.js';
 
 // ---- Factories -------------------------------------------------------
 
@@ -92,9 +92,13 @@ function makeConversation(overrides?: Partial<{
 function makeMockPrisma(opts?: {
   draft?: ReturnType<typeof makeDraft> | null;
   conversation?: ReturnType<typeof makeConversation> | null;
+  latestMessage?: { id: string; direction: 'in' | 'out' } | null;
 }) {
   const draft = opts && 'draft' in opts ? opts.draft : makeDraft();
   const conversation = opts && 'conversation' in opts ? opts.conversation : makeConversation();
+  const latestMessage = opts && 'latestMessage' in opts
+    ? opts.latestMessage
+    : { id: 'msg-1', direction: 'in' as const };
 
   const txMock = {
     aiDraft: {
@@ -120,6 +124,9 @@ function makeMockPrisma(opts?: {
     },
     conversation: {
       findUnique: vi.fn().mockResolvedValue(conversation),
+    },
+    message: {
+      findFirst: vi.fn().mockResolvedValue(latestMessage),
     },
     auditLog: {
       create: vi.fn().mockResolvedValue({ id: 'audit-1' }),
@@ -241,6 +248,40 @@ describe('draft workflow', () => {
       );
     });
 
+    it('strips markdown from approved content before SMTP send', async () => {
+      const prisma = makeMockPrisma({
+        draft: makeDraft({
+          content: 'Hi **Maria**,\n\n- We have availability.\n[Book now](https://example.com)',
+        }),
+      });
+      const app = makeMockApp();
+
+      await approveDraft(
+        prisma as never,
+        app as never,
+        'conv-1',
+        'draft-1',
+        undefined,
+        'user-1',
+      );
+
+      const sentBody = mockSendEmail.mock.calls[0]?.[0]?.body as string;
+      expect(sentBody).toContain('Hi Maria');
+      expect(sentBody).toContain('We have availability.');
+      expect(sentBody).toContain('Book now');
+      expect(sentBody).not.toContain('**');
+      expect(sentBody).not.toContain('[Book now]');
+      expect(sentBody).not.toContain('https://example.com');
+
+      expect(prisma._tx.aiDraft.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            content: sentBody,
+          }),
+        }),
+      );
+    });
+
     it('rejects approve for non-pending draft', async () => {
       const prisma = makeMockPrisma({
         draft: makeDraft({ status: 'approved' }),
@@ -353,6 +394,42 @@ describe('draft workflow', () => {
       expect(addFn).toHaveBeenCalledWith('ai-draft', expect.objectContaining({
         guestLanguage: 'de',
       }));
+    });
+  });
+
+  // ---- generateDraftForConversation -----------------------------------
+
+  describe('generateDraftForConversation', () => {
+    it('enqueues draft generation for latest inbound message', async () => {
+      const addFn = vi.fn().mockResolvedValue({ id: 'job-42' });
+      const prisma = makeMockPrisma({
+        latestMessage: { id: 'msg-99', direction: 'in' },
+      });
+      const app = makeMockApp({ addFn });
+
+      const result = await generateDraftForConversation(
+        prisma as never,
+        app as never,
+        'conv-1',
+        'user-1',
+      );
+
+      expect(addFn).toHaveBeenCalledWith('ai-draft', expect.objectContaining({
+        conversationId: 'conv-1',
+        messageId: 'msg-99',
+      }));
+      expect(result).toEqual({ jobId: 'job-42', messageId: 'msg-99' });
+    });
+
+    it('rejects generation when latest message is outbound', async () => {
+      const prisma = makeMockPrisma({
+        latestMessage: { id: 'msg-out', direction: 'out' },
+      });
+      const app = makeMockApp();
+
+      await expect(
+        generateDraftForConversation(prisma as never, app as never, 'conv-1', 'user-1'),
+      ).rejects.toThrow(/Latest message is outbound/);
     });
   });
 });

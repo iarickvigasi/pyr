@@ -1,5 +1,10 @@
 # AI Module Architecture
 
+> Note: Inbox classification taxonomy and trigger rules were updated in March
+> 2026. Draft generation now depends on `conversation`-classified inbound
+> emails (plus legacy compatibility), documented in
+> `docs/inbox-openclaw-rework.md`.
+
 ## Overview
 
 The AI module generates context-rich email draft replies for guest inquiries. When a new guest email arrives, the email module enqueues an `ai-draft` BullMQ job. The AI module then loads the full business context (guest CRM data, booking history, room availability, upcoming events, FAQs), assembles a system prompt with brand voice guidelines and guardrails, calls the OpenClaw Gateway via a persistent WebSocket `agent` RPC, classifies the inbound message for edge cases (complaints, medical, dietary, cancellation, adoption), calculates the token cost in EUR microcents, and writes the draft to the database for Ines to review in the inbox UI.

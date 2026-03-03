@@ -1,172 +1,143 @@
-// ─── Types ──────────────────────────────────────────────────
+import type { InboxClassification } from './inbox-classification.js';
 
-export type EmailCategory = 'guest_inquiry' | 'ota_notification' | 'spam_newsletter' | 'admin_system';
+/**
+ * Backward-compatible alias for legacy tests/imports.
+ */
+export type EmailCategory = InboxClassification;
 
 export interface ClassificationResult {
-  category: EmailCategory;
+  category: InboxClassification;
   confidence: number;
   reason: string;
+  source: 'rules' | 'openclaw';
 }
 
-/** AI classifier interface — Phase 4 will provide a real implementation */
-export interface AiClassifier {
-  classify(content: string, metadata?: Record<string, unknown>): Promise<ClassificationResult>;
+interface RuleCategory {
+  category: InboxClassification;
+  confidence: number;
 }
 
-// ─── Pattern constants ──────────────────────────────────────
-
-/** OTA platform domains whose emails are booking/inquiry notifications */
-const OTA_DOMAINS = [
-  'tripaneer.com',
-  'bookyogaretreats.com',
-  'bookretreats.com',
-  'getyourguide.com',
-  'viator.com',
+const OTA_DOMAIN_MAP: Array<{ suffix: string; category: RuleCategory }> = [
+  { suffix: 'tripaneer.com', category: { category: 'ota_tripaneer', confidence: 0.98 } },
+  { suffix: 'bookyogaretreats.com', category: { category: 'ota_bookyogaretreats', confidence: 0.98 } },
+  { suffix: 'bookretreats.com', category: { category: 'ota_other', confidence: 0.95 } },
+  { suffix: 'getyourguide.com', category: { category: 'ota_other', confidence: 0.95 } },
+  { suffix: 'viator.com', category: { category: 'ota_other', confidence: 0.95 } },
 ];
 
-/** Sender address patterns that indicate spam/newsletter/marketing */
-const SPAM_SENDER_PATTERNS = [
+const SYSTEM_SENDER_PATTERNS = [
+  /^postmaster@/i,
+  /^mailer-daemon@/i,
+  /^bounce@/i,
+] as const;
+
+const SYSTEM_SUBJECT_PATTERNS = [
+  /delivery.*notification/i,
+  /undeliverable/i,
+  /mail delivery subsystem/i,
+] as const;
+
+const NEWSLETTER_SENDER_PATTERNS = [
   /^noreply@/i,
   /^no-reply@/i,
   /^newsletter@/i,
   /^marketing@/i,
-];
+] as const;
 
-/** Subject line patterns that indicate spam/newsletter */
-const SPAM_SUBJECT_PATTERNS = [
+const NEWSLETTER_SUBJECT_PATTERNS = [
   /unsubscribe/i,
-];
-
-/** Sender address patterns that indicate system/delivery messages */
-const SYSTEM_SENDER_PATTERNS = [
-  /^postmaster@/i,
-  /^mailer-daemon@/i,
-];
-
-/** Subject line patterns that indicate system/delivery messages */
-const SYSTEM_SUBJECT_PATTERNS = [
-  /delivery.*notification/i,
-];
-
-// ─── Helpers ────────────────────────────────────────────────
+  /weekly digest/i,
+  /special offer/i,
+  /promotional/i,
+] as const;
 
 function extractDomain(address: string): string {
-  const atIndex = address.lastIndexOf('@');
-  return atIndex >= 0 ? address.slice(atIndex + 1).toLowerCase() : '';
+  const idx = address.lastIndexOf('@');
+  return idx >= 0 ? address.slice(idx + 1).toLowerCase() : '';
 }
 
-function matchesPatterns(value: string, patterns: RegExp[]): boolean {
+function matchesAny(value: string, patterns: readonly RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(value));
 }
 
-// ─── Public API ─────────────────────────────────────────────
-
-/**
- * Classify an email using rules-based pattern matching.
- *
- * Checks in priority order:
- * 1. OTA domains (sender domain match)
- * 2. System sender patterns (postmaster, mailer-daemon)
- * 3. System subject patterns (delivery notification)
- * 4. Spam sender patterns (noreply, newsletter, marketing)
- * 5. Spam subject patterns (unsubscribe)
- * 6. Default → guest_inquiry
- */
-export function classifyEmail(
+export function classifyEmailByRules(
   from: { address: string },
   subject: string,
 ): ClassificationResult {
-  const address = from.address.toLowerCase();
+  const address = from.address.trim().toLowerCase();
   const domain = extractDomain(address);
 
-  // 1. OTA domain check
-  if (OTA_DOMAINS.some((ota) => domain.endsWith(ota))) {
-    return {
-      category: 'ota_notification',
-      confidence: 0.95,
-      reason: `Sender domain matches OTA platform: ${domain}`,
-    };
+  for (const ota of OTA_DOMAIN_MAP) {
+    if (domain.endsWith(ota.suffix)) {
+      return {
+        category: ota.category.category,
+        confidence: ota.category.confidence,
+        reason: `Sender domain matched OTA platform "${ota.suffix}"`,
+        source: 'rules',
+      };
+    }
   }
 
-  // 2. System sender patterns
-  if (matchesPatterns(address, SYSTEM_SENDER_PATTERNS)) {
+  if (matchesAny(address, SYSTEM_SENDER_PATTERNS) || matchesAny(subject, SYSTEM_SUBJECT_PATTERNS)) {
     return {
-      category: 'admin_system',
+      category: 'other',
       confidence: 0.9,
-      reason: `Sender address matches system pattern: ${address}`,
+      reason: 'Matched system sender/subject pattern',
+      source: 'rules',
     };
   }
 
-  // 3. System subject patterns
-  if (matchesPatterns(subject, SYSTEM_SUBJECT_PATTERNS)) {
+  if (matchesAny(address, NEWSLETTER_SENDER_PATTERNS) || matchesAny(subject, NEWSLETTER_SUBJECT_PATTERNS)) {
     return {
-      category: 'admin_system',
-      confidence: 0.85,
-      reason: `Subject matches system pattern: "${subject}"`,
+      category: 'other',
+      confidence: 0.82,
+      reason: 'Matched newsletter/spam pattern',
+      source: 'rules',
     };
   }
 
-  // 4. Spam sender patterns
-  if (matchesPatterns(address, SPAM_SENDER_PATTERNS)) {
-    return {
-      category: 'spam_newsletter',
-      confidence: 0.8,
-      reason: `Sender address matches spam/newsletter pattern: ${address}`,
-    };
-  }
-
-  // 5. Spam subject patterns
-  if (matchesPatterns(subject, SPAM_SUBJECT_PATTERNS)) {
-    return {
-      category: 'spam_newsletter',
-      confidence: 0.75,
-      reason: `Subject matches spam pattern: "${subject}"`,
-    };
-  }
-
-  // 6. Default
   return {
-    category: 'guest_inquiry',
-    confidence: 0.6,
-    reason: 'No rule matched — default classification',
+    category: 'conversation',
+    confidence: 0.62,
+    reason: 'No non-conversation rule matched',
+    source: 'rules',
   };
 }
 
 /**
- * AI-based email classification stub.
- *
- * Phase 4 will replace this with a real LLM call via the AI module queue.
- * Currently returns guest_inquiry with low confidence as a safe default.
+ * Backward-compatible alias kept for existing call sites and tests.
+ */
+export const classifyEmail = classifyEmailByRules;
+
+/**
+ * Backward-compatible placeholder API kept for callers that still expect an
+ * async classifier function. It intentionally uses rules as a deterministic
+ * fallback and never calls external services.
  */
 export async function classifyWithAi(
-  _content: string,
-  _metadata?: Record<string, unknown>,
+  content: string,
+  metadata?: Record<string, unknown>,
 ): Promise<ClassificationResult> {
-  return {
-    category: 'guest_inquiry',
-    confidence: 0.5,
-    reason: 'AI classification not implemented (Phase 4)',
-  };
+  const fromAddress = typeof metadata?.['from'] === 'string' ? metadata['from'] : '';
+  const subject = typeof metadata?.['subject'] === 'string' ? metadata['subject'] : content.slice(0, 120);
+  return classifyEmailByRules({ address: fromAddress }, subject);
 }
 
-/**
- * Check whether an email address belongs to a non-guest sender.
- *
- * Returns true for OTA platforms, spam/newsletter senders, and system
- * addresses. Used by contact-matcher to skip guest creation for these.
- */
 export function isSystemSender(address: string): boolean {
-  const addr = address.toLowerCase();
-  const domain = extractDomain(addr);
+  const normalized = address.trim().toLowerCase();
+  const domain = extractDomain(normalized);
 
-  // OTA domain
-  if (OTA_DOMAINS.some((ota) => domain.endsWith(ota))) return true;
+  if (OTA_DOMAIN_MAP.some((ota) => domain.endsWith(ota.suffix))) {
+    return true;
+  }
 
-  // System sender
-  if (matchesPatterns(addr, SYSTEM_SENDER_PATTERNS)) return true;
+  if (matchesAny(normalized, SYSTEM_SENDER_PATTERNS)) {
+    return true;
+  }
 
-  // Spam/newsletter sender
-  if (matchesPatterns(addr, SPAM_SENDER_PATTERNS)) return true;
+  if (matchesAny(normalized, NEWSLETTER_SENDER_PATTERNS)) {
+    return true;
+  }
 
   return false;
 }

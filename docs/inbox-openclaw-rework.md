@@ -120,6 +120,13 @@ Updated in `packages/frontend/src/components/features/inbox` and hooks:
   - Clicking `Approve` on a draft now pastes draft text into the reply composer.
   - Email is sent only when the composer `Send` action is confirmed.
   - Prevents accidental immediate send and ensures final human review in one place.
+- Draft generation UX (new robust flow):
+  - `Generate AI Draft` and rejected/failed `Generate new draft` now use explicit status phases:
+    - `submitting` -> `queued` -> `waiting` -> `ready` (or `error`)
+  - Regeneration from rejected/failed cards calls `POST /api/v1/conversations/:id/drafts/:draftId/regenerate`.
+  - Manual generation button calls `POST /api/v1/conversations/:id/drafts/generate`.
+  - UI keeps a persistent status card with loader and queue/wait messaging until a new draft appears (or timeout/error).
+  - While generation is in flight, actions are disabled to prevent duplicate requests.
 - Conversation header links:
   - Linked customer name opens `/guests/:id`.
   - Linked booking badges open `/bookings/:id`.

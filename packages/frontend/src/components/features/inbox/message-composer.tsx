@@ -1,43 +1,43 @@
 'use client';
 
-import { useState } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
 interface MessageComposerProps {
-  onSend: (content: string) => void;
+  value: string;
+  onChange: (content: string) => void;
+  onSend: (content: string) => Promise<void>;
   isPending?: boolean;
   placeholder?: string;
 }
 
 export function MessageComposer({
+  value,
+  onChange,
   onSend,
   isPending,
   placeholder = 'Type your message...',
 }: MessageComposerProps) {
-  const [content, setContent] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (content.trim() && !isPending) {
-      onSend(content);
-      setContent('');
+    if (value.trim() && !isPending) {
+      await onSend(value);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
-      handleSubmit(e);
+      await handleSubmit(e);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2">
       <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="min-h-[80px] resize-none"
@@ -46,7 +46,7 @@ export function MessageComposer({
       <Button
         type="submit"
         size="icon"
-        disabled={!content.trim() || isPending}
+        disabled={!value.trim() || isPending}
         className="h-[80px] w-[80px]"
       >
         <Send className="h-5 w-5" />

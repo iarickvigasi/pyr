@@ -17,7 +17,7 @@ interface ConversationThreadProps {
   bookings?: LinkedBooking[];
   classification?: string | null;
   drafts?: AiDraft[];
-  onApproveDraft?: (content: string) => void;
+  onApproveDraft?: (payload: { draftId: string; content: string; originalContent: string }) => void;
   onRejectDraft?: (draftId: string) => void;
   isApprovePending?: boolean;
 }
@@ -49,7 +49,11 @@ export function ConversationThread({
   }
 
   // Determine if we should show booking badges after the last message
-  const isOtaConversation = classification === 'ota_notification';
+  const isOtaConversation =
+    classification === 'ota_notification'
+    || classification === 'ota_tripaneer'
+    || classification === 'ota_bookyogaretreats'
+    || classification === 'ota_other';
   const linkedBookings = bookings ?? [];
 
   // Drafts that have a messageId (inline after their triggering message)

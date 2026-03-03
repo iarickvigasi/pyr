@@ -233,7 +233,11 @@ export function ConversationThread({
   if (drafts) {
     for (const draft of drafts) {
       if (draft.messageId) {
-        draftsByMessageId.set(draft.messageId, draft);
+        // Backend returns drafts newest-first. Keep the first draft per message
+        // so we don't overwrite a fresh pending draft with an older rejected one.
+        if (!draftsByMessageId.has(draft.messageId)) {
+          draftsByMessageId.set(draft.messageId, draft);
+        }
       } else {
         orphanDrafts.push(draft);
       }

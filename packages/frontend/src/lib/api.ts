@@ -16,6 +16,11 @@ interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
+function hasHeader(headers: Record<string, string>, name: string): boolean {
+  const needle = name.toLowerCase();
+  return Object.keys(headers).some((key) => key.toLowerCase() === needle);
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -45,11 +50,15 @@ class ApiClient {
     }
 
     const token = this.getToken();
+    const hasBody = fetchOptions.body !== undefined && fetchOptions.body !== null;
+    const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...((options.headers as Record<string, string>) ?? {}),
     };
+    if (hasBody && !isFormData && !hasHeader(headers, 'Content-Type')) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const response = await fetch(url, {
       ...fetchOptions,
@@ -79,26 +88,29 @@ class ApiClient {
   }
 
   post<T>(path: string, body?: unknown, options?: ApiOptions): Promise<T> {
+    const payload = body === undefined ? undefined : JSON.stringify(body);
     return this.request<T>(path, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(body),
+      ...(payload !== undefined ? { body: payload } : {}),
     });
   }
 
   patch<T>(path: string, body?: unknown, options?: ApiOptions): Promise<T> {
+    const payload = body === undefined ? undefined : JSON.stringify(body);
     return this.request<T>(path, {
       ...options,
       method: 'PATCH',
-      body: JSON.stringify(body),
+      ...(payload !== undefined ? { body: payload } : {}),
     });
   }
 
   put<T>(path: string, body?: unknown, options?: ApiOptions): Promise<T> {
+    const payload = body === undefined ? undefined : JSON.stringify(body);
     return this.request<T>(path, {
       ...options,
       method: 'PUT',
-      body: JSON.stringify(body),
+      ...(payload !== undefined ? { body: payload } : {}),
     });
   }
 

@@ -153,4 +153,57 @@ describe('ConversationThread', () => {
       expect(mutateRegenerate).toHaveBeenCalledWith('draft-rejected');
     });
   });
+
+  it('shows newest draft per message when both pending and rejected exist', async () => {
+    renderWithProviders(
+      <ConversationThread
+        messages={[baseMessage]}
+        guestName="Guest"
+        conversationId="conv-1"
+        drafts={[
+          {
+            id: 'draft-pending-new',
+            messageId: 'msg-1',
+            conversationId: 'conv-1',
+            content: 'Newest pending draft content',
+            status: 'pending',
+            model: 'gpt-4',
+            tokensUsed: 80,
+            inputTokens: 60,
+            outputTokens: 20,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+            costEur: 0,
+            provider: 'openai',
+            durationMs: 1000,
+            flags: [],
+            createdAt: '2026-03-03T10:01:00.000Z',
+          },
+          {
+            id: 'draft-rejected-old',
+            messageId: 'msg-1',
+            conversationId: 'conv-1',
+            content: 'Older rejected draft content',
+            status: 'rejected',
+            model: 'gpt-4',
+            tokensUsed: 70,
+            inputTokens: 55,
+            outputTokens: 15,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+            costEur: 0,
+            provider: 'openai',
+            durationMs: 1000,
+            flags: [],
+            createdAt: '2026-03-03T10:00:00.000Z',
+          },
+        ]}
+        onApproveDraft={vi.fn()}
+        onRejectDraft={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Newest pending draft content')).toBeInTheDocument();
+    expect(screen.queryByText('Older rejected draft content')).not.toBeInTheDocument();
+  });
 });

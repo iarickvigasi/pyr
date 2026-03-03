@@ -96,6 +96,9 @@ describe('API Client', () => {
 
       const result = await api.post('/test');
 
+      const requestOptions = (global.fetch as any).mock.calls[0][1];
+      expect(requestOptions.body).toBeUndefined();
+      expect(requestOptions.headers).not.toHaveProperty('Content-Type');
       expect(result).toBeUndefined();
     });
   });

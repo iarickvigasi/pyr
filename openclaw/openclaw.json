@@ -99,7 +99,7 @@
   "plugins": {
     "load": {
       "paths": [
-        "../packages/assistant/openclaw-plugin"
+        "/Users/iavi/Projects/PYR/packages/assistant/openclaw-plugin"
       ]
     },
     "entries": {

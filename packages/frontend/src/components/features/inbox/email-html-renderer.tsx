@@ -24,7 +24,7 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pendingTimeoutsRef = useRef<number[]>([]);
-  const measureIntervalRef = useRef<number | null>(null);
+  const lastHeightRef = useRef<number>(200);
   const [height, setHeight] = useState(200);
 
   const sanitized = useMemo(() => DOMPurify.sanitize(html, {
@@ -41,30 +41,40 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
   <meta http-equiv="Content-Security-Policy" content="script-src 'none';">
   <base target="_blank">
   <style>
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: hidden;
+    }
+    #email-root {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px;
       line-height: 1.5;
       color: #333;
-      margin: 0;
       padding: 8px;
+      margin: 0;
+      min-height: 0 !important;
+      height: auto !important;
       word-wrap: break-word;
       overflow-wrap: break-word;
+      box-sizing: border-box;
     }
-    img { max-width: 100%; height: auto; }
-    a { color: #2563eb; }
-    blockquote {
+    #email-root img { max-width: 100%; height: auto; }
+    #email-root a { color: #2563eb; }
+    #email-root blockquote {
       border-left: 3px solid #d1d5db;
       margin: 0.5em 0;
       padding-left: 1em;
       color: #6b7280;
     }
-    pre { overflow-x: auto; }
-    table { border-collapse: collapse; max-width: 100%; }
-    td, th { padding: 4px 8px; }
+    #email-root pre { overflow-x: auto; }
+    #email-root table { border-collapse: collapse; max-width: 100%; }
+    #email-root td, #email-root th { padding: 4px 8px; }
   </style>
 </head>
-<body>${normalized}</body>
+<body><div id="email-root">${normalized}</div></body>
 </html>`, [normalized]);
 
   const detachResizeObserver = useCallback(() => {
@@ -78,16 +88,23 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
     const doc = iframe?.contentDocument;
     if (!doc) return;
 
-    const body = doc.body;
-    const htmlElement = doc.documentElement;
-    const newHeight = Math.max(
-      body?.scrollHeight ?? 0,
-      body?.offsetHeight ?? 0,
-      htmlElement?.scrollHeight ?? 0,
-      htmlElement?.offsetHeight ?? 0,
+    const root = doc.getElementById('email-root') as HTMLElement | null;
+    if (!root) return;
+
+    const newHeight = Math.ceil(
+      Math.max(
+        root.scrollHeight,
+        root.offsetHeight,
+        root.getBoundingClientRect().height,
+      ),
     );
+
     if (newHeight > 0) {
-      setHeight(newHeight + 16);
+      const nextHeight = Math.max(100, newHeight);
+      if (Math.abs(nextHeight - lastHeightRef.current) > 1) {
+        lastHeightRef.current = nextHeight;
+        setHeight(nextHeight);
+      }
     }
   }, []);
 
@@ -102,8 +119,9 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
       updateHeight();
     });
 
+    const root = doc.getElementById('email-root');
+    if (root) observer.observe(root);
     if (doc.body) observer.observe(doc.body);
-    if (doc.documentElement) observer.observe(doc.documentElement);
 
     resizeObserverRef.current = observer;
   }, [detachResizeObserver, updateHeight]);
@@ -113,12 +131,6 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
       window.clearTimeout(timeoutId);
     }
     pendingTimeoutsRef.current = [];
-  }, []);
-
-  const clearMeasureInterval = useCallback(() => {
-    if (measureIntervalRef.current === null) return;
-    window.clearInterval(measureIntervalRef.current);
-    measureIntervalRef.current = null;
   }, []);
 
   const scheduleHeightUpdate = useCallback((delayMs: number) => {
@@ -131,7 +143,6 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
   const handleLoad = useCallback(() => {
     updateHeight();
     attachResizeObserver();
-    clearMeasureInterval();
 
     // Re-measure after async layout changes (images/fonts/styles).
     clearPendingTimeouts();
@@ -140,20 +151,21 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
     scheduleHeightUpdate(250);
     scheduleHeightUpdate(1000);
 
-    // Some templates finish layout late; poll briefly as a fallback.
-    let ticks = 0;
-    measureIntervalRef.current = window.setInterval(() => {
-      updateHeight();
-      ticks += 1;
-      if (ticks >= 20) {
-        clearMeasureInterval();
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (doc) {
+      for (const image of Array.from(doc.images)) {
+        if (image.complete) continue;
+        image.addEventListener('load', updateHeight, { once: true });
+        image.addEventListener('error', updateHeight, { once: true });
       }
-    }, 250);
-  }, [attachResizeObserver, clearMeasureInterval, clearPendingTimeouts, scheduleHeightUpdate, updateHeight]);
+    }
+  }, [attachResizeObserver, clearPendingTimeouts, scheduleHeightUpdate, updateHeight]);
 
   useEffect(() => {
     // Reset height for new content and perform a best-effort measure even if onLoad fired early.
     setHeight(200);
+    lastHeightRef.current = 200;
     clearPendingTimeouts();
     scheduleHeightUpdate(0);
     scheduleHeightUpdate(100);
@@ -162,9 +174,8 @@ export function EmailHtmlRenderer({ html, className }: EmailHtmlRendererProps) {
 
   useEffect(() => () => {
     clearPendingTimeouts();
-    clearMeasureInterval();
     detachResizeObserver();
-  }, [clearMeasureInterval, clearPendingTimeouts, detachResizeObserver]);
+  }, [clearPendingTimeouts, detachResizeObserver]);
 
   return (
     <iframe

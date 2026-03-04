@@ -142,6 +142,21 @@ describe('Auth API', () => {
       expect(res.statusCode).toBe(401);
     });
 
+    it('should authenticate with token cookie when Authorization header is absent', async () => {
+      const token = await getAuthToken(app);
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/auth/me',
+        headers: { cookie: `token=${encodeURIComponent(token)}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.email).toBe('test@example.com');
+      expect(body.data.id).toBe('test_admin');
+    });
+
     it('should work end-to-end: login, use token for /me', async () => {
       await seedAdmin();
 

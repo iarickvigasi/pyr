@@ -14,7 +14,7 @@ export default function QueuesPage() {
         style={{ height: 'calc(100vh - 12rem)' }}
       >
         <iframe
-          src="/api/admin/queues"
+          src="/api/v1/admin/queues"
           className="w-full h-full border-0"
           title="Queue Monitor"
         />

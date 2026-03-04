@@ -36,6 +36,36 @@ export const updateRoomSchema = z.object({
 
 export type UpdateRoomBody = z.infer<typeof updateRoomSchema>;
 
+// External room mappings (MotoPress and future providers)
+export const listRoomExternalMappingsQuerySchema = z.object({
+  provider: z.string().min(1).optional().openapi({ example: 'motopress' }),
+  roomId: z.string().min(1).optional().openapi({ example: 'cm4x7abc00010' }),
+});
+
+export type ListRoomExternalMappingsQuery = z.infer<typeof listRoomExternalMappingsQuerySchema>;
+
+export const createRoomExternalMappingSchema = z.object({
+  roomId: z.string().min(1).openapi({ example: 'cm4x7abc00010' }),
+  provider: z.string().min(1).max(50).openapi({ example: 'motopress' }),
+  externalAccommodationId: z.string().min(1).max(100).openapi({ example: '243' }),
+  externalAccommodationTypeId: z.string().max(100).nullish().openapi({ example: '12' }),
+  defaultAdults: z.number().int().min(0).nullish().openapi({ example: 2 }),
+  defaultChildren: z.number().int().min(0).nullish().openapi({ example: 0 }),
+});
+
+export type CreateRoomExternalMappingBody = z.infer<typeof createRoomExternalMappingSchema>;
+
+export const updateRoomExternalMappingSchema = z.object({
+  roomId: z.string().min(1).optional().openapi({ example: 'cm4x7abc00010' }),
+  provider: z.string().min(1).max(50).optional().openapi({ example: 'motopress' }),
+  externalAccommodationId: z.string().min(1).max(100).optional().openapi({ example: '243' }),
+  externalAccommodationTypeId: z.string().max(100).nullish().openapi({ example: '12' }),
+  defaultAdults: z.number().int().min(0).nullish().openapi({ example: 2 }),
+  defaultChildren: z.number().int().min(0).nullish().openapi({ example: 0 }),
+});
+
+export type UpdateRoomExternalMappingBody = z.infer<typeof updateRoomExternalMappingSchema>;
+
 // Seasons
 export const createSeasonSchema = z.object({
   name: z.string().min(1).max(100).openapi({ example: 'Summer 2026' }),

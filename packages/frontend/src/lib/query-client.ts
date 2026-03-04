@@ -38,6 +38,8 @@ export const queryKeys = {
     all: ['rooms'] as const,
     types: ['room-types'] as const,
     seasons: ['seasons'] as const,
+    mappings: (provider?: string) => ['room-mappings', provider ?? 'all'] as const,
+    motopressAccommodations: ['motopress-accommodations'] as const,
     availability: (checkIn: string, checkOut: string) =>
       ['availability', checkIn, checkOut] as const,
   },

@@ -145,9 +145,7 @@ export function BookingTable({
           return (
             <TableRow key={b.id}>
               <TableCell>
-                <Link href={`/bookings/${b.id}`} className="hover:underline">
-                  {renderGuestNames(b)}
-                </Link>
+                {renderGuestNames(b)}
               </TableCell>
               <TableCell>{b.room.name}</TableCell>
               <TableCell>{formatDate(b.checkIn)}</TableCell>

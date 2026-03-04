@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getTestApp, cleanDatabase, getAuthToken, prisma } from '../../test/setup.js';
 import { createFullBookingSetup, createTestGuest } from '../../test/factories.js';
@@ -27,6 +27,10 @@ describe('Bookings API', () => {
     // Create second guest for multi-guest tests
     const guest2 = await createTestGuest(app, token, { name: 'Guest Two' });
     guestId2 = guest2.id;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   const headers = () => ({ authorization: `Bearer ${token}` });
@@ -125,6 +129,24 @@ describe('Bookings API', () => {
         payload: { checkIn: '2026-04-03' },
       });
       expect(res.statusCode).toBe(409);
+    });
+
+    it('should soft-delete booking when status is set to cancelled via PATCH', async () => {
+      const createRes = await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: { guestIds: [guestId], roomId, checkIn: '2026-04-01', checkOut: '2026-04-05', totalPrice: 40000 },
+      });
+      const id = JSON.parse(createRes.body).data.id as string;
+
+      const cancelRes = await app.inject({
+        method: 'PATCH', url: `/api/v1/bookings/${id}`, headers: headers(),
+        payload: { status: 'cancelled' },
+      });
+      expect(cancelRes.statusCode).toBe(200);
+
+      const booking = await prisma.booking.findUnique({ where: { id } });
+      expect(booking?.status).toBe('cancelled');
+      expect(booking?.deletedAt).not.toBeNull();
     });
   });
 
@@ -281,7 +303,8 @@ describe('Bookings API', () => {
 
     it('INVALID: cancelled -> any (no transitions allowed)', async () => {
       const { statusCode } = await createAndTransition(['cancelled', 'confirmed']);
-      expect(statusCode).toBe(400);
+      // Cancelled bookings are soft-deleted, so follow-up updates should not find them.
+      expect(statusCode).toBe(404);
     });
 
     it('INVALID: confirmed -> inquiry (backwards)', async () => {
@@ -513,6 +536,104 @@ describe('Bookings API', () => {
       const detail = JSON.parse(detailRes.body);
       expect(detail.data.bookingGuests).toHaveLength(1);
       expect(detail.data.bookingGuests[0].guest.id).toBe(guestId);
+    });
+  });
+
+  describe('POST /api/v1/bookings/:id/sync/motopress', () => {
+    function configureMotopress(): void {
+      app.config.MOTOPRESS_ENABLED = true;
+      app.config.MOTOPRESS_BASE_URL = 'https://example.com/wp-json/mphb/v1';
+      app.config.MOTOPRESS_CONSUMER_KEY = 'ck_test';
+      app.config.MOTOPRESS_CONSUMER_SECRET = 'cs_test';
+      app.config.MOTOPRESS_TIMEOUT_MS = 5000;
+    }
+
+    it('syncs booking to MotoPress with mapped room', async () => {
+      configureMotopress();
+
+      await app.inject({
+        method: 'POST', url: '/api/v1/room-mappings', headers: headers(),
+        payload: {
+          roomId,
+          provider: 'motopress',
+          externalAccommodationId: '1913',
+          defaultAdults: 2,
+          defaultChildren: 0,
+        },
+      });
+
+      const createRes = await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: {
+          guestIds: [guestId],
+          roomId,
+          checkIn: '2026-04-01',
+          checkOut: '2026-04-05',
+          totalPrice: 40000,
+          status: 'confirmed',
+        },
+      });
+      const bookingId = JSON.parse(createRes.body).data.id as string;
+
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({
+          id: 4242,
+          status: 'confirmed',
+          check_in_date: '2026-04-01',
+          check_out_date: '2026-04-05',
+          customer: { email: 'guest@example.com' },
+          total_price: 400,
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const syncRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/bookings/${bookingId}/sync/motopress`,
+        headers: headers(),
+      });
+
+      expect(syncRes.statusCode).toBe(200);
+      const syncBody = JSON.parse(syncRes.body);
+      expect(syncBody.data.externalBookingId).toBe('4242');
+      expect(syncBody.data.syncStatus).toBe('synced');
+
+      const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+      expect(url.toString()).toContain('/bookings');
+      expect(init.method).toBe('POST');
+
+      const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      expect(booking.externalProvider).toBe('motopress');
+      expect(booking.externalBookingId).toBe('4242');
+      expect(booking.syncStatus).toBe('synced');
+      expect(booking.syncError).toBeNull();
+    });
+
+    it('returns 400 when room mapping is missing', async () => {
+      configureMotopress();
+
+      const createRes = await app.inject({
+        method: 'POST', url: '/api/v1/bookings', headers: headers(),
+        payload: {
+          guestIds: [guestId],
+          roomId,
+          checkIn: '2026-04-01',
+          checkOut: '2026-04-05',
+          totalPrice: 40000,
+        },
+      });
+      const bookingId = JSON.parse(createRes.body).data.id as string;
+
+      const syncRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/bookings/${bookingId}/sync/motopress`,
+        headers: headers(),
+      });
+
+      expect(syncRes.statusCode).toBe(400);
+      expect(syncRes.body).toContain('not mapped');
     });
   });
 });

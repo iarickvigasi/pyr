@@ -14,6 +14,7 @@ import {
   updateBooking,
   cancelBooking,
 } from './booking.service.js';
+import { syncBookingToMotopress } from './booking-sync.service.js';
 import { sendNewBookingAlert } from '../notifications/notification.service.js';
 
 /**
@@ -82,5 +83,25 @@ export default async function bookingRoutes(app: FastifyInstance): Promise<void>
     await cancelBooking(app.prisma, request.params.id, request.user?.sub);
     await enqueueCalendarSync(app, request.params.id, 'delete');
     return reply.status(204).send();
+  });
+
+  server.post('/:id/sync/motopress', {
+    schema: { tags: ['Bookings'], summary: 'Manually sync booking to MotoPress', params: idParamSchema },
+  }, async (request) => {
+    const result = await syncBookingToMotopress(
+      app.prisma,
+      request.params.id,
+      app.config,
+      request.user?.sub,
+    );
+    app.log.info(
+      {
+        bookingId: request.params.id,
+        provider: result.provider,
+        externalBookingId: result.externalBookingId,
+      },
+      'Manual booking sync to MotoPress completed',
+    );
+    return { data: result };
   });
 }

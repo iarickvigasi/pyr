@@ -61,7 +61,7 @@ function getGenerationStatusCopy(state: DraftGenerationState) {
   }
   if (state.phase === 'waiting') {
     return {
-      title: 'OpenClaw is generating the draft',
+      title: 'Ailu is generating the draft',
       description: 'Waiting for AI output. This usually takes 10-30 seconds.',
     };
   }

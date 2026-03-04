@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Mail, AlertTriangle, Pencil } from 'lucide-react';
-import { useBooking, useUpdateBooking } from '@/lib/hooks/use-bookings';
+import { ArrowLeft, Mail, AlertTriangle, Pencil, RefreshCw } from 'lucide-react';
+import { useBooking, useUpdateBooking, useSyncBookingToMotopress } from '@/lib/hooks/use-bookings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +38,7 @@ const STATUS_TRANSITIONS: Record<string, Array<{ label: string; status: string; 
 export function BookingDetail({ id }: { id: string }) {
   const { data, isLoading } = useBooking(id);
   const updateBooking = useUpdateBooking();
+  const syncBooking = useSyncBookingToMotopress();
 
   const booking = data?.data;
   const [showEdit, setShowEdit] = useState(false);
@@ -48,6 +49,15 @@ export function BookingDetail({ id }: { id: string }) {
       toast.success(`Booking ${status.replace('_', ' ')}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update');
+    }
+  };
+
+  const handleSyncToMotopress = async () => {
+    try {
+      await syncBooking.mutateAsync(id);
+      toast.success('Booking synced to MotoPress');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to sync booking');
     }
   };
 
@@ -90,6 +100,14 @@ export function BookingDetail({ id }: { id: string }) {
           <Pencil className="mr-2 h-4 w-4" />
           Edit Booking
         </Button>
+        <Button
+          variant="outline"
+          onClick={handleSyncToMotopress}
+          disabled={syncBooking.isPending}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${syncBooking.isPending ? 'animate-spin' : ''}`} />
+          Sync to MotoPress
+        </Button>
         <BookingStatusBadge status={booking.status} />
       </div>
 
@@ -120,6 +138,32 @@ export function BookingDetail({ id }: { id: string }) {
           </AlertDescription>
         </Alert>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">MotoPress Sync</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div>
+            <span className="text-muted-foreground">Sync status: </span>
+            <span className="font-medium capitalize">{booking.syncStatus}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">External booking ID: </span>
+            {booking.externalBookingId ?? '-'}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Last synced: </span>
+            {booking.lastSyncedAt ? formatDate(booking.lastSyncedAt) : '-'}
+          </div>
+          {booking.syncError && (
+            <p className="text-destructive whitespace-pre-wrap">{booking.syncError}</p>
+          )}
+          <p className="text-muted-foreground">
+            Manual sync only. Room must be mapped in Settings - Rooms.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

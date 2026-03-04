@@ -221,6 +221,8 @@ export async function updateBooking(
   return prisma.$transaction(async (tx) => {
     const existing = await tx.booking.findFirst({ where: { id, ...notDeleted } });
     if (!existing) throw new NotFoundError('Booking', id);
+    const nextStatus = data.status as BookingStatus | undefined;
+    const statusChangedToCancelled = nextStatus === 'cancelled' && existing.status !== 'cancelled';
 
     // Validate status transition
     if (data.status && data.status !== existing.status) {
@@ -289,7 +291,8 @@ export async function updateBooking(
         ...(data.roomId !== undefined ? { roomId: data.roomId } : {}),
         ...(data.checkIn !== undefined ? { checkIn: new Date(data.checkIn) } : {}),
         ...(data.checkOut !== undefined ? { checkOut: new Date(data.checkOut) } : {}),
-        ...(data.status !== undefined ? { status: data.status as BookingStatus } : {}),
+        ...(nextStatus !== undefined ? { status: nextStatus } : {}),
+        ...(statusChangedToCancelled ? { deletedAt: new Date() } : {}),
         ...(data.totalPrice !== undefined ? { totalPrice: data.totalPrice } : {}),
         ...(data.source !== undefined ? { source: data.source ?? null } : {}),
         ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),

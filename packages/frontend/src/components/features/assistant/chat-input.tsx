@@ -63,7 +63,7 @@ export function ChatInput({ onSend, isStreaming }: ChatInputProps) {
           ref={textareaRef}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Koda anything about your business..."
+          placeholder="Ask Ailu anything about your business..."
           disabled={isStreaming}
           rows={1}
           className="flex-1 resize-none rounded-lg border bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"

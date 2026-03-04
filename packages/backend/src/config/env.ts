@@ -34,6 +34,13 @@ const envSchema = z.object({
   OPENCLAW_GATEWAY_URL: z.string().default('http://localhost:18789'),
   OPENCLAW_GATEWAY_WS_URL: z.string().default('ws://localhost:18789'),
   OPENCLAW_GATEWAY_TOKEN: z.string().default(''),
+
+  MOTOPRESS_ENABLED: z.coerce.boolean().default(false),
+  MOTOPRESS_BASE_URL: z.string().default(''),
+  MOTOPRESS_CONSUMER_KEY: z.string().default(''),
+  MOTOPRESS_CONSUMER_SECRET: z.string().default(''),
+  MOTOPRESS_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  MOTOPRESS_SYNC_INTERVAL_MINUTES: z.coerce.number().int().positive().default(5),
 });
 
 export type Env = z.infer<typeof envSchema>;

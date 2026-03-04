@@ -161,7 +161,7 @@ export function InboxPage() {
       if (analysis.status === 'ready') {
         toast.success('Booking details extracted. Review and create booking.');
       } else if (analysis.status === 'not_applicable') {
-        toast.info('OpenClaw did not find booking intent in this thread.');
+        toast.info('Ailu did not find booking intent in this thread.');
       } else if (analysis.status === 'insufficient_data') {
         toast.info('Booking intent found but some fields are missing.');
       } else {

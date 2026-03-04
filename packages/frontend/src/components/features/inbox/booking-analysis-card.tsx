@@ -39,7 +39,7 @@ export function BookingAnalysisCard({
       <Card className="border-dashed">
         <CardContent className="py-3 text-sm text-muted-foreground flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Analyzing booking potential with OpenClaw...
+          Analyzing booking potential with Ailu...
         </CardContent>
       </Card>
     );

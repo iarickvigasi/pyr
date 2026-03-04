@@ -6,6 +6,9 @@ import {
   updateRoomTypeSchema,
   createRoomSchema,
   updateRoomSchema,
+  listRoomExternalMappingsQuerySchema,
+  createRoomExternalMappingSchema,
+  updateRoomExternalMappingSchema,
   createSeasonSchema,
   updateSeasonSchema,
   availabilityQuerySchema,
@@ -14,14 +17,22 @@ import {
   listRoomTypes,
   createRoomType,
   updateRoomType,
+  deleteRoomType,
   listRooms,
   createRoom,
   updateRoom,
+  deleteRoom,
+  listRoomExternalMappings,
+  createRoomExternalMapping,
+  updateRoomExternalMapping,
+  deleteRoomExternalMapping,
+  importRoomsFromMotopress,
   listSeasons,
   createSeason,
   updateSeason,
   checkAvailability,
 } from './room.service.js';
+import { createMotopressClientFromEnv } from '../../services/motopress/index.js';
 
 export default async function roomRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -49,6 +60,13 @@ export default async function roomRoutes(app: FastifyInstance): Promise<void> {
     return { data: roomType };
   });
 
+  server.delete('/room-types/:id', {
+    schema: { tags: ['Room Types'], summary: 'Delete a room type', params: idParamSchema },
+  }, async (request, reply) => {
+    await deleteRoomType(app.prisma, request.params.id, request.user?.sub);
+    return reply.status(204).send();
+  });
+
   // Rooms
   server.get('/rooms', {
     schema: { tags: ['Rooms'], summary: 'List all rooms with room type info' },
@@ -68,6 +86,67 @@ export default async function roomRoutes(app: FastifyInstance): Promise<void> {
   }, async (request) => {
     const room = await updateRoom(app.prisma, request.params.id, request.body, request.user?.sub);
     return { data: room };
+  });
+
+  server.delete('/rooms/:id', {
+    schema: { tags: ['Rooms'], summary: 'Delete a room', params: idParamSchema },
+  }, async (request, reply) => {
+    await deleteRoom(app.prisma, request.params.id, request.user?.sub);
+    return reply.status(204).send();
+  });
+
+  // External Room Mappings
+  server.get('/room-mappings', {
+    schema: { tags: ['Rooms'], summary: 'List external room mappings', querystring: listRoomExternalMappingsQuerySchema },
+  }, async (request) => {
+    return { data: await listRoomExternalMappings(app.prisma, request.query) };
+  });
+
+  server.post('/room-mappings', {
+    schema: { tags: ['Rooms'], summary: 'Create external room mapping', body: createRoomExternalMappingSchema },
+  }, async (request, reply) => {
+    const mapping = await createRoomExternalMapping(app.prisma, request.body, request.user?.sub);
+    return reply.status(201).send({ data: mapping });
+  });
+
+  server.patch('/room-mappings/:id', {
+    schema: { tags: ['Rooms'], summary: 'Update external room mapping', params: idParamSchema, body: updateRoomExternalMappingSchema },
+  }, async (request) => {
+    const mapping = await updateRoomExternalMapping(app.prisma, request.params.id, request.body, request.user?.sub);
+    return { data: mapping };
+  });
+
+  server.delete('/room-mappings/:id', {
+    schema: { tags: ['Rooms'], summary: 'Delete external room mapping', params: idParamSchema },
+  }, async (request, reply) => {
+    await deleteRoomExternalMapping(app.prisma, request.params.id, request.user?.sub);
+    return reply.status(204).send();
+  });
+
+  server.get('/room-mappings/motopress/accommodations', {
+    schema: { tags: ['Rooms'], summary: 'List MotoPress accommodations for mapping' },
+  }, async () => {
+    const client = createMotopressClientFromEnv(app.config);
+    const accommodations = await client.listAccommodations({
+      page: 1,
+      per_page: 100,
+      context: 'view',
+    });
+    return {
+      data: accommodations.map((item) => ({
+        id: item.id,
+        title: item.title,
+        status: item.status,
+        accommodationTypeId: item.accommodation_type_id ?? null,
+      })),
+    };
+  });
+
+  server.post('/room-mappings/motopress/import', {
+    schema: { tags: ['Rooms'], summary: 'Import room types and rooms from MotoPress' },
+  }, async (request) => {
+    const result = await importRoomsFromMotopress(app.prisma, app.config, request.user?.sub);
+    return { data: result };
   });
 
   // Seasons

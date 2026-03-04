@@ -106,6 +106,14 @@ enum AuditAction {
   @@map("audit_action")
 }
 
+enum SyncStatus {
+  pending
+  synced
+  failed
+
+  @@map("sync_status")
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model AdminUser {
@@ -181,6 +189,7 @@ model Room {
 
   roomType RoomType  @relation(fields: [roomTypeId], references: [id])
   bookings Booking[]
+  externalMappings RoomExternalMapping[]
 
   @@index([roomTypeId])
   @@map("rooms")
@@ -198,6 +207,12 @@ model Booking {
   notes                String?
   sourceConversationId String?       @map("source_conversation_id")
   needsReview          Boolean       @default(false) @map("needs_review")
+  externalProvider     String?       @map("external_provider")
+  externalBookingId    String?       @map("external_booking_id")
+  syncStatus           SyncStatus    @default(pending) @map("sync_status")
+  syncError            String?       @map("sync_error")
+  lastSyncedAt         DateTime?     @map("last_synced_at") @db.Timestamptz(3)
+  syncVersion          Int           @default(1) @map("sync_version")
   createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt            DateTime?     @map("deleted_at") @db.Timestamptz(3)
@@ -214,7 +229,28 @@ model Booking {
   @@index([roomId])
   @@index([deletedAt, status])
   @@index([checkIn, checkOut])
+  @@index([syncStatus, lastSyncedAt])
+  @@unique([externalProvider, externalBookingId])
   @@map("bookings")
+}
+
+model RoomExternalMapping {
+  id                          String   @id @default(cuid())
+  roomId                      String   @map("room_id")
+  provider                    String
+  externalAccommodationId     String   @map("external_accommodation_id")
+  externalAccommodationTypeId String?  @map("external_accommodation_type_id")
+  defaultAdults               Int?     @map("default_adults")
+  defaultChildren             Int?     @map("default_children")
+  createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, provider])
+  @@unique([provider, externalAccommodationId])
+  @@index([provider])
+  @@map("room_external_mappings")
 }
 
 model BookingGuest {

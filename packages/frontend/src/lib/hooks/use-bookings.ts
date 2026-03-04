@@ -21,6 +21,11 @@ interface BookingListItem {
   notes: string | null;
   needsReview: boolean;
   sourceConversationId: string | null;
+  externalProvider: string | null;
+  externalBookingId: string | null;
+  syncStatus: 'pending' | 'synced' | 'failed';
+  syncError: string | null;
+  lastSyncedAt: string | null;
   guest: { id: string; name: string; email: string | null; phone: string | null; language: string };
   room: { id: string; name: string; roomType: { id: string; name: string; basePrice: number; maxOccupancy: number } };
   bookingGuests: BookingGuest[];
@@ -63,6 +68,11 @@ interface BookingDetail {
   notes: string | null;
   needsReview: boolean;
   sourceConversationId: string | null;
+  externalProvider: string | null;
+  externalBookingId: string | null;
+  syncStatus: 'pending' | 'synced' | 'failed';
+  syncError: string | null;
+  lastSyncedAt: string | null;
   createdAt: string;
   updatedAt: string;
   guest: { id: string; name: string; email: string | null; phone: string | null; language: string };
@@ -154,6 +164,21 @@ export function useCancelBooking(): UseMutationResult<unknown, Error, string> {
       qc.invalidateQueries({ queryKey: queryKeys.bookings.all });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard.stats });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard.today });
+    },
+  });
+}
+
+export function useSyncBookingToMotopress(): UseMutationResult<
+  unknown,
+  Error,
+  string
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/v1/bookings/${id}/sync/motopress`),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.bookings.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.bookings.all });
     },
   });
 }

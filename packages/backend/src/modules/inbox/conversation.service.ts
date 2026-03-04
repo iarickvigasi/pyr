@@ -11,6 +11,8 @@ import type { AiDraftJobData } from '@pyr/shared';
 import type { CreateConversationBody, ListConversationsQuery } from './inbox.schema.js';
 import type { Conversation, ConversationWithMessages, AiDraft, Message, Booking } from '../../types/entities.js';
 import {
+  CONVERSATION_CLASSIFICATIONS,
+  OTA_CLASSIFICATIONS,
   CONVERSATION_OTA_CLASSIFICATIONS,
   OTHER_CLASSIFICATIONS,
   normalizePrimaryClassification,
@@ -44,6 +46,15 @@ export async function listConversations(
       { classification: { in: [...CONVERSATION_OTA_CLASSIFICATIONS] } },
       { classification: null },
     ];
+  }
+  if (query.bucket === 'conversation') {
+    where.OR = [
+      { classification: { in: [...CONVERSATION_CLASSIFICATIONS] } },
+      { classification: null },
+    ];
+  }
+  if (query.bucket === 'ota') {
+    where.classification = { in: [...OTA_CLASSIFICATIONS] };
   }
   if (query.bucket === 'other') {
     where.classification = { in: [...OTHER_CLASSIFICATIONS] };

@@ -40,7 +40,7 @@ const BOOKING_ANALYSIS_CLASSIFICATIONS = new Set([
 
 export function InboxPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string>();
-  const [activeBucket, setActiveBucket] = useState<'conversation_ota' | 'other'>('conversation_ota');
+  const [activeBucket, setActiveBucket] = useState<'conversation' | 'ota' | 'other'>('conversation');
   const [composerContent, setComposerContent] = useState('');
   const [preparedDraft, setPreparedDraft] = useState<{
     draftId: string;
@@ -197,9 +197,10 @@ export function InboxPage() {
         {/* Left: Conversation List */}
         <div className="w-80 shrink-0 border rounded-lg overflow-hidden flex flex-col">
           <div className="border-b p-2">
-            <Tabs value={activeBucket} onValueChange={(value) => setActiveBucket(value as 'conversation_ota' | 'other')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="conversation_ota">Conversations/OTA</TabsTrigger>
+            <Tabs value={activeBucket} onValueChange={(value) => setActiveBucket(value as 'conversation' | 'ota' | 'other')}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="conversation">Conv</TabsTrigger>
+                <TabsTrigger value="ota">OTA</TabsTrigger>
                 <TabsTrigger value="other">Other</TabsTrigger>
               </TabsList>
             </Tabs>

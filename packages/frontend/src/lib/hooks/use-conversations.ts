@@ -80,7 +80,7 @@ export interface ConversationFilters extends Record<string, string | number | bo
   status?: string;
   channel?: string;
   guestId?: string;
-  bucket?: 'conversation_ota' | 'other';
+  bucket?: 'conversation' | 'ota' | 'other' | 'conversation_ota';
   cursor?: string;
   limit?: number;
 }

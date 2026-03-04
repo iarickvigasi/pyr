@@ -196,6 +196,109 @@ describe('Inbox API', () => {
       expect(body.data).toHaveLength(1);
     });
 
+    it('should filter by bucket conversation/ota/other', async () => {
+      const guest = await createTestGuest(app, token);
+      const conversationConv = await createTestConversation(app, token, guest.id, { subject: 'Conv bucket' });
+      const conversationOta = await createTestConversation(app, token, guest.id, { subject: 'OTA bucket' });
+      const conversationOther = await createTestConversation(app, token, guest.id, { subject: 'Other bucket' });
+      const conversationUnclassified = await createTestConversation(app, token, guest.id, { subject: 'Unclassified bucket' });
+
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${conversationConv.id}`,
+        headers: headers(),
+        payload: { classification: 'conversation' },
+      });
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${conversationOta.id}`,
+        headers: headers(),
+        payload: { classification: 'ota_tripaneer' },
+      });
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${conversationOther.id}`,
+        headers: headers(),
+        payload: { classification: 'other' },
+      });
+
+      const conversationRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations?bucket=conversation',
+        headers: headers(),
+      });
+      expect(conversationRes.statusCode).toBe(200);
+      const conversationIds = (JSON.parse(conversationRes.body).data as Array<{ id: string }>).map((row) => row.id);
+      expect(conversationIds).toContain(conversationConv.id);
+      expect(conversationIds).toContain(conversationUnclassified.id);
+      expect(conversationIds).not.toContain(conversationOta.id);
+      expect(conversationIds).not.toContain(conversationOther.id);
+
+      const otaRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations?bucket=ota',
+        headers: headers(),
+      });
+      expect(otaRes.statusCode).toBe(200);
+      const otaIds = (JSON.parse(otaRes.body).data as Array<{ id: string }>).map((row) => row.id);
+      expect(otaIds).toContain(conversationOta.id);
+      expect(otaIds).not.toContain(conversationConv.id);
+      expect(otaIds).not.toContain(conversationOther.id);
+      expect(otaIds).not.toContain(conversationUnclassified.id);
+
+      const otherRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations?bucket=other',
+        headers: headers(),
+      });
+      expect(otherRes.statusCode).toBe(200);
+      const otherIds = (JSON.parse(otherRes.body).data as Array<{ id: string }>).map((row) => row.id);
+      expect(otherIds).toContain(conversationOther.id);
+      expect(otherIds).not.toContain(conversationConv.id);
+      expect(otherIds).not.toContain(conversationOta.id);
+      expect(otherIds).not.toContain(conversationUnclassified.id);
+    });
+
+    it('should keep conversation_ota bucket behavior for backward compatibility', async () => {
+      const guest = await createTestGuest(app, token);
+      const conversationConv = await createTestConversation(app, token, guest.id, { subject: 'Conv legacy bucket' });
+      const conversationOta = await createTestConversation(app, token, guest.id, { subject: 'OTA legacy bucket' });
+      const conversationOther = await createTestConversation(app, token, guest.id, { subject: 'Other legacy bucket' });
+      const conversationUnclassified = await createTestConversation(app, token, guest.id, { subject: 'Unclassified legacy bucket' });
+
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${conversationConv.id}`,
+        headers: headers(),
+        payload: { classification: 'conversation' },
+      });
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${conversationOta.id}`,
+        headers: headers(),
+        payload: { classification: 'ota_bookyogaretreats' },
+      });
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${conversationOther.id}`,
+        headers: headers(),
+        payload: { classification: 'other' },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations?bucket=conversation_ota',
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const ids = (JSON.parse(res.body).data as Array<{ id: string }>).map((row) => row.id);
+      expect(ids).toContain(conversationConv.id);
+      expect(ids).toContain(conversationOta.id);
+      expect(ids).toContain(conversationUnclassified.id);
+      expect(ids).not.toContain(conversationOther.id);
+    });
+
     it('should order by lastMessageAt descending', async () => {
       const guest = await createTestGuest(app, token);
       const conv1 = await createTestConversation(app, token, guest.id, { subject: 'Older' });

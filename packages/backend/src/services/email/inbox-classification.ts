@@ -20,13 +20,21 @@ export const INBOX_CLASSIFICATIONS = [
 
 export type InboxClassification = (typeof INBOX_CLASSIFICATIONS)[number];
 
-export const CONVERSATION_OTA_CLASSIFICATIONS: readonly InboxClassification[] = [
+export const CONVERSATION_CLASSIFICATIONS: readonly InboxClassification[] = [
   'conversation',
+  'guest_inquiry',
+] as const;
+
+export const OTA_CLASSIFICATIONS: readonly InboxClassification[] = [
   'ota_tripaneer',
   'ota_bookyogaretreats',
   'ota_other',
-  'guest_inquiry',
   'ota_notification',
+] as const;
+
+export const CONVERSATION_OTA_CLASSIFICATIONS: readonly InboxClassification[] = [
+  ...CONVERSATION_CLASSIFICATIONS,
+  ...OTA_CLASSIFICATIONS,
 ] as const;
 
 export const OTHER_CLASSIFICATIONS: readonly InboxClassification[] = [
@@ -36,6 +44,9 @@ export const OTHER_CLASSIFICATIONS: readonly InboxClassification[] = [
 ] as const;
 
 export const INBOX_TAB_BUCKETS = [
+  'conversation',
+  'ota',
+  // Backward-compat alias for older clients.
   'conversation_ota',
   'other',
 ] as const;

@@ -166,18 +166,20 @@ export async function syncBookingToCalendar(
       const { client } = await getCaldavClient(app.prisma);
       const calendarObjectUrl = calendarEvent.caldavUrl ?? '';
 
-      await client.updateCalendarObject({
+      const response = await client.updateCalendarObject({
         calendarObject: {
           url: calendarObjectUrl,
           data: iCalString,
           etag: calendarEvent.etag ?? undefined,
         },
       });
+      const etag = response.headers?.get('etag') ?? null;
 
       await app.prisma.calendarEvent.update({
         where: { id: calendarEvent.id },
         data: {
           sequence: newSequence,
+          etag,
           syncStatus: 'synced',
           lastSynced: new Date(),
           lastError: null,
@@ -237,7 +239,10 @@ export async function syncEventToCalendar(
     return;
   }
 
-  const confirmedCount = event.eventBookings.length;
+  const confirmedCount = event.eventBookings.reduce(
+    (sum, registration) => sum + (registration.attendeeCount ?? 1),
+    0,
+  );
   const registeredGuests = event.eventBookings
     .map((eb) => eb.guest.name)
     .filter(Boolean);
@@ -333,18 +338,20 @@ export async function syncEventToCalendar(
       const { client } = await getCaldavClient(app.prisma);
       const calendarObjectUrl = calendarEvent.caldavUrl ?? '';
 
-      await client.updateCalendarObject({
+      const response = await client.updateCalendarObject({
         calendarObject: {
           url: calendarObjectUrl,
           data: iCalString,
           etag: calendarEvent.etag ?? undefined,
         },
       });
+      const etag = response.headers?.get('etag') ?? null;
 
       await app.prisma.calendarEvent.update({
         where: { id: calendarEvent.id },
         data: {
           sequence: newSequence,
+          etag,
           syncStatus: 'synced',
           lastSynced: new Date(),
           lastError: null,

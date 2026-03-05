@@ -73,7 +73,7 @@ export default async function bookingRoutes(app: FastifyInstance): Promise<void>
     schema: { tags: ['Bookings'], summary: 'Update booking (enforces status transitions)', params: idParamSchema, body: updateBookingSchema },
   }, async (request) => {
     const booking = await updateBooking(app.prisma, request.params.id, request.body, request.user?.sub);
-    await enqueueCalendarSync(app, booking.id, 'update');
+    await enqueueCalendarSync(app, booking.id, booking.status === 'cancelled' ? 'delete' : 'update');
     return { data: booking };
   });
 

@@ -190,3 +190,136 @@ export const createConversationBookingBodySchema = z.object({
   }),
 });
 export type CreateConversationBookingBody = z.infer<typeof createConversationBookingBodySchema>;
+
+// ─── Event Analysis + Actions Schemas ───────────────────────
+
+export const conversationEventAnalysisStatusSchema = z.enum([
+  'pending',
+  'ready',
+  'insufficient_data',
+  'not_applicable',
+  'error',
+]);
+
+export const conversationEventIntentSchema = z.enum([
+  'create_or_link',
+  'cancel',
+  'move',
+]).nullable();
+
+export const conversationEventMissingFieldSchema = z.enum([
+  'externalBookingId',
+  'eventDate',
+  'eventTime',
+]);
+
+export const conversationEventCandidateSchema = z.object({
+  externalBookingId: z.string().nullable(),
+  externalProductCode: z.string().nullable(),
+  eventType: z.enum(['puppy_yoga', 'beach_walk', 'coffee_cake_cuddles', 'retreat']).nullable(),
+  eventTitle: z.string().nullable(),
+  eventDate: z.string().date().nullable(),
+  eventTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable(),
+  location: z.string().nullable(),
+  attendeeCount: z.number().int().min(1).nullable(),
+  guest: z.object({
+    name: z.string().nullable(),
+    email: z.string().nullable(),
+    phone: z.string().nullable(),
+  }),
+  confidence: z.number().min(0).max(1).nullable(),
+}).nullable();
+
+export const conversationEventResolutionSchema = z.object({
+  matchedGuestId: z.string().nullable(),
+  matchedEventId: z.string().nullable(),
+  matchedEventBookingId: z.string().nullable(),
+  recommendedOperation: z.enum(['create_or_link', 'cancel', 'move', 'none']),
+  guestFieldDiffs: z.object({
+    name: z.object({ current: z.string().nullable(), proposed: z.string().nullable() }),
+    email: z.object({ current: z.string().nullable(), proposed: z.string().nullable() }),
+    phone: z.object({ current: z.string().nullable(), proposed: z.string().nullable() }),
+  }),
+}).nullable();
+
+export const conversationEventAnalysisDataSchema = z.object({
+  status: conversationEventAnalysisStatusSchema,
+  provider: z.string(),
+  reason: z.string(),
+  classification: z.string().nullable(),
+  intent: conversationEventIntentSchema,
+  missingFields: z.array(conversationEventMissingFieldSchema),
+  candidate: conversationEventCandidateSchema,
+  resolution: conversationEventResolutionSchema,
+  messageId: z.string().nullable(),
+});
+
+export const conversationEventAnalysisResponseSchema = z.object({
+  data: conversationEventAnalysisDataSchema,
+});
+
+const eventGuestPayloadSchema = z.object({
+  mode: z.enum(['linked', 'existing', 'create']),
+  guestId: z.string().min(1).optional(),
+  name: z.string().min(1).max(200).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().min(3).max(60).optional(),
+  language: z.enum(['en', 'de']).optional(),
+  applyUpdates: z.object({
+    name: z.boolean().optional(),
+    email: z.boolean().optional(),
+    phone: z.boolean().optional(),
+  }).optional(),
+}).superRefine((data, ctx) => {
+  if (data.mode === 'existing' && !data.guestId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['guestId'],
+      message: 'guestId is required when mode is "existing"',
+    });
+  }
+});
+
+const existingEventTargetSchema = z.object({
+  mode: z.literal('existing'),
+  eventId: z.string().min(1),
+});
+
+const createEventTargetSchema = z.object({
+  mode: z.literal('create'),
+  type: z.enum(['puppy_yoga', 'beach_walk', 'coffee_cake_cuddles', 'retreat']),
+  title: z.string().min(1).max(200),
+  date: z.string().date(),
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  capacity: z.number().int().min(1),
+  location: z.string().max(200).nullish(),
+  description: z.string().max(2000).nullish(),
+});
+
+const eventTargetSchema = z.discriminatedUnion('mode', [
+  existingEventTargetSchema,
+  createEventTargetSchema,
+]);
+
+export const applyConversationEventBodySchema = z.discriminatedUnion('operation', [
+  z.object({
+    operation: z.literal('create_or_link'),
+    guest: eventGuestPayloadSchema,
+    event: eventTargetSchema,
+    registration: z.object({
+      externalBookingId: z.string().min(1),
+      externalProductCode: z.string().max(200).nullish(),
+      attendeeCount: z.number().int().min(1).optional(),
+    }),
+  }),
+  z.object({
+    operation: z.literal('cancel'),
+    externalBookingId: z.string().min(1),
+  }),
+  z.object({
+    operation: z.literal('move'),
+    externalBookingId: z.string().min(1),
+    targetEvent: eventTargetSchema,
+  }),
+]);
+export type ApplyConversationEventBody = z.infer<typeof applyConversationEventBodySchema>;

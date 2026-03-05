@@ -51,6 +51,7 @@ export const queryKeys = {
     drafts: (id: string) => ['conversations', 'drafts', id] as const,
     suggestion: (id: string) => ['conversations', 'suggestion', id] as const,
     bookingAnalysis: (id: string) => ['conversations', 'booking-analysis', id] as const,
+    eventAnalysis: (id: string) => ['conversations', 'event-analysis', id] as const,
     unreadCount: ['conversations', 'unread-count'] as const,
   },
   dashboard: {

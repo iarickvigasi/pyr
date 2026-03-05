@@ -11,6 +11,12 @@ export interface AiDraftJobData {
   guestLanguage: 'en' | 'de';
 }
 
+/** Viator event analysis job -- triggered by inbound Viator emails */
+export interface ViatorEventAnalysisJobData {
+  conversationId: string;
+  messageId: string;
+}
+
 /** Calendar sync job -- triggered by booking/event mutation */
 export interface CalendarSyncJobData {
   entityType: 'booking' | 'event';
@@ -42,6 +48,7 @@ export interface DeadLetterJobData {
 export const QUEUE_NAMES = {
   EMAIL_POLL: 'email-poll',
   AI_DRAFT: 'ai-draft',
+  VIATOR_EVENT_ANALYSIS: 'viator-event-analysis',
   CALENDAR_SYNC: 'calendar-sync',
   SCHEDULED: 'scheduled',
   HEALTH_CHECK: 'health-check',

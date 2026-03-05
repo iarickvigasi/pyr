@@ -9,6 +9,7 @@ import {
   addTestMessage,
   createTestRoomType,
   createTestRoom,
+  createTestEvent,
 } from '../../test/factories.js';
 
 describe('Inbox API', () => {
@@ -1080,6 +1081,459 @@ describe('Inbox API', () => {
       expect(detailRes.statusCode).toBe(200);
       const detailBody = JSON.parse(detailRes.body);
       expect(detailBody.data.bookings.map((b: { id: string }) => b.id)).toContain(bookingId);
+    });
+  });
+
+  describe('Viator event analysis workflow', () => {
+    it('returns pending state when no persisted event analysis exists yet', async () => {
+      const guest = await createTestGuest(app, token, { email: 'event-pending@example.com' });
+      const conv = await createTestConversation(app, token, guest.id, {
+        subject: 'Viator pending analysis',
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/conversations/${conv.id}/event-analysis`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.status).toBe('pending');
+      expect(body.data.provider).toBe('viator');
+    });
+
+    it('returns ready when OpenClaw provides complete Viator event payload', async () => {
+      const conv = await prisma.conversation.create({
+        data: {
+          channel: 'email',
+          classification: 'ota_other',
+          subject: 'Viator booking update',
+        },
+      });
+      await prisma.message.create({
+        data: {
+          conversationId: conv.id,
+          direction: 'in',
+          content: 'Booking #BR-1369156715 for Scenic Beach Walk with 2 adults on 2026-03-06 at 09:00.',
+          channel: 'email',
+          fromAddress: 'booking@notifications.viator.com',
+          fromName: 'Viator',
+          subject: 'Booking update',
+          sentAt: new Date(),
+        },
+      });
+
+      mockGatewayFinalJson({
+        intent: 'create_or_link',
+        reason: 'Detected new Viator booking registration',
+        confidence: 0.95,
+        candidate: {
+          externalBookingId: 'BR-1369156715',
+          externalProductCode: 'VIATOR-PUPPY-WALK',
+          eventType: 'beach_walk',
+          eventTitle: 'Scenic Beach Walk with Rescue Dogs',
+          eventDate: '2026-03-06',
+          eventTime: '09:00',
+          location: 'Pafos, Cyprus',
+          attendeeCount: 2,
+          guest: {
+            name: 'Martyn Smith',
+            email: 'martyn@example.com',
+            phone: null,
+          },
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/event-analysis`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.status).toBe('ready');
+      expect(body.data.intent).toBe('create_or_link');
+      expect(body.data.candidate.externalBookingId).toBe('BR-1369156715');
+      expect(body.data.candidate.eventDate).toBe('2026-03-06');
+      expect(body.data.candidate.eventTime).toBe('09:00');
+    });
+
+    it('returns not_applicable when OpenClaw reports no event action intent', async () => {
+      const conv = await prisma.conversation.create({
+        data: {
+          channel: 'email',
+          classification: 'ota_other',
+          subject: 'Viator informational mail',
+        },
+      });
+      await prisma.message.create({
+        data: {
+          conversationId: conv.id,
+          direction: 'in',
+          content: 'Just an informational update, no action needed.',
+          channel: 'email',
+          fromAddress: 'booking@notifications.viator.com',
+          fromName: 'Viator',
+          subject: 'Informational',
+          sentAt: new Date(),
+        },
+      });
+
+      mockGatewayFinalJson({
+        intent: 'none',
+        reason: 'No actionable event operation found',
+        confidence: 0.88,
+        candidate: null,
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/event-analysis`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.status).toBe('not_applicable');
+      expect(body.data.intent).toBeNull();
+    });
+
+    it('returns insufficient_data when intent exists but date/time is missing', async () => {
+      const conv = await prisma.conversation.create({
+        data: {
+          channel: 'email',
+          classification: 'ota_other',
+          subject: 'Viator missing details',
+        },
+      });
+      await prisma.message.create({
+        data: {
+          conversationId: conv.id,
+          direction: 'in',
+          content: 'Booking BR-999 with missing schedule details',
+          channel: 'email',
+          fromAddress: 'booking@notifications.viator.com',
+          fromName: 'Viator',
+          subject: 'Missing details',
+          sentAt: new Date(),
+        },
+      });
+
+      mockGatewayFinalJson({
+        intent: 'create_or_link',
+        reason: 'Booking detected but schedule is incomplete',
+        confidence: 0.71,
+        candidate: {
+          externalBookingId: 'BR-999',
+          externalProductCode: null,
+          eventType: 'beach_walk',
+          eventTitle: 'Scenic Beach Walk with Rescue Dogs',
+          eventDate: null,
+          eventTime: null,
+          location: 'Pafos, Cyprus',
+          attendeeCount: 2,
+          guest: {
+            name: 'Unknown',
+            email: null,
+            phone: null,
+          },
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/event-analysis`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.status).toBe('insufficient_data');
+      expect(body.data.missingFields).toEqual(expect.arrayContaining(['eventDate', 'eventTime']));
+    });
+
+    it('returns error status when gateway is unavailable', async () => {
+      const conv = await prisma.conversation.create({
+        data: {
+          channel: 'email',
+          classification: 'ota_other',
+          subject: 'Viator gateway down',
+        },
+      });
+      await prisma.message.create({
+        data: {
+          conversationId: conv.id,
+          direction: 'in',
+          content: 'Booking operation request',
+          channel: 'email',
+          fromAddress: 'booking@notifications.viator.com',
+          fromName: 'Viator',
+          subject: 'Gateway down test',
+          sentAt: new Date(),
+        },
+      });
+
+      setGatewayMock({
+        isConnected: false,
+        onChatEvent: () => () => {},
+        request: vi.fn(),
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/event-analysis`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.status).toBe('error');
+      expect(typeof body.data.reason).toBe('string');
+    });
+  });
+
+  describe('Apply conversation event actions', () => {
+    it('creates/links registration with linked guest and existing event', async () => {
+      const guest = await createTestGuest(app, token, { email: 'linked-event@example.com' });
+      const conv = await createTestConversation(app, token, guest.id, {
+        subject: 'Create event registration',
+      });
+      const event = await createTestEvent(app, token, {
+        title: 'Viator Beach Walk',
+        type: 'beach_walk',
+        date: '2026-03-10',
+        time: '09:00',
+        capacity: 8,
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/events`,
+        headers: headers(),
+        payload: {
+          operation: 'create_or_link',
+          guest: { mode: 'linked' },
+          event: { mode: 'existing', eventId: event.id },
+          registration: {
+            externalBookingId: 'BR-LINK-001',
+            externalProductCode: 'PROD-001',
+            attendeeCount: 2,
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(body.data.guest.id).toBe(guest.id);
+      expect(body.data.registration.externalBookingId).toBe('BR-LINK-001');
+      expect(body.data.registration.sourceConversationId).toBe(conv.id);
+      expect(body.data.registration.attendeeCount).toBe(2);
+
+      const detailRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/conversations/${conv.id}`,
+        headers: headers(),
+      });
+      expect(detailRes.statusCode).toBe(200);
+      const detailBody = JSON.parse(detailRes.body);
+      expect(detailBody.data.eventRegistrations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: body.data.registration.id,
+            attendeeCount: 2,
+            event: expect.objectContaining({ id: event.id }),
+          }),
+        ]),
+      );
+    });
+
+    it('creates guest + event in create_or_link mode and writes audit logs', async () => {
+      const conv = await prisma.conversation.create({
+        data: {
+          channel: 'email',
+          classification: 'ota_other',
+          subject: 'Create guest and event',
+        },
+      });
+      await prisma.message.create({
+        data: {
+          conversationId: conv.id,
+          direction: 'in',
+          content: 'Viator booking BR-CREATE-001 for 2 guests on 2026-03-12 10:00',
+          channel: 'email',
+          fromAddress: 'newguest@example.com',
+          fromName: 'New Viator Guest',
+          subject: 'Booking',
+          sentAt: new Date(),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/events`,
+        headers: headers(),
+        payload: {
+          operation: 'create_or_link',
+          guest: {
+            mode: 'create',
+            name: 'New Viator Guest',
+            email: 'newguest@example.com',
+            language: 'en',
+          },
+          event: {
+            mode: 'create',
+            type: 'beach_walk',
+            title: 'Viator Auto Event',
+            date: '2026-03-12',
+            time: '10:00',
+            capacity: 8,
+            location: 'Pafos',
+          },
+          registration: {
+            externalBookingId: 'BR-CREATE-001',
+            externalProductCode: 'PROD-CREATE',
+            attendeeCount: 2,
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(body.data.guest.email).toBe('newguest@example.com');
+      expect(body.data.conversation.guestId).toBe(body.data.guest.id);
+      expect(body.data.event.title).toBe('Viator Auto Event');
+
+      const eventBookingLog = await prisma.auditLog.findFirst({
+        where: {
+          entityType: 'event_booking',
+          entityId: body.data.registration.id,
+          action: 'create',
+        },
+      });
+      expect(eventBookingLog).toBeTruthy();
+    });
+
+    it('cancels registration by external reference', async () => {
+      const guest = await createTestGuest(app, token, { email: 'cancel-event@example.com' });
+      const conv = await createTestConversation(app, token, guest.id, {
+        subject: 'Cancel event registration',
+      });
+      const event = await createTestEvent(app, token, {
+        title: 'Cancel Target Event',
+        date: '2026-03-14',
+        time: '09:30',
+      });
+
+      const existing = await prisma.eventBooking.create({
+        data: {
+          eventId: event.id,
+          guestId: guest.id,
+          status: 'confirmed',
+          attendeeCount: 2,
+          externalProvider: 'viator',
+          externalBookingId: 'BR-CANCEL-001',
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/events`,
+        headers: headers(),
+        payload: {
+          operation: 'cancel',
+          externalBookingId: 'BR-CANCEL-001',
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(body.data.registration.id).toBe(existing.id);
+      expect(body.data.registration.status).toBe('cancelled');
+      expect(body.data.registration.sourceConversationId).toBe(conv.id);
+    });
+
+    it('moves registration to target event and waitlists when target capacity is full', async () => {
+      const movingGuest = await createTestGuest(app, token, { email: 'move-event@example.com' });
+      const fillerGuest = await createTestGuest(app, token, { email: 'full-capacity@example.com' });
+      const conv = await createTestConversation(app, token, movingGuest.id, {
+        subject: 'Move event registration',
+      });
+      const sourceEvent = await createTestEvent(app, token, {
+        title: 'Source Event',
+        date: '2026-03-15',
+        time: '08:30',
+        capacity: 8,
+      });
+      const targetEvent = await createTestEvent(app, token, {
+        title: 'Target Event Full',
+        date: '2026-03-16',
+        time: '08:30',
+        capacity: 1,
+      });
+
+      await prisma.eventBooking.create({
+        data: {
+          eventId: targetEvent.id,
+          guestId: fillerGuest.id,
+          status: 'confirmed',
+          attendeeCount: 1,
+          externalProvider: 'viator',
+          externalBookingId: 'BR-TARGET-FULL',
+        },
+      });
+
+      const movingRegistration = await prisma.eventBooking.create({
+        data: {
+          eventId: sourceEvent.id,
+          guestId: movingGuest.id,
+          status: 'confirmed',
+          attendeeCount: 1,
+          externalProvider: 'viator',
+          externalBookingId: 'BR-MOVE-001',
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/events`,
+        headers: headers(),
+        payload: {
+          operation: 'move',
+          externalBookingId: 'BR-MOVE-001',
+          targetEvent: {
+            mode: 'existing',
+            eventId: targetEvent.id,
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(body.data.registration.id).toBe(movingRegistration.id);
+      expect(body.data.registration.eventId).toBe(targetEvent.id);
+      expect(body.data.registration.status).toBe('waitlisted');
+      expect(body.data.registration.sourceConversationId).toBe(conv.id);
+    });
+
+    it('returns 404 when cancelling unknown external booking reference', async () => {
+      const guest = await createTestGuest(app, token, { email: 'cancel-missing@example.com' });
+      const conv = await createTestConversation(app, token, guest.id, {
+        subject: 'Cancel missing booking reference',
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${conv.id}/events`,
+        headers: headers(),
+        payload: {
+          operation: 'cancel',
+          externalBookingId: 'BR-NOT-FOUND',
+        },
+      });
+
+      expect(res.statusCode).toBe(404);
     });
   });
 });

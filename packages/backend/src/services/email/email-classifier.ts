@@ -9,7 +9,7 @@ export interface ClassificationResult {
   category: InboxClassification;
   confidence: number;
   reason: string;
-  source: 'rules' | 'openclaw';
+  source: 'rules' | 'openclaw' | 'openclaw_error';
 }
 
 interface RuleCategory {

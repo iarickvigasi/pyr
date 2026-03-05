@@ -135,12 +135,33 @@ export async function getConversation(
           where: { deletedAt: null },
           select: { id: true, status: true, needsReview: true },
         },
+        eventBookings: {
+          select: {
+            id: true,
+            status: true,
+            attendeeCount: true,
+            sourceConversationId: true,
+            event: {
+              select: {
+                id: true,
+                title: true,
+                date: true,
+                time: true,
+                type: true,
+              },
+            },
+          },
+        },
       },
     });
   });
 
   if (!conversation) throw new NotFoundError('Conversation', id);
-  return conversation as unknown as ConversationWithMessages;
+  const eventRegistrations = conversation.eventBookings;
+  return {
+    ...conversation,
+    eventRegistrations,
+  } as unknown as ConversationWithMessages;
 }
 
 /**

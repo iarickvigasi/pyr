@@ -178,6 +178,11 @@ export type EventBooking = {
   eventId: string;
   guestId: string;
   status: EventBookingStatus;
+  attendeeCount: number;
+  externalProvider: string | null;
+  externalBookingId: string | null;
+  externalProductCode: string | null;
+  sourceConversationId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -253,6 +258,9 @@ export type MessageWithAttachments = Message & {
 export type ConversationWithMessages = Conversation & {
   guest: Pick<Guest, 'id' | 'name' | 'email' | 'language'> | null;
   messages: (Message & { attachments?: Omit<Attachment, 'messageId' | 'createdAt'>[] })[];
+  eventRegistrations?: (EventBooking & {
+    event: Pick<Event, 'id' | 'title' | 'date' | 'time' | 'type'>;
+  })[];
 };
 
 // ──────────────────────────────────────────────────────────────

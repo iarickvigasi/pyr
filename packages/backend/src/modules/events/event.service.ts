@@ -30,20 +30,34 @@ export async function listEvents(
     take: limit + 1,
     ...(query.cursor ? { skip: 1, cursor: { id: query.cursor } } : {}),
     orderBy: { date: 'asc' },
-    include: {
-      _count: {
-        select: {
-          eventBookings: { where: { status: 'confirmed' } },
-        },
-      },
-    },
   });
 
   const hasMore = events.length > limit;
   const data = hasMore ? events.slice(0, limit) : events;
 
+  const eventIds = data.map((event) => event.id);
+  const attendeeSums = eventIds.length > 0
+    ? await prisma.eventBooking.groupBy({
+        by: ['eventId'],
+        where: {
+          eventId: { in: eventIds },
+          status: 'confirmed',
+        },
+        _sum: { attendeeCount: true },
+      })
+    : [];
+  const attendeeSumByEventId = new Map(
+    attendeeSums.map((row) => [row.eventId, row._sum.attendeeCount ?? 0]),
+  );
+  const dataWithCounts = data.map((event) => ({
+    ...event,
+    _count: {
+      eventBookings: attendeeSumByEventId.get(event.id) ?? 0,
+    },
+  }));
+
   return {
-    data: data as (Event & { _count: { eventBookings: number } })[],
+    data: dataWithCounts as (Event & { _count: { eventBookings: number } })[],
     nextCursor: hasMore ? data[data.length - 1]!.id : null,
     hasMore,
   };
@@ -66,7 +80,16 @@ export async function getEvent(
   });
 
   if (!event) throw new NotFoundError('Event', id);
-  return event as EventWithBookings;
+  const confirmedAttendees = event.eventBookings
+    .filter((row) => row.status === 'confirmed')
+    .reduce((sum, row) => sum + row.attendeeCount, 0);
+
+  return {
+    ...event,
+    _count: {
+      eventBookings: confirmedAttendees,
+    },
+  } as unknown as EventWithBookings;
 }
 
 export async function createEvent(
@@ -167,6 +190,13 @@ export async function registerGuest(
   eventId: string,
   guestId: string,
   actorId?: string,
+  options?: {
+    attendeeCount?: number;
+    externalProvider?: string | null;
+    externalBookingId?: string | null;
+    externalProductCode?: string | null;
+    sourceConversationId?: string | null;
+  },
 ): Promise<EventBooking> {
   return prisma.$transaction(async (tx) => {
     const event = await tx.event.findUnique({ where: { id: eventId } });
@@ -175,28 +205,51 @@ export async function registerGuest(
     const guest = await tx.guest.findFirst({ where: { id: guestId, ...notDeleted } });
     if (!guest) throw new NotFoundError('Guest', guestId);
 
-    // Check for existing registration and capacity in parallel
-    const [existing, confirmedCount] = await Promise.all([
+    const requestedAttendeeCount = options?.attendeeCount ?? 1;
+    const attendeeCount = Number.isFinite(requestedAttendeeCount)
+      ? Math.max(1, Math.floor(requestedAttendeeCount))
+      : 1;
+
+    // Check for existing registration and confirmed attendee volume in parallel
+    const [existing, confirmedAttendeeVolume] = await Promise.all([
       tx.eventBooking.findUnique({ where: { eventId_guestId: { eventId, guestId } } }),
-      tx.eventBooking.count({ where: { eventId, status: 'confirmed' } }),
+      tx.eventBooking.aggregate({
+        where: { eventId, status: 'confirmed' },
+        _sum: { attendeeCount: true },
+      }),
     ]);
+    const confirmedAttendees = confirmedAttendeeVolume._sum.attendeeCount ?? 0;
 
     if (existing) {
       if (existing.status === 'cancelled') {
         // Re-register: use the already-fetched confirmedCount
         const newStatus: EventBookingStatus =
-          confirmedCount < event.capacity ? 'confirmed' : 'waitlisted';
+          (confirmedAttendees + attendeeCount) <= event.capacity ? 'confirmed' : 'waitlisted';
 
         const updated = await tx.eventBooking.update({
           where: { id: existing.id },
-          data: { status: newStatus },
+          data: {
+            status: newStatus,
+            attendeeCount,
+            externalProvider: options?.externalProvider ?? existing.externalProvider,
+            externalBookingId: options?.externalBookingId ?? existing.externalBookingId,
+            externalProductCode: options?.externalProductCode ?? existing.externalProductCode,
+            sourceConversationId: options?.sourceConversationId ?? existing.sourceConversationId,
+          },
         });
 
         await writeAuditLog(tx, {
           entityType: 'event_booking',
           entityId: updated.id,
           action: 'update',
-          changes: { status: { from: 'cancelled', to: newStatus } },
+          changes: {
+            status: { from: 'cancelled', to: newStatus },
+            attendeeCount,
+            externalProvider: options?.externalProvider ?? existing.externalProvider,
+            externalBookingId: options?.externalBookingId ?? existing.externalBookingId,
+            externalProductCode: options?.externalProductCode ?? existing.externalProductCode,
+            sourceConversationId: options?.sourceConversationId ?? existing.sourceConversationId,
+          },
           actor: getActor(actorId),
         });
 
@@ -207,17 +260,35 @@ export async function registerGuest(
 
     // New registration
     const status: EventBookingStatus =
-      confirmedCount < event.capacity ? 'confirmed' : 'waitlisted';
+      (confirmedAttendees + attendeeCount) <= event.capacity ? 'confirmed' : 'waitlisted';
 
     const registration = await tx.eventBooking.create({
-      data: { eventId, guestId, status },
+      data: {
+        eventId,
+        guestId,
+        status,
+        attendeeCount,
+        externalProvider: options?.externalProvider ?? null,
+        externalBookingId: options?.externalBookingId ?? null,
+        externalProductCode: options?.externalProductCode ?? null,
+        sourceConversationId: options?.sourceConversationId ?? null,
+      },
     });
 
     await writeAuditLog(tx, {
       entityType: 'event_booking',
       entityId: registration.id,
       action: 'create',
-      changes: { eventId, guestId, status },
+      changes: {
+        eventId,
+        guestId,
+        status,
+        attendeeCount,
+        externalProvider: options?.externalProvider ?? null,
+        externalBookingId: options?.externalBookingId ?? null,
+        externalProductCode: options?.externalProductCode ?? null,
+        sourceConversationId: options?.sourceConversationId ?? null,
+      },
       actor: getActor(actorId),
     });
 

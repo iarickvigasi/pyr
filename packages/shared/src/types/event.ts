@@ -19,6 +19,11 @@ export interface EventBooking {
   eventId: string;
   guestId: string;
   status: EventBookingStatus;
+  attendeeCount: number;
+  externalProvider: string | null;
+  externalBookingId: string | null;
+  externalProductCode: string | null;
+  sourceConversationId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

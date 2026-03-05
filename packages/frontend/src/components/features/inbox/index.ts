@@ -10,4 +10,6 @@ export { ClassificationBadge } from './classification-badge';
 export { ReclassifyDropdown } from './reclassify-dropdown';
 export { CustomerSuggestionCard } from './customer-suggestion-card';
 export { BookingAnalysisCard } from './booking-analysis-card';
+export { EventAnalysisCard } from './event-analysis-card';
 export { InboxBookingWizardDialog } from './inbox-booking-wizard-dialog';
+export { InboxEventWizardDialog } from './inbox-event-wizard-dialog';

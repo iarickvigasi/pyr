@@ -11,7 +11,9 @@ import { MessageComposer } from './message-composer';
 import { ReclassifyDropdown } from './reclassify-dropdown';
 import { CustomerSuggestionCard } from './customer-suggestion-card';
 import { BookingAnalysisCard } from './booking-analysis-card';
+import { EventAnalysisCard } from './event-analysis-card';
 import { InboxBookingWizardDialog } from './inbox-booking-wizard-dialog';
+import { InboxEventWizardDialog } from './inbox-event-wizard-dialog';
 import {
   useConversations,
   useConversation,
@@ -24,8 +26,12 @@ import {
   useCreateConversationGuest,
   useAnalyzeConversationBooking,
   useCreateConversationBooking,
+  useConversationEventAnalysis,
+  useRunConversationEventAnalysis,
+  useApplyConversationEventAction,
   type ConversationBookingAnalysis,
   type CreateConversationBookingPayload,
+  type ConversationEventApplyPayload,
 } from '@/lib/hooks/use-conversations';
 import { toast } from 'sonner';
 
@@ -38,6 +44,16 @@ const BOOKING_ANALYSIS_CLASSIFICATIONS = new Set([
   'ota_notification',
 ]);
 
+function isViatorConversation(
+  conversation: { messages: Array<{ fromAddress: string | null }> } | null | undefined,
+): boolean {
+  if (!conversation) return false;
+  return conversation.messages.some((message) => {
+    const address = message.fromAddress?.toLowerCase() ?? '';
+    return address.endsWith('@viator.com') || address.includes('.viator.com');
+  });
+}
+
 export function InboxPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string>();
   const [activeBucket, setActiveBucket] = useState<'conversation' | 'ota' | 'other'>('conversation');
@@ -48,6 +64,7 @@ export function InboxPage() {
   } | null>(null);
   const [bookingAnalysis, setBookingAnalysis] = useState<ConversationBookingAnalysis | null>(null);
   const [bookingWizardOpen, setBookingWizardOpen] = useState(false);
+  const [eventWizardOpen, setEventWizardOpen] = useState(false);
 
   const { data: conversationsData, isLoading: conversationsLoading } =
     useConversations({ bucket: activeBucket });
@@ -56,6 +73,7 @@ export function InboxPage() {
   const { data: draftsData } = useConversationDrafts(selectedConversationId);
   const { data: suggestionData, isLoading: suggestionLoading } =
     useConversationCustomerSuggestion(selectedConversationId);
+  const { data: eventAnalysisData } = useConversationEventAnalysis(selectedConversationId);
 
   const sendMessage = useSendMessage(selectedConversationId ?? '');
   const approveDraft = useApproveDraft(selectedConversationId ?? '');
@@ -64,10 +82,14 @@ export function InboxPage() {
   const createGuest = useCreateConversationGuest(selectedConversationId);
   const analyzeBooking = useAnalyzeConversationBooking(selectedConversationId);
   const createConversationBooking = useCreateConversationBooking(selectedConversationId);
+  const runEventAnalysis = useRunConversationEventAnalysis(selectedConversationId);
+  const applyEventAction = useApplyConversationEventAction(selectedConversationId);
 
   const conversations = conversationsData ?? [];
   const conversation = conversationData;
   const drafts = draftsData ?? [];
+  const eventAnalysis = eventAnalysisData ?? null;
+  const isViatorThread = isViatorConversation(conversation);
   const canAnalyzeBooking = !!conversation
     && (
       conversation.classification === null
@@ -83,6 +105,7 @@ export function InboxPage() {
     setPreparedDraft(null);
     setBookingAnalysis(null);
     setBookingWizardOpen(false);
+    setEventWizardOpen(false);
   }, [selectedConversationId]);
 
   const handleSendMessage = async (content: string): Promise<void> => {
@@ -184,6 +207,37 @@ export function InboxPage() {
     }
   };
 
+  const handleAnalyzeEvent = async (): Promise<void> => {
+    try {
+      const analysis = await runEventAnalysis.mutateAsync();
+      if (analysis.status === 'ready') {
+        toast.success('Viator event action extracted. Review and apply.');
+      } else if (analysis.status === 'not_applicable') {
+        toast.info('Ailu did not find an event action in this thread.');
+      } else if (analysis.status === 'insufficient_data') {
+        toast.info('Viator intent found but some event fields are missing.');
+      } else if (analysis.status === 'pending') {
+        toast.info('Viator analysis is still running in background.');
+      } else {
+        toast.error(analysis.reason || 'Event analysis failed');
+      }
+    } catch {
+      toast.error('Failed to run Viator event analysis');
+    }
+  };
+
+  const handleApplyEventAction = async (
+    payload: ConversationEventApplyPayload,
+  ): Promise<void> => {
+    try {
+      await applyEventAction.mutateAsync(payload);
+      toast.success('Event action applied successfully');
+      setEventWizardOpen(false);
+    } catch {
+      toast.error('Failed to apply event action');
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Header */}
@@ -280,6 +334,15 @@ export function InboxPage() {
                         Booking {booking.id.slice(-6)}
                       </Link>
                     ))}
+                    {conversation.eventRegistrations?.map((registration) => (
+                      <Link
+                        key={registration.id}
+                        href={`/events/${registration.event.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        Event {registration.event.title}
+                      </Link>
+                    ))}
                   </div>
                 </div>
                 <div className="shrink-0 ml-4">
@@ -307,6 +370,14 @@ export function InboxPage() {
                     isLoading={analyzeBooking.isPending}
                     onAnalyze={handleAnalyzeBooking}
                     onOpenWizard={() => setBookingWizardOpen(true)}
+                  />
+                )}
+                {isViatorThread && (
+                  <EventAnalysisCard
+                    analysis={eventAnalysis}
+                    isLoading={runEventAnalysis.isPending}
+                    onAnalyze={handleAnalyzeEvent}
+                    onOpenWizard={() => setEventWizardOpen(true)}
                   />
                 )}
               </div>
@@ -352,6 +423,15 @@ export function InboxPage() {
         analysis={bookingAnalysis}
         isSubmitting={createConversationBooking.isPending}
         onSubmit={handleCreateConversationBooking}
+      />
+
+      <InboxEventWizardDialog
+        open={eventWizardOpen}
+        onOpenChange={setEventWizardOpen}
+        conversation={conversation}
+        analysis={eventAnalysis}
+        isSubmitting={applyEventAction.isPending}
+        onSubmit={handleApplyEventAction}
       />
     </div>
   );

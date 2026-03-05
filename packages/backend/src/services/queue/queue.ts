@@ -3,6 +3,7 @@ import { QUEUE_NAMES } from '@pyr/shared';
 import type {
   EmailPollJobData,
   AiDraftJobData,
+  ViatorEventAnalysisJobData,
   CalendarSyncJobData,
   ScheduledJobData,
   HealthCheckJobData,
@@ -33,6 +34,16 @@ export async function registerQueues(app: FastifyInstance): Promise<void> {
       attempts: 3,
       backoff: { type: 'exponential', delay: 3000 },
       removeOnComplete: { count: 100 },
+      removeOnFail: { count: 500 },
+    },
+  });
+
+  // Viator event analysis -- 3 attempts, exponential backoff from 3s
+  app.queues.createQueue<ViatorEventAnalysisJobData>(QUEUE_NAMES.VIATOR_EVENT_ANALYSIS, {
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 3000 },
+      removeOnComplete: { count: 200 },
       removeOnFail: { count: 500 },
     },
   });

@@ -20,6 +20,7 @@ export async function getTestApp(): Promise<FastifyInstance> {
 }
 
 const TABLES = [
+  'conversation_event_analyses',
   'ai_drafts', 'messages', 'conversations', 'event_bookings',
   'calendar_events', 'payments', 'invoices', 'bookings', 'events',
   'rooms', 'room_types', 'seasons', 'guests', 'settings', 'admin_users', 'audit_log',

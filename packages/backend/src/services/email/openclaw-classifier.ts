@@ -5,7 +5,6 @@ import type { GatewayWsClient } from '../gateway/gateway-ws-client.js';
 import type { ChatEvent } from '../gateway/types.js';
 import type { ParsedEmail } from './email-parser.js';
 import type { ClassificationResult } from './email-classifier.js';
-import { classifyEmailByRules } from './email-classifier.js';
 import { INBOX_CLASSIFICATIONS, type InboxClassification } from './inbox-classification.js';
 
 const CLASSIFICATION_TIMEOUT_MS = 45_000;
@@ -237,21 +236,22 @@ export async function classifyEmailWithOpenClaw(params: {
   logger: FastifyBaseLogger;
 }): Promise<OpenClawClassificationResult> {
   const { gateway, parsed, conversationId, recentMessages = [], logger } = params;
-
-  const fallback = classifyEmailByRules(parsed.from, parsed.subject);
-  const fallbackWithSuggestion: OpenClawClassificationResult = {
-    ...fallback,
+  const openClawErrorResult = (reason: string): OpenClawClassificationResult => ({
+    category: 'other',
+    confidence: 0,
+    reason,
+    source: 'openclaw_error',
     suggestion: {
       name: parsed.from.name || null,
       email: parsed.from.address || null,
       phone: null,
-      shouldCreate: fallback.category === 'conversation',
+      shouldCreate: false,
     },
-  };
+  });
 
   if (!gateway.isConnected) {
-    logger.warn('Gateway unavailable for classification, using rules fallback');
-    return fallbackWithSuggestion;
+    logger.warn('Gateway unavailable for classification, returning safe category');
+    return openClawErrorResult('OpenClaw gateway unavailable for classification');
   }
 
   const sessionKey = `email-classify:${conversationId ?? 'new'}:${Date.now()}`;
@@ -262,17 +262,17 @@ export async function classifyEmailWithOpenClaw(params: {
     const json = extractJsonBlock(raw);
 
     if (!json) {
-      logger.warn({ raw }, 'Classifier returned non-JSON output, using rules fallback');
-      return fallbackWithSuggestion;
+      logger.warn({ raw }, 'Classifier returned non-JSON output');
+      return openClawErrorResult('OpenClaw returned invalid classification response format');
     }
 
     const parsedResult = classificationResponseSchema.safeParse(JSON.parse(json));
     if (!parsedResult.success) {
       logger.warn(
         { issues: parsedResult.error.issues, raw },
-        'Classifier JSON failed schema validation, using rules fallback',
+        'Classifier JSON failed schema validation',
       );
-      return fallbackWithSuggestion;
+      return openClawErrorResult('OpenClaw returned malformed classification JSON');
     }
 
     const category = normalizeLegacyCategory(parsedResult.data.category);
@@ -287,7 +287,8 @@ export async function classifyEmailWithOpenClaw(params: {
       suggestion: sanitizeSuggestion(parsedResult.data.suggestion),
     };
   } catch (err) {
-    logger.warn({ err }, 'OpenClaw classifier failed, using rules fallback');
-    return fallbackWithSuggestion;
+    logger.warn({ err }, 'OpenClaw classifier failed');
+    const reason = err instanceof Error ? err.message : 'OpenClaw classification failed';
+    return openClawErrorResult(reason);
   }
 }

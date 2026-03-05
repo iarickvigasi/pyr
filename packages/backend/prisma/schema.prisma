@@ -81,6 +81,16 @@ enum EventBookingStatus {
   @@map("event_booking_status")
 }
 
+enum ConversationEventAnalysisStatus {
+  pending
+  ready
+  insufficient_data
+  not_applicable
+  error
+
+  @@map("conversation_event_analysis_status")
+}
+
 enum InvoiceStatus {
   draft
   sent
@@ -293,14 +303,23 @@ model EventBooking {
   eventId   String             @map("event_id")
   guestId   String             @map("guest_id")
   status    EventBookingStatus @default(confirmed)
+  attendeeCount Int            @default(1) @map("attendee_count")
+  externalProvider String?     @map("external_provider")
+  externalBookingId String?    @map("external_booking_id")
+  externalProductCode String?  @map("external_product_code")
+  sourceConversationId String? @map("source_conversation_id")
   createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   guest Guest @relation(fields: [guestId], references: [id])
+  sourceConversation Conversation? @relation(fields: [sourceConversationId], references: [id], onDelete: SetNull)
 
   @@unique([eventId, guestId])
+  @@unique([externalProvider, externalBookingId])
   @@index([guestId])
+  @@index([sourceConversationId])
+  @@index([externalProvider, externalBookingId])
   @@map("event_bookings")
 }
 
@@ -320,6 +339,8 @@ model Conversation {
   messages Message[]
   aiDrafts AiDraft[]
   bookings Booking[]
+  eventBookings EventBooking[]
+  eventAnalysis ConversationEventAnalysis?
 
   @@index([guestId])
   @@index([status])
@@ -349,11 +370,36 @@ model Message {
   conversation Conversation @relation(fields: [conversationId], references: [id])
   aiDrafts     AiDraft[]
   attachments  Attachment[]
+  eventAnalyses ConversationEventAnalysis[]
 
   @@index([conversationId])
   @@index([sentAt])
   @@index([fromAddress])
   @@map("messages")
+}
+
+model ConversationEventAnalysis {
+  id             String                          @id @default(cuid())
+  conversationId String                          @unique @map("conversation_id")
+  messageId      String?                         @map("message_id")
+  provider       String
+  status         ConversationEventAnalysisStatus @default(pending)
+  reason         String
+  classification String?
+  intent         String?
+  missingFields  String[]                        @default([]) @map("missing_fields")
+  candidateJson  Json?                           @map("candidate_json")
+  resolutionJson Json?                           @map("resolution_json")
+  createdAt      DateTime                        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message      Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([messageId])
+  @@index([status])
+  @@index([provider])
+  @@map("conversation_event_analyses")
 }
 
 model Attachment {

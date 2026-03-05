@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import type { EmailModuleContract, SendEmailParams } from '@pyr/shared';
 import { QUEUE_NAMES } from '@pyr/shared';
-import type { EmailPollJobData, AiDraftJobData } from '@pyr/shared';
+import type { EmailPollJobData, AiDraftJobData, ViatorEventAnalysisJobData } from '@pyr/shared';
 import { ImapFlow } from 'imapflow';
 import { createImapService, type ImapConfig } from './imap.service.js';
 import { createSmtpService, type SmtpConfig } from './smtp.service.js';
@@ -19,6 +19,7 @@ import {
   isConversationClassification,
   isConversationOrOtaClassification,
 } from './inbox-classification.js';
+import { upsertConversationEventAnalysisPending } from '../../modules/inbox/conversation-event.service.js';
 import { nicosiaToday } from '../../lib/date-helpers.js';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -41,6 +42,15 @@ const DEFAULT_POLL_INTERVAL_MS = 120_000; // 2 minutes
 const MIN_POLL_INTERVAL_MS = 30_000;
 const DEFAULT_SIGNATURE = 'Best regards,\nInes Brendel\nPuppy Yoga Retreat';
 const IMAP_HEALTH_TIMEOUT_MS = 10_000;
+
+function isViatorAddress(address: string | null | undefined): boolean {
+  if (!address) return false;
+  const normalized = address.trim().toLowerCase();
+  const atIndex = normalized.lastIndexOf('@');
+  if (atIndex < 0) return false;
+  const domain = normalized.slice(atIndex + 1);
+  return domain.endsWith('viator.com');
+}
 
 // ─── Config Resolution ──────────────────────────────────────
 
@@ -415,7 +425,40 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           actor: 'system',
         });
 
-        // j. Enqueue AI draft generation for customer conversations.
+        // j. Enqueue background Viator event analysis (auto-analyze, manual apply).
+        if (isViatorAddress(parsed.from.address)) {
+          try {
+            await upsertConversationEventAnalysisPending(app.prisma, {
+              conversationId,
+              messageId: message.id,
+              classification: classification.category,
+              reason: 'Queued from inbound Viator email ingestion',
+            });
+
+            const viatorAnalysisQueue = app.queues?.getQueue(QUEUE_NAMES.VIATOR_EVENT_ANALYSIS);
+            if (viatorAnalysisQueue) {
+              await viatorAnalysisQueue.add('viator-event-analysis', {
+                conversationId,
+                messageId: message.id,
+              } satisfies ViatorEventAnalysisJobData, {
+                jobId: `viator-event-analysis:${message.id}`,
+              });
+            } else {
+              app.log.error(
+                { conversationId, messageId: message.id },
+                'Viator event analysis queue not found',
+              );
+            }
+          } catch (viatorErr) {
+            // Non-blocking: inbound email storage must not fail due to analysis queueing.
+            app.log.warn(
+              { err: viatorErr, conversationId, messageId: message.id },
+              'Failed to queue Viator event analysis',
+            );
+          }
+        }
+
+        // k. Enqueue AI draft generation for customer conversations.
         if (isConversationClassification(classification.category)) {
           try {
             const aiDraftQueue = app.queues?.getQueue(QUEUE_NAMES.AI_DRAFT);
@@ -460,7 +503,7 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           );
         }
 
-        // k. Update last processed UID
+        // l. Update last processed UID
         await upsertLastUid(raw.uid);
 
         processed++;

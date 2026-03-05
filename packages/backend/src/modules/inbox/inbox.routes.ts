@@ -18,7 +18,10 @@ import {
   createConversationGuestBodySchema,
   conversationBookingAnalysisResponseSchema,
   createConversationBookingBodySchema,
+  conversationEventAnalysisResponseSchema,
+  applyConversationEventBodySchema,
   type CreateConversationBookingBody,
+  type ApplyConversationEventBody,
 } from './inbox.schema.js';
 import {
   listConversations,
@@ -37,6 +40,11 @@ import {
   getConversationBookingAnalysis,
   createBookingFromConversation,
 } from './conversation.service.js';
+import {
+  applyConversationEventAction,
+  getConversationEventAnalysis,
+  runConversationEventAnalysis,
+} from './conversation-event.service.js';
 import { addMessage } from './message.service.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, BadRequestError } from '../../lib/errors.js';
@@ -141,6 +149,99 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
           err,
         },
         'Failed to create booking from inbox conversation',
+      );
+      throw err;
+    }
+  });
+
+  server.get('/:id/event-analysis', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Get latest persisted Viator event analysis for a conversation',
+      params: idParamSchema,
+      response: {
+        200: conversationEventAnalysisResponseSchema,
+      },
+    },
+  }, async (request) => {
+    const analysis = await getConversationEventAnalysis(app.prisma, request.params.id);
+    if (!analysis) {
+      return {
+        data: {
+          status: 'pending' as const,
+          provider: 'viator',
+          reason: 'No analysis yet for this conversation',
+          classification: null,
+          intent: null,
+          missingFields: [],
+          candidate: null,
+          resolution: null,
+          messageId: null,
+        },
+      };
+    }
+    return { data: analysis };
+  });
+
+  server.post('/:id/event-analysis', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Run Viator event analysis now and persist result',
+      params: idParamSchema,
+      response: {
+        200: conversationEventAnalysisResponseSchema,
+      },
+    },
+  }, async (request) => {
+    const analysis = await runConversationEventAnalysis(app.prisma, app, request.params.id);
+    return { data: analysis };
+  });
+
+  server.post('/:id/events', {
+    schema: {
+      tags: ['Inbox'],
+      summary: 'Apply inbox event action (create/link/cancel/move) for conversation',
+      params: idParamSchema,
+      body: applyConversationEventBodySchema,
+    },
+  }, async (request, reply) => {
+    const conversationId = request.params.id;
+    const body = request.body as ApplyConversationEventBody;
+    app.log.info(
+      {
+        conversationId,
+        operation: body.operation,
+      },
+      'inbox_event_apply_started',
+    );
+
+    try {
+      const result = await applyConversationEventAction(
+        app.prisma,
+        conversationId,
+        body,
+        request.user?.sub,
+      );
+      app.log.info(
+        {
+          conversationId,
+          operation: body.operation,
+          eventId: result.event?.id ?? null,
+          guestId: result.guest?.id ?? null,
+          eventBookingId: result.registration?.id ?? null,
+          externalBookingId: result.registration?.externalBookingId ?? null,
+        },
+        'inbox_event_apply_completed',
+      );
+      return reply.code(201).send({ data: result });
+    } catch (err) {
+      app.log.warn(
+        {
+          conversationId,
+          operation: body.operation,
+          err,
+        },
+        'inbox_event_apply_failed',
       );
       throw err;
     }

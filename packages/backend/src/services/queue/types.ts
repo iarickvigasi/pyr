@@ -3,6 +3,7 @@ export {
   type QueueName,
   type EmailPollJobData,
   type AiDraftJobData,
+  type ViatorEventAnalysisJobData,
   type CalendarSyncJobData,
   type ScheduledJobData,
   type HealthCheckJobData,

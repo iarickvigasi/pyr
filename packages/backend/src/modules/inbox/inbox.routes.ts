@@ -5,6 +5,7 @@ import {
   idParamSchema,
   QUEUE_NAMES,
   type InboxTelegramNotifyJobData,
+  type CalendarSyncJobData,
 } from '@pyr/shared';
 import {
   createConversationSchema,
@@ -53,6 +54,25 @@ import { addMessage } from './message.service.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, BadRequestError } from '../../lib/errors.js';
 import { shouldNotifyInboxTelegramForClassification } from '../notifications/notification.service.js';
+
+async function enqueueEventCalendarSync(
+  app: FastifyInstance,
+  eventId: string,
+  action: CalendarSyncJobData['action'] = 'update',
+): Promise<void> {
+  const calQueue = app.queues?.getQueue(QUEUE_NAMES.CALENDAR_SYNC);
+  if (!calQueue) return;
+
+  try {
+    await calQueue.add('calendar-sync', {
+      entityType: 'event',
+      entityId: eventId,
+      action,
+    } satisfies CalendarSyncJobData);
+  } catch (err) {
+    app.log.error({ err, eventId, action }, 'Failed to enqueue calendar sync job for inbox event action');
+  }
+}
 
 export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -212,6 +232,21 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
   }, async (request, reply) => {
     const conversationId = request.params.id;
     const body = request.body as ApplyConversationEventBody;
+    const externalBookingId = (
+      body.operation === 'create_or_link'
+        ? body.registration.externalBookingId
+        : body.externalBookingId
+    ).trim();
+    const existingByExternal = externalBookingId
+      ? await app.prisma.eventBooking.findFirst({
+        where: {
+          externalProvider: 'viator',
+          externalBookingId,
+        },
+        select: { eventId: true },
+      })
+      : null;
+
     app.log.info(
       {
         conversationId,
@@ -238,6 +273,16 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
         },
         'inbox_event_apply_completed',
       );
+
+      const touchedEventIds = new Set<string>();
+      if (existingByExternal?.eventId) touchedEventIds.add(existingByExternal.eventId);
+      if (result.event?.id) touchedEventIds.add(result.event.id);
+      if (result.registration?.eventId) touchedEventIds.add(result.registration.eventId);
+
+      for (const eventId of touchedEventIds) {
+        await enqueueEventCalendarSync(app, eventId, 'update');
+      }
+
       return reply.code(201).send({ data: result });
     } catch (err) {
       app.log.warn(

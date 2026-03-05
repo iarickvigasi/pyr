@@ -35,6 +35,14 @@ export interface AgentParams {
   sessionKey: string;
   deliver: boolean;
   idempotencyKey: string;
+  channel?: string;
+  to?: string;
+  accountId?: string;
+  replyChannel?: string;
+  replyTo?: string;
+  replyAccountId?: string;
+  threadId?: string;
+  bestEffortDeliver?: boolean;
   extraSystemPrompt?: string;
 }
 

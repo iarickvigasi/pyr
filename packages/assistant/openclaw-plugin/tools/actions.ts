@@ -376,6 +376,34 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
             };
           }
 
+          case 'create_conversation_booking': {
+            const {
+              conversationId,
+              payload,
+            } = action.payload as {
+              conversationId: string;
+              payload: Record<string, unknown>;
+            };
+            const result = await client.post<{
+              booking: { id: string; status: string; checkIn: string; checkOut: string };
+              guest: { id: string; name: string; email: string | null };
+              conversation: { id: string; guestId: string | null };
+            }>(`/api/v1/conversations/${conversationId}/bookings`, payload);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: true,
+                  message: 'Booking created from conversation successfully.',
+                  booking: result.booking,
+                  guest: result.guest,
+                  conversation: result.conversation,
+                }, null, 2),
+              }],
+              details: {},
+            };
+          }
+
           case 'create_event': {
             const event = await client.post<Record<string, unknown>>('/api/v1/events', action.payload);
             return {
@@ -392,8 +420,15 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
           }
 
           case 'approve_draft': {
-            const { conversationId, draftId } = action.payload as { conversationId: string; draftId: string };
-            await client.post(`/api/v1/conversations/${conversationId}/drafts/${draftId}/approve`);
+            const { conversationId, draftId, content } = action.payload as {
+              conversationId: string;
+              draftId: string;
+              content?: string;
+            };
+            const requestBody = typeof content === 'string' && content.trim()
+              ? { content }
+              : {};
+            await client.post(`/api/v1/conversations/${conversationId}/drafts/${draftId}/approve`, requestBody);
             return {
               content: [{
                 type: 'text' as const,
@@ -583,7 +618,7 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
             type: 'text' as const,
             text: JSON.stringify({
               error: true,
-              message: `Failed to execute action: ${message}`,
+              message: `Failed to execute action: ${message}. No changes were applied.`,
             }, null, 2),
           }],
           details: {},

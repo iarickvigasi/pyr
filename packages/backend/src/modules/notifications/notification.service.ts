@@ -10,6 +10,172 @@ import crypto from 'crypto';
 import type { FastifyInstance } from 'fastify';
 import type { AlertType, BriefingData } from './notification.types.js';
 import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
+import { getSetting } from '../settings/settings.service.js';
+import { isConversationClassification, isOtaClassification } from '../../services/email/inbox-classification.js';
+
+type InboxNotificationClassification = 'conversation' | 'ota' | 'other';
+
+interface TelegramNotificationConfig {
+  enabled: boolean;
+  ownerUserId: string | null;
+  inboxScope: ReadonlySet<'conversation' | 'ota'>;
+}
+
+interface CachedTelegramNotificationConfig {
+  expiresAt: number;
+  value: TelegramNotificationConfig;
+}
+
+interface InboxEmailNotificationDetails {
+  conversationId: string;
+  classification: InboxNotificationClassification;
+  subject: string;
+  sender: string;
+  receivedAt: string;
+  snippet: string;
+  inboxUrl: string;
+}
+
+const DEFAULT_INBOX_NOTIFY_SCOPE = 'conversation,ota';
+const TELEGRAM_CFG_CACHE_TTL_MS = 30_000;
+let telegramCfgCache: CachedTelegramNotificationConfig | null = null;
+
+function parseBooleanSetting(value: unknown, fallback: boolean): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  }
+  return fallback;
+}
+
+function parseInboxScope(raw: unknown): ReadonlySet<'conversation' | 'ota'> {
+  const values: string[] = Array.isArray(raw)
+    ? raw.filter((entry): entry is string => typeof entry === 'string')
+    : typeof raw === 'string'
+      ? raw.split(',')
+      : [];
+
+  const normalized = values
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+    .flatMap((value) => {
+      if (value === 'conversation' || value === 'conv') return ['conversation'] as const;
+      if (value === 'ota') return ['ota'] as const;
+      return [];
+    });
+
+  if (normalized.length === 0) {
+    return new Set<'conversation' | 'ota'>(['conversation', 'ota']);
+  }
+
+  return new Set<'conversation' | 'ota'>(normalized);
+}
+
+async function readOptionalSettingValue(
+  app: FastifyInstance,
+  key: string,
+): Promise<unknown | undefined> {
+  if (!app.prisma) return undefined;
+  try {
+    const setting = await getSetting(app.prisma, key);
+    return setting.value;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function resolveTelegramNotificationConfig(
+  app: FastifyInstance,
+  opts?: { forceRefresh?: boolean },
+): Promise<TelegramNotificationConfig> {
+  const forceRefresh = opts?.forceRefresh ?? false;
+  const now = Date.now();
+  if (!forceRefresh && telegramCfgCache && telegramCfgCache.expiresAt > now) {
+    return telegramCfgCache.value;
+  }
+
+  const envEnabled = parseBooleanSetting(process.env.NOTIFY_TELEGRAM_ENABLED, true);
+  const envOwnerUserId = (
+    process.env.NOTIFY_TELEGRAM_OWNER_USER_ID
+    ?? process.env.TELEGRAM_ALLOWED_USER_ID
+    ?? ''
+  ).trim() || null;
+  const envScope = parseInboxScope(process.env.NOTIFY_INBOX_SCOPE ?? DEFAULT_INBOX_NOTIFY_SCOPE);
+
+  const [enabledSetting, ownerSetting, scopeSetting] = await Promise.all([
+    readOptionalSettingValue(app, 'notify_telegram_enabled'),
+    readOptionalSettingValue(app, 'notify_telegram_owner_user_id'),
+    readOptionalSettingValue(app, 'notify_inbox_scope'),
+  ]);
+
+  const enabled = parseBooleanSetting(enabledSetting, envEnabled);
+  const ownerUserId = typeof ownerSetting === 'string' && ownerSetting.trim()
+    ? ownerSetting.trim()
+    : envOwnerUserId;
+  const inboxScope = scopeSetting !== undefined
+    ? parseInboxScope(scopeSetting)
+    : envScope;
+
+  const value: TelegramNotificationConfig = {
+    enabled,
+    ownerUserId,
+    inboxScope,
+  };
+
+  telegramCfgCache = {
+    value,
+    expiresAt: now + TELEGRAM_CFG_CACHE_TTL_MS,
+  };
+
+  return value;
+}
+
+export async function validateTelegramNotificationConfig(
+  app: FastifyInstance,
+): Promise<void> {
+  const config = await resolveTelegramNotificationConfig(app, { forceRefresh: true });
+
+  if (!config.enabled) {
+    app.log.info('Telegram notifications are disabled (NOTIFY_TELEGRAM_ENABLED=false)');
+    return;
+  }
+
+  if (!config.ownerUserId) {
+    app.log.warn(
+      'Telegram notifications enabled but owner user id is missing; delivery will be skipped',
+    );
+    return;
+  }
+
+  app.log.info(
+    {
+      ownerUserId: config.ownerUserId,
+      inboxScope: Array.from(config.inboxScope),
+    },
+    'Telegram notification delivery is configured',
+  );
+}
+
+export async function shouldNotifyInboxTelegramForClassification(
+  app: FastifyInstance,
+  classification: string | null | undefined,
+): Promise<boolean> {
+  const config = await resolveTelegramNotificationConfig(app);
+  if (!config.enabled || !config.ownerUserId) return false;
+
+  if (isConversationClassification(classification)) {
+    return config.inboxScope.has('conversation');
+  }
+
+  if (isOtaClassification(classification)) {
+    return config.inboxScope.has('ota');
+  }
+
+  return false;
+}
 
 // ---------------------------------------------------------------------------
 // Gateway Delivery
@@ -17,10 +183,9 @@ import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
 
 /**
  * Send a message to the OpenClaw Gateway via WebSocket agent RPC.
- * Replicates the hook mapping behavior from openclaw.json:
- * - briefing: deliver=true, sessionKey=hook:briefing
- * - alert:    deliver=true, sessionKey=hook:alert
- * - draft:    deliver=false, sessionKey=hook:draft:<timestamp>
+ * Session key behavior:
+ * - deliver=true  -> sessionKey=agent:main:telegram:direct:<ownerUserId>
+ * - deliver=false -> sessionKey=hook:draft:<timestamp>
  *
  * Best-effort: logs errors but never throws.
  */
@@ -31,18 +196,43 @@ export async function sendViaGateway(
 ): Promise<void> {
   try {
     const deliver = hookPath !== 'draft';
-    const sessionKey = hookPath === 'draft'
+    let sessionKey = hookPath === 'draft'
       ? `hook:draft:${Date.now()}`
       : `hook:${hookPath}`;
 
-    await app.gateway.request('agent', {
+    const params: Record<string, unknown> = {
       message,
       agentId: 'main',
       sessionKey,
       deliver,
       idempotencyKey: crypto.randomUUID(),
+    };
+
+    if (deliver) {
+      const telegramCfg = await resolveTelegramNotificationConfig(app);
+      if (!telegramCfg.enabled) {
+        app.log.info({ hookPath }, 'Skipping notification: Telegram notifications are disabled');
+        return;
+      }
+      if (!telegramCfg.ownerUserId) {
+        app.log.warn(
+          { hookPath },
+          'Skipping notification: owner Telegram user id is not configured',
+        );
+        return;
+      }
+
+      // Explicit routing avoids ambiguous/implicit channel delivery in OpenClaw.
+      sessionKey = `agent:main:telegram:direct:${telegramCfg.ownerUserId}`;
+      params['sessionKey'] = sessionKey;
+      params['replyChannel'] = 'telegram';
+      params['replyTo'] = telegramCfg.ownerUserId;
+    }
+
+    await app.gateway.request('agent', {
+      ...params,
     });
-    app.log.info({ hookPath }, 'Gateway agent request sent');
+    app.log.info({ hookPath, deliver }, 'Gateway agent request sent');
   } catch (err) {
     app.log.error({ err, hookPath }, 'Gateway agent request failed');
   }
@@ -53,7 +243,7 @@ export async function sendViaGateway(
 // ---------------------------------------------------------------------------
 
 /**
- * Format a briefing message for WhatsApp delivery.
+ * Format a briefing message for chat delivery.
  * Returns a friendly "nothing scheduled" message on empty days.
  */
 export function formatBriefing(data: BriefingData): string {
@@ -119,7 +309,7 @@ function formatGuestNames(
 
 /**
  * Format an alert message by type.
- * Each alert type produces a short, informative message for WhatsApp delivery.
+ * Each alert type produces a short, informative message for chat delivery.
  */
 export function formatAlert(alertType: AlertType, details: Record<string, unknown>): string {
   switch (alertType) {
@@ -138,7 +328,7 @@ export function formatAlert(alertType: AlertType, details: Record<string, unknow
       return `Overdue booking: ${details.guestName} checked out on ${details.checkOutDate}, EUR ${formatEurCents(details.amount as number)} outstanding.`;
 
     case 'draft-ready':
-      return `New draft ready for ${details.guestName}'s inquiry. Reply 'Show' to review.`;
+      return `New draft ready for ${details.guestName}'s inquiry. To review, ask: show latest draft for ${details.guestName}.`;
 
     default:
       return `Alert: ${JSON.stringify(details)}`;
@@ -339,7 +529,7 @@ export async function processOverdueInvoiceAlert(app: FastifyInstance): Promise<
 // ---------------------------------------------------------------------------
 
 /**
- * Send a new booking alert via WhatsApp.
+ * Send a new booking alert.
  * Called after booking creation (fire-and-forget from route handler).
  */
 export async function sendNewBookingAlert(
@@ -384,7 +574,7 @@ export async function sendNewBookingAlert(
 }
 
 /**
- * Send a draft-ready notification via WhatsApp.
+ * Send a draft-ready notification.
  * Called after AI draft generation completes (fire-and-forget from job processor).
  */
 export async function sendDraftReadyNotification(
@@ -393,5 +583,29 @@ export async function sendDraftReadyNotification(
   guestName: string,
 ): Promise<void> {
   const message = formatAlert('draft-ready', { guestName });
+  await sendViaGateway(app, 'alert', message);
+}
+
+function formatInboxEmailNotification(details: InboxEmailNotificationDetails): string {
+  const lines: string[] = [];
+  lines.push('kind=inbox_email_alert_v1');
+  lines.push(`conversationId=${details.conversationId}`);
+  lines.push(`sender=${details.sender}`);
+  lines.push(`subject=${details.subject}`);
+  lines.push(`classification=${details.classification}`);
+  lines.push(`receivedAt=${details.receivedAt}`);
+  lines.push(`snippet=${details.snippet || '-'}`);
+  lines.push(`inboxUrl=${details.inboxUrl}`);
+  return lines.join('\n');
+}
+
+/**
+ * Send a compact inbound inbox email notification to Telegram owner DM.
+ */
+export async function sendInboxEmailNotification(
+  app: FastifyInstance,
+  details: InboxEmailNotificationDetails,
+): Promise<void> {
+  const message = formatInboxEmailNotification(details);
   await sendViaGateway(app, 'alert', message);
 }

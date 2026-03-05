@@ -2,7 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import type { EmailModuleContract, SendEmailParams } from '@pyr/shared';
 import { QUEUE_NAMES } from '@pyr/shared';
-import type { EmailPollJobData, AiDraftJobData, ViatorEventAnalysisJobData } from '@pyr/shared';
+import type {
+  EmailPollJobData,
+  AiDraftJobData,
+  ViatorEventAnalysisJobData,
+  InboxTelegramNotifyJobData,
+} from '@pyr/shared';
 import { ImapFlow } from 'imapflow';
 import { createImapService, type ImapConfig } from './imap.service.js';
 import { createSmtpService, type SmtpConfig } from './smtp.service.js';
@@ -21,6 +26,7 @@ import {
 } from './inbox-classification.js';
 import { upsertConversationEventAnalysisPending } from '../../modules/inbox/conversation-event.service.js';
 import { nicosiaToday } from '../../lib/date-helpers.js';
+import { shouldNotifyInboxTelegramForClassification } from '../../modules/notifications/notification.service.js';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -425,7 +431,37 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           actor: 'system',
         });
 
-        // j. Enqueue background Viator event analysis (auto-analyze, manual apply).
+        // j. Enqueue Telegram notification for inbound conversation/OTA emails.
+        if (await shouldNotifyInboxTelegramForClassification(app, classification.category)) {
+          try {
+            const inboxNotifyQueue = app.queues?.getQueue(QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY);
+            if (inboxNotifyQueue) {
+              const dedupeSeed = (parsed.messageId?.trim() || message.id)
+                .replace(/[^a-zA-Z0-9:_-]+/g, '_');
+              await inboxNotifyQueue.add('inbox-telegram-notify', {
+                conversationId,
+                messageId: message.id,
+                classification: classification.category,
+              } satisfies InboxTelegramNotifyJobData, {
+                // BullMQ custom job IDs cannot include ':'.
+                jobId: `inbox-telegram-notify-${dedupeSeed}`,
+              });
+            } else {
+              app.log.error(
+                { conversationId, messageId: message.id },
+                'Inbox telegram notify queue not found',
+              );
+            }
+          } catch (notifyErr) {
+            // Notification queueing must be non-blocking.
+            app.log.warn(
+              { err: notifyErr, conversationId, messageId: message.id },
+              'Failed to queue inbox Telegram notification',
+            );
+          }
+        }
+
+        // k. Enqueue background Viator event analysis (auto-analyze, manual apply).
         if (isViatorAddress(parsed.from.address)) {
           try {
             await upsertConversationEventAnalysisPending(app.prisma, {
@@ -458,7 +494,7 @@ export function createEmailModule(app: FastifyInstance): EmailModuleInstance {
           }
         }
 
-        // k. Enqueue AI draft generation for customer conversations.
+        // l. Enqueue AI draft generation for customer conversations.
         if (isConversationClassification(classification.category)) {
           try {
             const aiDraftQueue = app.queues?.getQueue(QUEUE_NAMES.AI_DRAFT);

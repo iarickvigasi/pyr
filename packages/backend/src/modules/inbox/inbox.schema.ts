@@ -70,7 +70,7 @@ export type DraftActionParams = z.infer<typeof draftActionParamsSchema>;
 
 export const approveDraftBodySchema = z.object({
   content: z.string().optional().openapi({ example: 'Dear Anna, thank you for your inquiry! We have the Sunset Suite available from April 15-22.' }), // If edited, the modified content
-});
+}).nullable().optional();
 export type ApproveDraftBody = z.infer<typeof approveDraftBodySchema>;
 
 export const generateDraftParamsSchema = z.object({

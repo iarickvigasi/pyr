@@ -3,6 +3,7 @@ import { QUEUE_NAMES } from '@pyr/shared';
 import type {
   EmailPollJobData,
   AiDraftJobData,
+  InboxTelegramNotifyJobData,
   ViatorEventAnalysisJobData,
   CalendarSyncJobData,
   ScheduledJobData,
@@ -35,6 +36,16 @@ export async function registerQueues(app: FastifyInstance): Promise<void> {
       backoff: { type: 'exponential', delay: 3000 },
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 500 },
+    },
+  });
+
+  // Inbox Telegram notify -- 5 attempts, exponential backoff from 2s
+  app.queues.createQueue<InboxTelegramNotifyJobData>(QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY, {
+    defaultJobOptions: {
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: { count: 300 },
+      removeOnFail: { count: 800 },
     },
   });
 

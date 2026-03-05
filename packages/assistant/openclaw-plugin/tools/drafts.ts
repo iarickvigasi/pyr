@@ -20,6 +20,11 @@ interface AiDraft {
   createdAt: string;
 }
 
+interface DraftGenerateResult {
+  jobId: string;
+  messageId: string;
+}
+
 // ─── Tool Registration ───────────────────────────────────
 
 export function registerDraftTools(api: OpenClawPluginApi, client: ApiClient): void {
@@ -158,35 +163,94 @@ export function registerDraftTools(api: OpenClawPluginApi, client: ApiClient): v
     },
   });
 
-  // ── 3. Approve Draft ───────────────────────────────────
+  // ── 3. Generate Draft ──────────────────────────────────
+
+  api.registerTool({
+    name: 'generate_conversation_draft',
+    label: 'Generate Conversation Draft',
+    description:
+      'Trigger AI draft generation for the latest inbound message in a conversation. Use this when Ines says "make a draft for this thread".',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        conversationId: { type: 'string', description: 'The conversation ID' },
+      },
+      required: ['conversationId'],
+    },
+    async execute(_id: string, params: { conversationId: string }) {
+      try {
+        const result = await client.post<DraftGenerateResult>(
+          `/api/v1/conversations/${params.conversationId}/drafts/generate`,
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              message: 'Draft generation started. Use "list pending drafts" in a moment to review it.',
+              conversationId: params.conversationId,
+              jobId: result.jobId,
+              messageId: result.messageId,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to generate draft';
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: `${message}. No changes were applied.`,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+    },
+  });
+
+  // ── 4. Approve Draft ───────────────────────────────────
 
   api.registerTool({
     name: 'approve_draft',
     label: 'Approve Draft',
     description:
-      'Queue a draft email for sending. This stores the approval as a pending action -- Ines must confirm with OK before the email is actually sent. Uses the same two-step confirmation as other write actions.',
+      'Queue a draft email for sending. This stores the approval as a pending action -- Ines must confirm with OK before the email is actually sent. Supports optional edited content so Ines can rewrite text in chat and send that exact version. Uses the same two-step confirmation as other write actions.',
     parameters: {
       type: 'object' as const,
       properties: {
         conversationId: { type: 'string', description: 'The conversation ID' },
         draftId: { type: 'string', description: 'The draft ID to approve' },
+        content: {
+          type: 'string',
+          description: 'Optional edited email body to send instead of stored draft content',
+        },
       },
       required: ['conversationId', 'draftId'],
     },
-    async execute(_id: string, params: { conversationId: string; draftId: string }) {
+    async execute(
+      _id: string,
+      params: { conversationId: string; draftId: string; content?: string },
+    ) {
       // Fetch conversation to get guest info for the confirmation summary
       const conv = await client.get<Conversation>(`/api/v1/conversations/${params.conversationId}`);
       const conversation = conv as unknown as Conversation;
+      const editedContent = typeof params.content === 'string' ? params.content.trim() : '';
 
       const actionId = crypto.randomUUID();
 
       storePendingAction({
         id: actionId,
         type: 'approve_draft',
-        summary: `Send email draft to ${conversation.guest?.name ?? 'unknown guest'} (${conversation.guest?.email ?? 'no email'}) re: ${conversation.subject ?? '(no subject)'}`,
+        summary: editedContent
+          ? `Send edited email draft to ${conversation.guest?.name ?? 'unknown guest'} (${conversation.guest?.email ?? 'no email'}) re: ${conversation.subject ?? '(no subject)'}`
+          : `Send email draft to ${conversation.guest?.name ?? 'unknown guest'} (${conversation.guest?.email ?? 'no email'}) re: ${conversation.subject ?? '(no subject)'}`,
         payload: {
           conversationId: params.conversationId,
           draftId: params.draftId,
+          ...(editedContent ? { content: editedContent } : {}),
         },
         createdAt: Date.now(),
       });
@@ -196,7 +260,9 @@ export function registerDraftTools(api: OpenClawPluginApi, client: ApiClient): v
           type: 'text' as const,
           text: JSON.stringify({
             actionId,
-            message: `Ready to send email to ${conversation.guest?.name ?? 'unknown'}. Reply OK to confirm sending or Cancel to discard.`,
+            message: editedContent
+              ? `Ready to send the edited email to ${conversation.guest?.name ?? 'unknown'}. Reply OK to confirm sending or Cancel to discard.`
+              : `Ready to send email to ${conversation.guest?.name ?? 'unknown'}. Reply OK to confirm sending or Cancel to discard.`,
           }, null, 2),
         }],
         details: {},
@@ -204,7 +270,7 @@ export function registerDraftTools(api: OpenClawPluginApi, client: ApiClient): v
     },
   });
 
-  // ── 4. Regenerate Draft ────────────────────────────────
+  // ── 5. Regenerate Draft ────────────────────────────────
 
   api.registerTool({
     name: 'regenerate_draft',
@@ -248,7 +314,7 @@ export function registerDraftTools(api: OpenClawPluginApi, client: ApiClient): v
     },
   });
 
-  // ── 5. Reject Draft ────────────────────────────────────
+  // ── 6. Reject Draft ────────────────────────────────────
 
   api.registerTool({
     name: 'reject_draft',

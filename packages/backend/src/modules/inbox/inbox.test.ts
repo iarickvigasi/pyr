@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { getTestApp, cleanDatabase, getAuthToken, prisma } from '../../test/setup.js';
 import type { ChatEvent } from '../../services/gateway/types.js';
 import type { GatewayWsClient } from '../../services/gateway/gateway-ws-client.js';
+import { resolveTelegramNotificationConfig } from '../notifications/notification.service.js';
 import {
   createTestGuest,
   createTestConversation,
@@ -438,6 +439,70 @@ describe('Inbox API', () => {
         from: 'open',
         to: 'closed',
       });
+    });
+
+    it('should queue telegram notify when reclassified from other to conversation', async () => {
+      const previousOwner = process.env.NOTIFY_TELEGRAM_OWNER_USER_ID;
+      const previousEnabled = process.env.NOTIFY_TELEGRAM_ENABLED;
+      const previousScope = process.env.NOTIFY_INBOX_SCOPE;
+      process.env.NOTIFY_TELEGRAM_OWNER_USER_ID = '130414078';
+      process.env.NOTIFY_TELEGRAM_ENABLED = 'true';
+      process.env.NOTIFY_INBOX_SCOPE = 'conversation,ota';
+      await resolveTelegramNotificationConfig(app, { forceRefresh: true });
+
+      const conv = await createTestConversation(app, token);
+      await addTestMessage(app, token, conv.id, {
+        direction: 'in',
+        channel: 'email',
+        content: 'Hello, can I book from 10 to 15 April?',
+        fromAddress: 'guest@example.com',
+      });
+
+      const queueAdd = vi.fn().mockResolvedValue({ id: 'job-1' });
+      const getQueue = vi.fn().mockReturnValue({ add: queueAdd });
+      (app as unknown as {
+        queues: {
+          getQueue: (name: string) => { add: typeof queueAdd };
+        };
+      }).queues = {
+        getQueue,
+      };
+
+      try {
+        await app.inject({
+          method: 'PATCH',
+          url: `/api/v1/conversations/${conv.id}`,
+          headers: headers(),
+          payload: { classification: 'other' },
+        });
+
+        queueAdd.mockClear();
+
+        const res = await app.inject({
+          method: 'PATCH',
+          url: `/api/v1/conversations/${conv.id}`,
+          headers: headers(),
+          payload: { classification: 'conversation' },
+        });
+
+        expect(res.statusCode).toBe(200);
+        expect(getQueue).toHaveBeenCalledWith('inbox-telegram-notify');
+        expect(queueAdd).toHaveBeenCalledWith(
+          'inbox-telegram-notify',
+          expect.objectContaining({
+            conversationId: conv.id,
+            classification: 'conversation',
+          }),
+          expect.objectContaining({
+            jobId: expect.stringContaining(`inbox-telegram-notify-manual-reclass-${conv.id}-`),
+          }),
+        );
+      } finally {
+        process.env.NOTIFY_TELEGRAM_OWNER_USER_ID = previousOwner;
+        process.env.NOTIFY_TELEGRAM_ENABLED = previousEnabled;
+        process.env.NOTIFY_INBOX_SCOPE = previousScope;
+        await resolveTelegramNotificationConfig(app, { forceRefresh: true });
+      }
     });
   });
 

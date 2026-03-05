@@ -16,6 +16,7 @@ import swaggerPlugin from './plugins/swagger.js';
 import queuePlugin from './plugins/queue.js';
 import gatewayPlugin from './plugins/gateway.js';
 import toolActivityPlugin from './plugins/tool-activity.js';
+import { validateTelegramNotificationConfig } from './modules/notifications/notification.service.js';
 import { registerQueues } from './services/queue/queue.js';
 import { registerWorkers, setupSchedulers } from './services/queue/worker.js';
 import authRoutes from './modules/auth/auth.routes.js';
@@ -96,6 +97,10 @@ export async function buildApp() {
 
   // Tool activity detection (emits events when OpenClaw plugin calls API)
   await app.register(toolActivityPlugin);
+
+  if (env.NODE_ENV !== 'test') {
+    await validateTelegramNotificationConfig(app);
+  }
 
   // Health check — verifies DB, Redis, and Gateway connectivity
   app.get('/health', async (_request, reply) => {

@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { ConversationStatus } from '@prisma/client';
-import { idParamSchema } from '@pyr/shared';
+import {
+  idParamSchema,
+  QUEUE_NAMES,
+  type InboxTelegramNotifyJobData,
+} from '@pyr/shared';
 import {
   createConversationSchema,
   updateConversationSchema,
@@ -48,6 +52,7 @@ import {
 import { addMessage } from './message.service.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, BadRequestError } from '../../lib/errors.js';
+import { shouldNotifyInboxTelegramForClassification } from '../notifications/notification.service.js';
 
 export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -299,15 +304,86 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Inbox'], summary: 'Update conversation status and/or classification', params: idParamSchema, body: updateConversationSchema },
   }, async (request) => {
     const body = request.body as { status?: string; classification?: string };
+    const conversationId = request.params.id;
+    const existingConversation = await app.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, classification: true },
+    });
+    if (!existingConversation) {
+      throw new NotFoundError('Conversation', conversationId);
+    }
+
     const conversation = await updateConversation(
       app.prisma,
-      request.params.id,
+      conversationId,
       {
         status: body.status as ConversationStatus | undefined,
         classification: body.classification,
       },
       request.user?.sub,
     );
+
+    if (
+      body.classification !== undefined
+      && body.classification !== existingConversation.classification
+    ) {
+      const shouldNotifyBefore = await shouldNotifyInboxTelegramForClassification(
+        app,
+        existingConversation.classification,
+      );
+      const shouldNotifyAfter = await shouldNotifyInboxTelegramForClassification(
+        app,
+        body.classification,
+      );
+
+      if (!shouldNotifyBefore && shouldNotifyAfter) {
+        const latestInbound = await app.prisma.message.findFirst({
+          where: {
+            conversationId,
+            direction: 'in',
+          },
+          select: { id: true },
+          orderBy: { sentAt: 'desc' },
+        });
+
+        if (latestInbound) {
+          try {
+            const inboxNotifyQueue = app.queues?.getQueue(QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY);
+            if (inboxNotifyQueue) {
+              await inboxNotifyQueue.add('inbox-telegram-notify', {
+                conversationId,
+                messageId: latestInbound.id,
+                classification: body.classification,
+              } satisfies InboxTelegramNotifyJobData, {
+                // BullMQ custom job IDs cannot include ':'.
+                jobId: [
+                  'inbox-telegram-notify-manual-reclass',
+                  conversationId,
+                  latestInbound.id,
+                  body.classification,
+                ].join('-'),
+              });
+            } else {
+              app.log.error(
+                { conversationId, messageId: latestInbound.id },
+                'Inbox telegram notify queue not found during manual reclassification',
+              );
+            }
+          } catch (err) {
+            app.log.warn(
+              { err, conversationId, messageId: latestInbound.id },
+              'Failed to queue inbox Telegram notification after manual reclassification',
+            );
+          }
+        } else {
+          app.log.warn(
+            { conversationId },
+            'Skipping inbox Telegram notification on manual reclassification: inbound message not found',
+          );
+        }
+      }
+    }
+
     return { data: conversation };
   });
 
@@ -442,8 +518,8 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
     },
   }, async (request) => {
     const { id, draftId } = request.params as { id: string; draftId: string };
-    const body = request.body as { content?: string };
-    const result = await approveDraft(app.prisma, app, id, draftId, body.content, request.user?.sub);
+    const body = (request.body ?? {}) as { content?: string } | null;
+    const result = await approveDraft(app.prisma, app, id, draftId, body?.content, request.user?.sub);
     return { data: result };
   });
 

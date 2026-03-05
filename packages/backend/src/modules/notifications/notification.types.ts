@@ -1,4 +1,4 @@
-/** Alert types for proactive WhatsApp notifications */
+/** Alert types for proactive assistant notifications */
 export type AlertType =
   | 'new-booking'
   | 'payment-confirmed'
@@ -20,4 +20,3 @@ export interface BriefingData {
   yesterdayRevenue: number;
   isEmpty: boolean;
 }
-

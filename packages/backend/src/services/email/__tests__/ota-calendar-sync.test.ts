@@ -72,6 +72,20 @@ function buildViatorMime(): Buffer {
   return Buffer.from(lines.join('\r\n'));
 }
 
+function buildConversationMime(): Buffer {
+  const lines: string[] = [];
+  lines.push('From: Anna <anna@example.com>');
+  lines.push('To: <puppyyogaretreat@gmx.de>');
+  lines.push('Subject: Question about availability');
+  lines.push('Message-ID: <conv-test-001@example.com>');
+  lines.push(`Date: ${new Date().toUTCString()}`);
+  lines.push('MIME-Version: 1.0');
+  lines.push('Content-Type: text/plain; charset=utf-8');
+  lines.push('');
+  lines.push('Hi, do you have availability from March 10 to March 15?');
+  return Buffer.from(lines.join('\r\n'));
+}
+
 function createGatewayMock(jsonPayload: unknown) {
   const listeners: Array<(event: unknown) => void> = [];
   return {
@@ -181,7 +195,7 @@ function createMockPrisma() {
 }
 
 describe('OTA booking calendar sync', () => {
-  let mockQueueAdd: ReturnType<typeof vi.fn>;
+  let mockQueueAdds: Record<string, ReturnType<typeof vi.fn>>;
   let mockGetQueue: ReturnType<typeof vi.fn>;
   let mockPrisma: ReturnType<typeof createMockPrisma>;
   let mockApp: unknown;
@@ -189,11 +203,22 @@ describe('OTA booking calendar sync', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockQueueAdd = vi.fn().mockResolvedValue(undefined);
-    mockGetQueue = vi.fn().mockReturnValue({ add: mockQueueAdd });
+    mockQueueAdds = {
+      [QUEUE_NAMES.AI_DRAFT]: vi.fn().mockResolvedValue({ id: 'ai-job-1' }),
+      [QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY]: vi.fn().mockResolvedValue({ id: 'inbox-notify-job-1' }),
+      [QUEUE_NAMES.VIATOR_EVENT_ANALYSIS]: vi.fn().mockResolvedValue({ id: 'viator-job-1' }),
+    };
+    mockGetQueue = vi.fn((queueName: string) => {
+      const add = mockQueueAdds[queueName];
+      if (!add) return undefined;
+      return { add };
+    });
     mockPrisma = createMockPrisma();
 
     mockedGetSetting.mockRejectedValue(new Error('not found'));
+    process.env.NOTIFY_TELEGRAM_ENABLED = 'true';
+    process.env.NOTIFY_TELEGRAM_OWNER_USER_ID = '130414078';
+    process.env.NOTIFY_INBOX_SCOPE = 'conversation,ota';
 
     mockedParseOtaEmail.mockReturnValue({
       guestName: 'Test Guest',
@@ -244,10 +269,6 @@ describe('OTA booking calendar sync', () => {
 
     expect(processed).toBe(1);
     expect(mockGetQueue).not.toHaveBeenCalledWith('calendar-sync');
-    expect(mockQueueAdd).not.toHaveBeenCalledWith(
-      'calendar-sync',
-      expect.any(Object),
-    );
   });
 
   it('does not auto-create guest or booking records from OTA ingestion', async () => {
@@ -313,7 +334,7 @@ describe('OTA booking calendar sync', () => {
     expect(processed).toBe(1);
     expect(mockPrisma.conversationEventAnalysis.upsert).toHaveBeenCalledTimes(1);
     expect(mockGetQueue).toHaveBeenCalledWith(QUEUE_NAMES.VIATOR_EVENT_ANALYSIS);
-    expect(mockQueueAdd).toHaveBeenCalledWith(
+    expect(mockQueueAdds[QUEUE_NAMES.VIATOR_EVENT_ANALYSIS]).toHaveBeenCalledWith(
       'viator-event-analysis',
       expect.objectContaining({
         conversationId: 'conv-1',
@@ -323,5 +344,70 @@ describe('OTA booking calendar sync', () => {
         jobId: 'viator-event-analysis:msg-1',
       }),
     );
+    expect(mockGetQueue).toHaveBeenCalledWith(QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY);
+    expect(mockQueueAdds[QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY]).toHaveBeenCalledWith(
+      'inbox-telegram-notify',
+      expect.objectContaining({
+        conversationId: 'conv-1',
+        messageId: 'msg-1',
+        classification: 'ota_other',
+      }),
+      expect.objectContaining({
+        jobId: expect.stringContaining('inbox-telegram-notify-'),
+      }),
+    );
+  });
+
+  it('queues inbox telegram notification for conversation emails', async () => {
+    mockPollNewEmails.mockResolvedValueOnce([{ uid: 102, source: buildConversationMime() }]);
+    (mockApp as { gateway: ReturnType<typeof createGatewayMock> }).gateway = createGatewayMock({
+      category: 'conversation',
+      confidence: 0.95,
+      reason: 'Guest question',
+      suggestion: {
+        name: 'Anna',
+        email: 'anna@example.com',
+        phone: null,
+        shouldCreate: false,
+      },
+    });
+
+    const emailModule = createEmailModule(mockApp as FastifyInstance);
+    const processed = await emailModule.pollInbox();
+
+    expect(processed).toBe(1);
+    expect(mockGetQueue).toHaveBeenCalledWith(QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY);
+    expect(mockQueueAdds[QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY]).toHaveBeenCalledWith(
+      'inbox-telegram-notify',
+      expect.objectContaining({
+        conversationId: 'conv-1',
+        messageId: 'msg-1',
+        classification: 'conversation',
+      }),
+      expect.objectContaining({
+        jobId: 'inbox-telegram-notify-_conv-test-001_example_com_',
+      }),
+    );
+  });
+
+  it('does not queue inbox telegram notification when classification is other', async () => {
+    mockPollNewEmails.mockResolvedValueOnce([{ uid: 103, source: buildConversationMime() }]);
+    (mockApp as { gateway: ReturnType<typeof createGatewayMock> }).gateway = createGatewayMock({
+      category: 'other',
+      confidence: 0.8,
+      reason: 'Not customer-facing',
+      suggestion: {
+        name: null,
+        email: null,
+        phone: null,
+        shouldCreate: false,
+      },
+    });
+
+    const emailModule = createEmailModule(mockApp as FastifyInstance);
+    const processed = await emailModule.pollInbox();
+
+    expect(processed).toBe(1);
+    expect(mockQueueAdds[QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY]).not.toHaveBeenCalled();
   });
 });

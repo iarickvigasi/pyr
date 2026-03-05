@@ -30,6 +30,9 @@ const envSchema = z.object({
 
   TELEGRAM_BOT_TOKEN: z.string().default(''),
   TELEGRAM_ALLOWED_USER_ID: z.string().default(''),
+  NOTIFY_TELEGRAM_ENABLED: z.coerce.boolean().default(true),
+  NOTIFY_TELEGRAM_OWNER_USER_ID: z.string().default(''),
+  NOTIFY_INBOX_SCOPE: z.string().default('conversation,ota'),
 
   OPENCLAW_GATEWAY_URL: z.string().default('http://localhost:18789'),
   OPENCLAW_GATEWAY_WS_URL: z.string().default('ws://localhost:18789'),

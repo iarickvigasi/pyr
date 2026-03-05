@@ -4,6 +4,7 @@ import type { HealthCheckJobData, EmailPollJobData, ScheduledJobData } from '@py
 import { createHealthCheckProcessor } from './jobs/health-check.job.js';
 import { createEmailPollProcessor } from './jobs/email-poll.job.js';
 import { createAiDraftProcessor, createAiDraftFailedHandler } from './jobs/ai-draft.job.js';
+import { createInboxTelegramNotifyProcessor } from './jobs/inbox-telegram-notify.job.js';
 import { createViatorEventAnalysisProcessor } from './jobs/viator-event-analysis.job.js';
 import { createCalendarSyncProcessor } from './jobs/calendar-sync.job.js';
 import { createScheduledProcessor } from './jobs/scheduled.job.js';
@@ -35,6 +36,12 @@ export async function registerWorkers(app: FastifyInstance): Promise<void> {
     { concurrency: 1 },
   );
   aiDraftWorker.on('failed', createAiDraftFailedHandler(app));
+
+  app.queues.createWorker(
+    QUEUE_NAMES.INBOX_TELEGRAM_NOTIFY,
+    createInboxTelegramNotifyProcessor(app),
+    { concurrency: 2 },
+  );
 
   app.queues.createWorker(
     QUEUE_NAMES.VIATOR_EVENT_ANALYSIS,

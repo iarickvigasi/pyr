@@ -1,5 +1,7 @@
 # Inbox + OpenClaw Rework (MVP v2)
 
+Related: `docs/telegram-inbox-ops-runbook.md`
+
 ## Scope
 
 This document defines the new minimal/robust inbox pipeline:

@@ -1,6 +1,7 @@
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import type { ApiClient } from '../lib/api-client.js';
 import { formatDateTime, dashboardUrl } from '../lib/formatters.js';
+import { storePendingAction } from '../lib/confirmation.js';
 
 interface Conversation {
   id: string;
@@ -20,6 +21,47 @@ interface Message {
   content: string;
   channel: string;
   sentAt: string;
+}
+
+interface ConversationBookingAnalysis {
+  status: 'ready' | 'insufficient_data' | 'not_applicable' | 'error';
+  reason: string;
+  classification: string | null;
+  missingFields: Array<'checkIn' | 'checkOut'>;
+  candidate: {
+    checkIn: string | null;
+    checkOut: string | null;
+    totalPrice: number | null;
+    currency: 'EUR' | null;
+    source: string | null;
+    notes: string | null;
+    guest: {
+      name: string | null;
+      email: string | null;
+      phone: string | null;
+    };
+    confidence: number | null;
+  } | null;
+}
+
+interface CreateConversationBookingPayload {
+  guest: {
+    mode: 'linked' | 'existing' | 'create';
+    guestId?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    language?: 'en' | 'de';
+  };
+  booking: {
+    roomId: string;
+    checkIn: string;
+    checkOut: string;
+    totalPrice: number;
+    status?: 'inquiry' | 'confirmed';
+    source?: string | null;
+    notes?: string | null;
+  };
 }
 
 function formatConversation(c: Conversation): Record<string, unknown> {
@@ -156,6 +198,129 @@ export function registerConversationTools(api: OpenClawPluginApi, client: ApiCli
               status: c.status,
               classification: c.classification,
               subject: c.subject,
+            },
+          }, null, 2),
+        }],
+        details: {},
+      };
+    },
+  });
+
+  api.registerTool({
+    name: 'analyze_conversation_booking',
+    label: 'Analyze Conversation Booking Potential',
+    description:
+      'Run OpenClaw booking analysis for an inbox conversation. Returns readiness status, missing fields, and candidate data for booking creation.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        conversationId: { type: 'string', description: 'The conversation ID (UUID)' },
+      },
+      required: ['conversationId'],
+    },
+    async execute(_id: string, params: { conversationId: string }) {
+      try {
+        const data = await client.post<ConversationBookingAnalysis>(
+          `/api/v1/conversations/${params.conversationId}/booking-analysis`,
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              conversationId: params.conversationId,
+              analysis: data,
+              instruction: 'If status is ready or insufficient_data, propose next fields and then use create_conversation_booking.',
+            }, null, 2),
+          }],
+          details: {},
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to analyze booking potential';
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: `${message}. No changes were applied.`,
+              conversationId: params.conversationId,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+    },
+  });
+
+  api.registerTool({
+    name: 'create_conversation_booking',
+    label: 'Prepare Create Conversation Booking',
+    description:
+      'Prepare booking creation from inbox conversation wizard payload. This is confirmation-gated: it stores a pending action and returns actionId for confirm_action.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        conversationId: { type: 'string', description: 'The conversation ID (UUID)' },
+        payload: { type: 'object', description: 'Booking creation payload with guest and booking fields' },
+      },
+      required: ['conversationId', 'payload'],
+    },
+    async execute(
+      _id: string,
+      params: { conversationId: string; payload: CreateConversationBookingPayload },
+    ) {
+      if (!params.payload || typeof params.payload !== 'object') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: 'payload is required and must be an object.',
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const booking = params.payload.booking;
+      if (!booking || !booking.roomId || !booking.checkIn || !booking.checkOut) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: 'payload.booking.roomId, payload.booking.checkIn, and payload.booking.checkOut are required.',
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const actionId = crypto.randomUUID();
+      storePendingAction({
+        id: actionId,
+        type: 'create_conversation_booking',
+        summary: `Create booking from conversation ${params.conversationId}: ${booking.checkIn} -> ${booking.checkOut}, EUR ${(booking.totalPrice / 100).toFixed(2)}`,
+        payload: {
+          conversationId: params.conversationId,
+          payload: params.payload,
+        },
+        createdAt: Date.now(),
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            actionId,
+            message: 'Booking creation is prepared. Reply OK to confirm or Cancel to discard.',
+            preview: {
+              conversationId: params.conversationId,
+              guestMode: params.payload.guest.mode,
+              checkIn: booking.checkIn,
+              checkOut: booking.checkOut,
+              totalPrice: booking.totalPrice,
+              status: booking.status ?? 'inquiry',
+              source: booking.source ?? null,
             },
           }, null, 2),
         }],

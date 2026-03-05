@@ -1,5 +1,6 @@
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import { createApiClient } from './lib/api-client.js';
+import { ConfirmationGuard, extractUserTextFromMessage } from './lib/confirmation-guard.js';
 import { registerGuestTools } from './tools/guests.js';
 import { registerBookingTools } from './tools/bookings.js';
 import { registerRoomTools } from './tools/rooms.js';
@@ -25,6 +26,45 @@ export default {
     }
 
     const client = createApiClient(apiUrl, apiKey);
+    const confirmationGuard = new ConfirmationGuard();
+
+    api.on('before_message_write', (event, ctx) => {
+      const sessionKey = ctx.sessionKey;
+      if (!sessionKey) return;
+
+      const userText = extractUserTextFromMessage(event.message);
+      if (!userText) return;
+
+      confirmationGuard.noteUserMessage(sessionKey, userText);
+    });
+
+    api.on('after_tool_call', (event, ctx) => {
+      const sessionKey = ctx.sessionKey;
+      if (!sessionKey) return;
+
+      const actionId = typeof event.params?.actionId === 'string' ? event.params.actionId : null;
+      if ((event.toolName === 'confirm_action' || event.toolName === 'cancel_action') && actionId) {
+        confirmationGuard.consumeAction(actionId);
+      }
+
+      confirmationGuard.noteToolResult(sessionKey, event.toolName, event.result);
+    });
+
+    api.on('before_tool_call', (event, ctx) => {
+      if (event.toolName !== 'confirm_action') return;
+
+      const sessionKey = ctx.sessionKey;
+      const actionId = typeof event.params?.actionId === 'string' ? event.params.actionId.trim() : '';
+      if (!sessionKey || !actionId) return;
+
+      const gate = confirmationGuard.canConfirm(sessionKey, actionId);
+      if (!gate.ok) {
+        return {
+          block: true,
+          blockReason: gate.reason,
+        };
+      }
+    });
 
     registerGuestTools(api, client);
     registerBookingTools(api, client);
@@ -37,6 +77,6 @@ export default {
     registerDraftTools(api, client);
     registerPaymentTools(api, client);
 
-    api.logger.info('PYR Assistant plugin loaded: 40 tools registered (18 read + 17 action + 5 draft)');
+    api.logger.info('PYR Assistant plugin loaded: 43 tools registered (19 read + 18 action + 6 draft)');
   },
 };

@@ -17,6 +17,13 @@ export interface ViatorEventAnalysisJobData {
   messageId: string;
 }
 
+/** Inbox Telegram notification job -- triggered by inbound conversation/OTA emails */
+export interface InboxTelegramNotifyJobData {
+  conversationId: string;
+  messageId: string;
+  classification: string;
+}
+
 /** Calendar sync job -- triggered by booking/event mutation */
 export interface CalendarSyncJobData {
   entityType: 'booking' | 'event';
@@ -48,6 +55,7 @@ export interface DeadLetterJobData {
 export const QUEUE_NAMES = {
   EMAIL_POLL: 'email-poll',
   AI_DRAFT: 'ai-draft',
+  INBOX_TELEGRAM_NOTIFY: 'inbox-telegram-notify',
   VIATOR_EVENT_ANALYSIS: 'viator-event-analysis',
   CALENDAR_SYNC: 'calendar-sync',
   SCHEDULED: 'scheduled',

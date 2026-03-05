@@ -13,11 +13,6 @@ export interface ApiClient {
 const DEFAULT_LIMIT = 20;
 
 export function createApiClient(baseUrl: string, apiKey: string): ApiClient {
-  const headers: Record<string, string> = {
-    'X-API-Key': apiKey,
-    'Content-Type': 'application/json',
-  };
-
   async function request<T>(method: string, path: string, body?: unknown, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
     const url = new URL(path, baseUrl);
 
@@ -32,6 +27,13 @@ export function createApiClient(baseUrl: string, apiKey: string): ApiClient {
     // Cap list requests to avoid blowing up LLM context
     if (method === 'GET' && !url.searchParams.has('limit')) {
       url.searchParams.set('limit', String(DEFAULT_LIMIT));
+    }
+
+    const headers: Record<string, string> = {
+      'X-API-Key': apiKey,
+    };
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json';
     }
 
     const response = await fetch(url.toString(), {

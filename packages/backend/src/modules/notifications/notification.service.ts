@@ -33,7 +33,6 @@ interface InboxEmailNotificationDetails {
   sender: string;
   receivedAt: string;
   snippet: string;
-  inboxUrl: string;
 }
 
 const DEFAULT_INBOX_NOTIFY_SCOPE = 'conversation,ota';
@@ -595,7 +594,8 @@ function formatInboxEmailNotification(details: InboxEmailNotificationDetails): s
   lines.push(`classification=${details.classification}`);
   lines.push(`receivedAt=${details.receivedAt}`);
   lines.push(`snippet=${details.snippet || '-'}`);
-  lines.push(`inboxUrl=${details.inboxUrl}`);
+  lines.push('conversationLink=not_available');
+  lines.push('conversationOpenMode=manual_only');
   return lines.join('\n');
 }
 

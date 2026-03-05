@@ -11,11 +11,6 @@ function sanitizeSnippet(value: string, maxLen = 240): string {
   return `${singleLine.slice(0, maxLen - 1)}...`;
 }
 
-function buildInboxConversationUrl(baseUrl: string, conversationId: string): string {
-  const normalized = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  return `${normalized}/inbox?conversation=${encodeURIComponent(conversationId)}`;
-}
-
 export function createInboxTelegramNotifyProcessor(app: FastifyInstance) {
   return async (job: Job<InboxTelegramNotifyJobData>): Promise<void> => {
     const { conversationId, messageId, classification } = job.data;
@@ -59,8 +54,6 @@ export function createInboxTelegramNotifyProcessor(app: FastifyInstance) {
         : message.fromName.trim()
       : (message.fromAddress ?? 'Unknown sender');
 
-    const frontendBaseUrl = app.config?.CORS_ORIGIN ?? process.env.CORS_ORIGIN ?? 'http://localhost:3000';
-
     await sendInboxEmailNotification(app, {
       conversationId,
       classification: bucket,
@@ -68,7 +61,6 @@ export function createInboxTelegramNotifyProcessor(app: FastifyInstance) {
       sender,
       receivedAt: message.sentAt.toISOString(),
       snippet,
-      inboxUrl: buildInboxConversationUrl(frontendBaseUrl, conversationId),
     });
 
     logger.info({ classification: bucket }, 'inbox_telegram_notify_completed');

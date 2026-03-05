@@ -109,7 +109,6 @@ describe('notification service telegram routing', () => {
       subject: 'Rates request',
       receivedAt: '2026-03-05T12:30:00.000Z',
       snippet: 'Hi, do you have room for 2 people?',
-      inboxUrl: 'http://localhost:3000/inbox?conversationId=conv_123',
     });
 
     expect(app.gateway.request).toHaveBeenCalledWith(
@@ -127,7 +126,8 @@ describe('notification service telegram routing', () => {
     expect(params.message).toContain('classification=conversation');
     expect(params.message).toContain('receivedAt=2026-03-05T12:30:00.000Z');
     expect(params.message).toContain('snippet=Hi, do you have room for 2 people?');
-    expect(params.message).toContain('inboxUrl=http://localhost:3000/inbox?conversationId=conv_123');
+    expect(params.message).toContain('conversationLink=not_available');
+    expect(params.message).toContain('conversationOpenMode=manual_only');
   });
 
   it('uses non-ambiguous draft-ready copy without generic Reply Show instruction', () => {

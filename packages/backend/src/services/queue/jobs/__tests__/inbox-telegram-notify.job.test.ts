@@ -79,7 +79,8 @@ describe('inbox telegram notify job', () => {
     expect(payload.message).toContain('classification=conversation');
     expect(payload.message).toContain('receivedAt=2026-03-05T10:00:00.000Z');
     expect(payload.message).toContain('snippet=Hello there. I want to book for March 10 to March 15.');
-    expect(payload.message).toContain('inboxUrl=http://localhost:3000/inbox?conversation=conv-1');
+    expect(payload.message).toContain('conversationLink=not_available');
+    expect(payload.message).toContain('conversationOpenMode=manual_only');
   });
 
   it('skips notification when message row no longer exists', async () => {

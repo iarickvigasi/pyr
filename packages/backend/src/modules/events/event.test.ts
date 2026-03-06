@@ -155,6 +155,49 @@ describe('Events API', () => {
     });
   });
 
+  describe('POST /api/v1/events/:id/registrations/:registrationId/cancel', () => {
+    it('should cancel a single registration', async () => {
+      const eventId = await createEvent(8);
+      const guestId = await createGuest('Alice');
+
+      const bookRes = await app.inject({
+        method: 'POST', url: `/api/v1/events/${eventId}/book`, headers: headers(),
+        payload: { guestId },
+      });
+      const registrationId = JSON.parse(bookRes.body).data.id;
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/events/${eventId}/registrations/${registrationId}/cancel`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.id).toBe(registrationId);
+      expect(body.data.status).toBe('cancelled');
+
+      const event = await app.inject({
+        method: 'GET',
+        url: `/api/v1/events/${eventId}`,
+        headers: headers(),
+      });
+      expect(JSON.parse(event.body).data._count.eventBookings).toBe(0);
+    });
+
+    it('should return 404 for missing registration', async () => {
+      const eventId = await createEvent(8);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/events/${eventId}/registrations/nonexistent/cancel`,
+        headers: headers(),
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
   describe('DELETE /api/v1/events/:id', () => {
     it('should delete event and its registrations', async () => {
       const eventId = await createEvent(8);

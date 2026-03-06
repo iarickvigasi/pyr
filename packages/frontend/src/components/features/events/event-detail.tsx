@@ -2,16 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, UserMinus } from 'lucide-react';
 import {
   useEvent,
   useEventRegistrations,
   useRegisterGuest,
   useDeleteEvent,
+  useCancelEventRegistration,
 } from '@/lib/hooks/use-events';
 import { useGuests } from '@/lib/hooks/use-guests';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Card,
   CardContent,
@@ -53,7 +55,9 @@ export function EventDetail({ id }: { id: string }) {
   const registrationsQuery = useEventRegistrations(id);
   const registerGuest = useRegisterGuest();
   const deleteEvent = useDeleteEvent();
+  const cancelRegistration = useCancelEventRegistration();
   const router = useRouter();
+  const { confirmDialog, confirm } = useConfirmDialog();
 
   const [showEdit, setShowEdit] = useState(false);
   const [guestSearch, setGuestSearch] = useState('');
@@ -81,6 +85,34 @@ export function EventDetail({ id }: { id: string }) {
       router.push('/events');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete');
+    }
+  };
+
+  const handleRemoveRegistration = async (registration: {
+    id: string;
+    status: string;
+    attendeeCount: number;
+    guest: { name: string };
+  }) => {
+    if (registration.status === 'cancelled') return;
+
+    const confirmed = await confirm({
+      title: 'Remove registration?',
+      description: `${registration.guest.name} will be removed from this event${registration.attendeeCount > 1 ? ` (${registration.attendeeCount} attendees)` : ''}. This keeps the registration record but marks it as cancelled.`,
+      confirmText: 'Remove guest',
+      variant: 'destructive',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await cancelRegistration.mutateAsync({
+        eventId: id,
+        registrationId: registration.id,
+      });
+      toast.success('Registration removed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove registration');
     }
   };
 
@@ -201,6 +233,7 @@ export function EventDetail({ id }: { id: string }) {
                   <TableRow>
                     <TableHead>Guest</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -223,6 +256,17 @@ export function EventDetail({ id }: { id: string }) {
                         >
                           {r.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveRegistration(r)}
+                          disabled={r.status === 'cancelled' || cancelRegistration.isPending}
+                        >
+                          <UserMinus className="mr-1 h-4 w-4" />
+                          {r.status === 'cancelled' ? 'Removed' : 'Remove'}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -255,6 +299,7 @@ export function EventDetail({ id }: { id: string }) {
           event={event}
         />
       )}
+      {confirmDialog}
     </div>
   );
 }

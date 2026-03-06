@@ -313,3 +313,51 @@ export async function listRegistrations(
 
   return registrations as (EventBooking & { guest: { id: string; name: string; email: string | null; phone: string | null } })[];
 }
+
+export async function cancelEventRegistration(
+  prisma: PrismaClient,
+  eventId: string,
+  registrationId: string,
+  actorId?: string,
+): Promise<EventBooking & { guest: { id: string; name: string; email: string | null; phone: string | null } }> {
+  return prisma.$transaction(async (tx) => {
+    const event = await tx.event.findUnique({ where: { id: eventId } });
+    if (!event) throw new NotFoundError('Event', eventId);
+
+    const existing = await tx.eventBooking.findFirst({
+      where: { id: registrationId, eventId },
+      include: {
+        guest: { select: { id: true, name: true, email: true, phone: true } },
+      },
+    });
+
+    if (!existing) throw new NotFoundError('Event registration', registrationId);
+
+    if (existing.status === 'cancelled') {
+      return existing as EventBooking & { guest: { id: string; name: string; email: string | null; phone: string | null } };
+    }
+
+    const updated = await tx.eventBooking.update({
+      where: { id: registrationId },
+      data: { status: 'cancelled' },
+      include: {
+        guest: { select: { id: true, name: true, email: true, phone: true } },
+      },
+    });
+
+    await writeAuditLog(tx, {
+      entityType: 'event_booking',
+      entityId: registrationId,
+      action: 'update',
+      changes: {
+        status: {
+          from: existing.status,
+          to: 'cancelled',
+        },
+      },
+      actor: getActor(actorId),
+    });
+
+    return updated as EventBooking & { guest: { id: string; name: string; email: string | null; phone: string | null } };
+  });
+}

@@ -51,6 +51,7 @@ const ROUTE_TO_TOOL: ReadonlyArray<readonly [string, string, string]> = [
   ['GET', '/api/v1/availability', 'check_availability'],
 
   // Event tools
+  ['POST', '/api/v1/events/:id/registrations/:registrationId/cancel', 'prepare_cancel_event_registration'],
   ['GET', '/api/v1/events/:id/registrations', 'list_event_registrations'],
   ['POST', '/api/v1/events/:id/book', 'prepare_register_guest'],
   ['GET', '/api/v1/events/:id', 'get_event'],

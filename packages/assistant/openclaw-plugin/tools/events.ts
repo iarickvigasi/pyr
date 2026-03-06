@@ -18,6 +18,7 @@ interface EventRecord {
 interface EventRegistration {
   id: string;
   status: string;
+  attendeeCount?: number;
   guest: { id: string; name: string; email: string | null; phone: string | null };
 }
 
@@ -106,10 +107,12 @@ export function registerEventTools(api: OpenClawPluginApi, client: ApiClient): v
     async execute(_id: string, params: { eventId: string }) {
       const data = await client.get<EventRegistration[]>(`/api/v1/events/${params.eventId}/registrations`);
       const registrations = (data as unknown as EventRegistration[]).map(r => ({
+        registrationId: r.id,
         guestName: r.guest.name,
         guestEmail: r.guest.email,
         guestPhone: r.guest.phone,
         status: r.status,
+        attendeeCount: r.attendeeCount ?? 1,
         guestDashboardUrl: dashboardUrl(`/guests/${r.guest.id}`),
       }));
       return { content: [{ type: 'text' as const, text: JSON.stringify({ registrations }, null, 2) }], details: {} };
@@ -370,4 +373,134 @@ export function registerEventTools(api: OpenClawPluginApi, client: ApiClient): v
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], details: {} };
     },
   });
+
+  api.registerTool({
+    name: 'prepare_cancel_event_registration',
+    label: 'Remove Guest From Event',
+    description:
+      'Prepare cancellation of a single guest registration from an event. Resolve the registration by guest name or registration ID, show the target clearly, and require confirmation before removing it.',
+    parameters: {
+      type: 'object' as const,
+      properties: {
+        eventId: { type: 'string', description: 'The event ID (UUID)' },
+        guestName: { type: 'string', description: 'Guest name to remove from the event' },
+        registrationId: { type: 'string', description: 'Specific event registration ID, if already known' },
+      },
+      required: ['eventId'],
+    },
+    async execute(_id: string, params: { eventId: string; guestName?: string; registrationId?: string }) {
+      if (!params.guestName && !params.registrationId) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: 'Provide either guestName or registrationId to remove a guest from an event.',
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const event = await client.get<EventRecord>(`/api/v1/events/${params.eventId}`);
+      const registrations = await client.get<EventRegistration[]>(`/api/v1/events/${params.eventId}/registrations`);
+      const registrationList = registrations as unknown as EventRegistration[];
+
+      const resolved = params.registrationId
+        ? registrationList.filter((registration) => registration.id === params.registrationId)
+        : findMatchingRegistrations(registrationList, params.guestName ?? '');
+
+      if (resolved.length === 0) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: params.registrationId
+                ? `No registration found with ID "${params.registrationId}" for this event.`
+                : `No registration found for "${params.guestName}" in this event.`,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      if (resolved.length > 1) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: true,
+              message: `Multiple registrations match "${params.guestName}". Please specify the exact guest or registration ID.`,
+              candidates: resolved.map((registration) => ({
+                registrationId: registration.id,
+                guestName: registration.guest.name,
+                guestEmail: registration.guest.email,
+                status: registration.status,
+              })),
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const registration = resolved[0]!;
+      if (registration.status === 'cancelled') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              message: `${registration.guest.name} is already removed from "${event.title}". No changes were prepared.`,
+            }, null, 2),
+          }],
+          details: {},
+        };
+      }
+
+      const actionId = crypto.randomUUID();
+      storePendingAction({
+        id: actionId,
+        type: 'cancel_event_registration',
+        summary: `Remove ${registration.guest.name} from ${event.title} on ${formatDate(event.date)}`,
+        payload: {
+          eventId: params.eventId,
+          registrationId: registration.id,
+          guestName: registration.guest.name,
+          eventTitle: event.title,
+        },
+        createdAt: Date.now(),
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            actionId,
+            summary: {
+              action: 'Remove guest from event',
+              guest: registration.guest.name,
+              guestEmail: registration.guest.email,
+              event: event.title,
+              date: formatDate(event.date),
+              time: event.time,
+              status: registration.status,
+              attendeeCount: registration.attendeeCount ?? 1,
+            },
+            instruction: 'Present this as a structured summary and ask Ines to reply OK to confirm or Cancel to reject.',
+          }, null, 2),
+        }],
+        details: {},
+      };
+    },
+  });
+}
+
+function findMatchingRegistrations(registrations: EventRegistration[], guestNameQuery: string): EventRegistration[] {
+  const query = guestNameQuery.trim().toLowerCase();
+  if (!query) return [];
+
+  const exact = registrations.filter((registration) => registration.guest.name.trim().toLowerCase() === query);
+  if (exact.length > 0) return exact;
+
+  return registrations.filter((registration) => registration.guest.name.toLowerCase().includes(query));
 }

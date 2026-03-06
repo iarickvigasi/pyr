@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { idParamSchema, QUEUE_NAMES } from '@pyr/shared';
-import type { CalendarSyncJobData } from '@pyr/shared';
+import { idParamSchema } from '@pyr/shared';
 import {
   createEventSchema,
   updateEventSchema,
   listEventsQuerySchema,
   registerGuestSchema,
+  eventRegistrationParamsSchema,
 } from './event.schema.js';
 import {
   listEvents,
@@ -16,30 +16,9 @@ import {
   deleteEvent,
   registerGuest,
   listRegistrations,
+  cancelEventRegistration,
 } from './event.service.js';
-
-/**
- * Enqueue a calendar sync job for an event mutation.
- * Wrapped in try/catch so sync failures never block the primary operation.
- */
-async function enqueueCalendarSync(
-  app: FastifyInstance,
-  entityId: string,
-  action: CalendarSyncJobData['action'],
-): Promise<void> {
-  const calQueue = app.queues?.getQueue(QUEUE_NAMES.CALENDAR_SYNC);
-  if (calQueue) {
-    try {
-      await calQueue.add('calendar-sync', {
-        entityType: 'event',
-        entityId,
-        action,
-      } satisfies CalendarSyncJobData);
-    } catch (err) {
-      app.log.error({ err, eventId: entityId }, 'Failed to enqueue calendar sync job for event');
-    }
-  }
-}
+import { enqueueCalendarSyncJob } from '../../services/caldav/calendar-sync-queue.js';
 
 export default async function eventRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -62,7 +41,13 @@ export default async function eventRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Events'], summary: 'Create a new event', body: createEventSchema },
   }, async (request, reply) => {
     const event = await createEvent(app.prisma, request.body, request.user?.sub);
-    await enqueueCalendarSync(app, event.id, 'create');
+    await enqueueCalendarSyncJob({
+      app,
+      entityType: 'event',
+      entityId: event.id,
+      action: 'create',
+      errorLogMessage: 'Failed to enqueue calendar sync job for event',
+    });
     return reply.status(201).send({ data: event });
   });
 
@@ -70,7 +55,13 @@ export default async function eventRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Events'], summary: 'Update event fields', params: idParamSchema, body: updateEventSchema },
   }, async (request) => {
     const event = await updateEvent(app.prisma, request.params.id, request.body, request.user?.sub);
-    await enqueueCalendarSync(app, event.id, 'update');
+    await enqueueCalendarSyncJob({
+      app,
+      entityType: 'event',
+      entityId: event.id,
+      action: 'update',
+      errorLogMessage: 'Failed to enqueue calendar sync job for event',
+    });
     return { data: event };
   });
 
@@ -100,7 +91,13 @@ export default async function eventRoutes(app: FastifyInstance): Promise<void> {
       request.user?.sub,
     );
     // Registration changes the count in the calendar event title -- enqueue as update
-    await enqueueCalendarSync(app, request.params.id, 'update');
+    await enqueueCalendarSyncJob({
+      app,
+      entityType: 'event',
+      entityId: request.params.id,
+      action: 'update',
+      errorLogMessage: 'Failed to enqueue calendar sync job for event',
+    });
     return reply.status(201).send({ data: registration });
   });
 
@@ -108,5 +105,28 @@ export default async function eventRoutes(app: FastifyInstance): Promise<void> {
     schema: { tags: ['Events'], summary: 'List event registrations with guest info', params: idParamSchema },
   }, async (request) => {
     return { data: await listRegistrations(app.prisma, request.params.id) };
+  });
+
+  server.post('/:id/registrations/:registrationId/cancel', {
+    schema: {
+      tags: ['Events'],
+      summary: 'Cancel a single event registration',
+      params: eventRegistrationParamsSchema,
+    },
+  }, async (request) => {
+    const registration = await cancelEventRegistration(
+      app.prisma,
+      request.params.id,
+      request.params.registrationId,
+      request.user?.sub,
+    );
+    await enqueueCalendarSyncJob({
+      app,
+      entityType: 'event',
+      entityId: request.params.id,
+      action: 'update',
+      errorLogMessage: 'Failed to enqueue calendar sync job for event',
+    });
+    return { data: registration };
   });
 }

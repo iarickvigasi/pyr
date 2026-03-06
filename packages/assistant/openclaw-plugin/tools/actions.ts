@@ -561,6 +561,32 @@ export function registerActionTools(api: OpenClawPluginApi, client: ApiClient): 
             };
           }
 
+          case 'cancel_event_registration': {
+            const { eventId, registrationId, guestName, eventTitle } = action.payload as {
+              eventId: string;
+              registrationId: string;
+              guestName?: string;
+              eventTitle?: string;
+            };
+            const registration = await client.post<{
+              id: string;
+              status: string;
+              guest: { id: string; name: string; email: string | null };
+            }>(`/api/v1/events/${eventId}/registrations/${registrationId}/cancel`);
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify({
+                success: true,
+                message: `Removed ${guestName ?? registration.guest.name} from ${eventTitle ?? 'the event'} successfully.`,
+                registration: {
+                  id: registration.id,
+                  status: registration.status,
+                  guest: registration.guest,
+                },
+              }, null, 2) }],
+              details: {},
+            };
+          }
+
           case 'log_payment': {
             const { bookingId, amount, method, date, notes } = action.payload as {
               bookingId: string; amount: number; method: string; date: string | null; notes: string | null;

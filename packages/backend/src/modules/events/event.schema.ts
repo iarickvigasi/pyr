@@ -39,3 +39,10 @@ export const registerGuestSchema = z.object({
 });
 
 export type RegisterGuestBody = z.infer<typeof registerGuestSchema>;
+
+export const eventRegistrationParamsSchema = z.object({
+  id: z.string().min(1).openapi({ example: 'cm4x7event0001' }),
+  registrationId: z.string().min(1).openapi({ example: 'cm4x7registration0001' }),
+});
+
+export type EventRegistrationParams = z.infer<typeof eventRegistrationParamsSchema>;

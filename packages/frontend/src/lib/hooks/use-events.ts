@@ -63,6 +63,7 @@ export function useEventRegistrations(id: string) {
           id: string;
           guestId: string;
           status: string;
+          attendeeCount: number;
           createdAt: string;
           guest: { id: string; name: string; email: string | null };
         }>;
@@ -119,10 +120,28 @@ export function useRegisterGuest() {
     mutationFn: ({ eventId, guestId }: { eventId: string; guestId: string }) =>
       api.post(`/api/v1/events/${eventId}/book`, { guestId }),
     onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.events.all });
       qc.invalidateQueries({ queryKey: queryKeys.events.detail(vars.eventId) });
       qc.invalidateQueries({
         queryKey: queryKeys.events.registrations(vars.eventId),
       });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard.today });
+    },
+  });
+}
+
+export function useCancelEventRegistration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, registrationId }: { eventId: string; registrationId: string }) =>
+      api.post(`/api/v1/events/${eventId}/registrations/${registrationId}/cancel`),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.events.all });
+      qc.invalidateQueries({ queryKey: queryKeys.events.detail(vars.eventId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.events.registrations(vars.eventId),
+      });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard.today });
     },
   });
 }

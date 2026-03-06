@@ -61,7 +61,7 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
     const tokenFromCookie = getCookieValue(request.headers.cookie, 'token');
     if (tokenFromCookie) {
       try {
-        const decoded = await fastify.jwt.verify<{ sub: string; role: string }>(tokenFromCookie);
+        const decoded = fastify.jwt.verify<{ sub: string; role: string }>(tokenFromCookie);
         request.user = { sub: decoded.sub, role: decoded.role };
         return;
       } catch {

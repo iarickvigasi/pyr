@@ -54,11 +54,13 @@ export async function upsertSetting(
       update: { value: value as Prisma.InputJsonValue },
     });
 
+    const changes: Record<string, unknown> = { key, value };
+
     await writeAuditLog(tx, {
       entityType: 'setting',
       entityId: setting.id,
       action,
-      changes: { key, value } as Record<string, unknown>,
+      changes,
       actor: getActor(userId),
     });
 

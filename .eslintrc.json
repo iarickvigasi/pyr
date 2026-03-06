@@ -23,7 +23,20 @@
         "varsIgnorePattern": "^_"
       }
     ],
+    "@typescript-eslint/consistent-type-assertions": [
+      "error",
+      {
+        "assertionStyle": "as",
+        "objectLiteralTypeAssertions": "never"
+      }
+    ],
     "@typescript-eslint/no-explicit-any": "warn",
+    "no-empty": [
+      "error",
+      {
+        "allowEmptyCatch": false
+      }
+    ],
     "no-console": [
       "warn",
       {

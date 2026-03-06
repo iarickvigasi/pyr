@@ -1,3 +1,5 @@
 packages:
-  - "packages/*"
+  - "packages/backend"
+  - "packages/frontend"
+  - "packages/shared"
   - "packages/assistant/openclaw-plugin"

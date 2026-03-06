@@ -8,7 +8,7 @@
     "build": "tsc && copyfiles -u 1 'prisma/**/*' dist/",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
-    "lint": "echo 'no linter configured yet'",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "prisma migrate dev",

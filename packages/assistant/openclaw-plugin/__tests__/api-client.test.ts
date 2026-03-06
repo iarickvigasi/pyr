@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../lib/api-client.js';
 
 function okResponse<T>(data: T): Response {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Minimal Response test double is sufficient for these assertions.
   return {
     ok: true,
     status: 200,

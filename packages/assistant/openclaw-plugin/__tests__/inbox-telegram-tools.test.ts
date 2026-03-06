@@ -234,4 +234,71 @@ describe('inbox telegram tools', () => {
     );
     expect(confirmed.success).toBe(true);
   });
+
+  it('confirm_action returns safe failure when approve_draft execution fails', async () => {
+    mockGet.mockResolvedValueOnce({
+      id: 'conv-11',
+      subject: 'Re: Draft failure',
+      status: 'open',
+      guest: { id: 'guest-11', name: 'Anna', email: 'anna@example.com' },
+    });
+    mockPost.mockRejectedValueOnce(new Error('VALIDATION_ERROR: body expected object, received null'));
+
+    const prepareTool = tools.get('approve_draft');
+    const confirmTool = tools.get('confirm_action');
+    expect(prepareTool).toBeDefined();
+    expect(confirmTool).toBeDefined();
+
+    const prepareResult = await prepareTool!.execute('id', {
+      conversationId: 'conv-11',
+      draftId: 'draft-11',
+    });
+    const prepareContent = (prepareResult as { content: Array<{ text: string }> }).content[0]!;
+    const prepared = JSON.parse(prepareContent.text) as { actionId: string };
+
+    const confirmResult = await confirmTool!.execute('id', { actionId: prepared.actionId });
+    const confirmContent = (confirmResult as { content: Array<{ text: string }> }).content[0]!;
+    const failed = JSON.parse(confirmContent.text);
+
+    expect(failed.error).toBe(true);
+    expect(failed.message).toContain('No changes were applied.');
+    expect(mockPost).toHaveBeenCalledWith('/api/v1/conversations/conv-11/drafts/draft-11/approve', {});
+  });
+
+  it('regenerate_draft calls regenerate endpoint and returns success payload', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: { id: 'draft-12', status: 'pending' },
+    });
+
+    const tool = tools.get('regenerate_draft');
+    expect(tool).toBeDefined();
+
+    const result = await tool!.execute('id', {
+      conversationId: 'conv-12',
+      draftId: 'draft-12',
+    });
+    const content = (result as { content: Array<{ text: string }> }).content[0]!;
+    const parsed = JSON.parse(content.text);
+
+    expect(mockPost).toHaveBeenCalledWith('/api/v1/conversations/conv-12/drafts/draft-12/regenerate');
+    expect(parsed.success).toBe(true);
+  });
+
+  it('reject_draft calls reject endpoint', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: { id: 'draft-13', status: 'rejected' },
+    });
+
+    const tool = tools.get('reject_draft');
+    expect(tool).toBeDefined();
+
+    const result = await tool!.execute('id', {
+      conversationId: 'conv-13',
+      draftId: 'draft-13',
+    });
+    const content = (result as { content: Array<{ text: string }> }).content[0]!;
+
+    expect(mockPost).toHaveBeenCalledWith('/api/v1/conversations/conv-13/drafts/draft-13/reject');
+    expect(content.text).toBe('Draft rejected.');
+  });
 });

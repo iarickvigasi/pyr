@@ -150,7 +150,7 @@ export default fp(async function queuePlugin(fastify: FastifyInstance) {
       registeredWorkers.push({ worker: worker as unknown as Worker, name });
 
       // Start worker
-      worker.run();
+      void worker.run();
 
       fastify.log.info({ worker: name }, 'Worker started');
       return worker;

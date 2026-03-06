@@ -81,6 +81,9 @@ jobs:
       - name: Run database migrations
         run: pnpm --filter @pyr/backend exec prisma migrate deploy
 
+      - name: Backend tests (required gate)
+        run: pnpm --filter @pyr/backend test
+
       - name: Test
         run: pnpm turbo test
 

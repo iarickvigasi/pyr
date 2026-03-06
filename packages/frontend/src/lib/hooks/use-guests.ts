@@ -64,7 +64,7 @@ export interface CreateGuestData {
   notes?: string;
 }
 
-export interface UpdateGuestData extends Partial<CreateGuestData> {}
+export type UpdateGuestData = Partial<CreateGuestData>;
 
 export interface MergeGuestsInput {
   primaryId: string;

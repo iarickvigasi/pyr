@@ -100,6 +100,14 @@ export function MonthView({
                     !isCurrentMonth && 'bg-muted/30 text-muted-foreground',
                   )}
                   onClick={() => onDateClick(day)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onDateClick(day);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div
                     className={cn(

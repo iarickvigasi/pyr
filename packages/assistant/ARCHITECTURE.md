@@ -2,7 +2,7 @@
 
 ## Overview
 
-The PYR AI assistant runs on [OpenClaw](https://openclaw.dev) as its runtime, providing Ines with a conversational business assistant accessible via the admin dashboard chat (WebChat) and WhatsApp. The OpenClaw plugin exposes 38 tools that map to PYR REST API endpoints, enabling the assistant to read business data, create/update/cancel entities with two-step confirmation, manage email drafts, and update settings.
+The PYR AI assistant runs on [OpenClaw](https://openclaw.dev) as its runtime, providing Ines with a conversational business assistant accessible via the admin dashboard chat (WebChat) and WhatsApp. The OpenClaw plugin exposes 44 tools that map to PYR REST API endpoints, enabling the assistant to read business data, create/update/cancel entities with two-step confirmation, manage email drafts, and update settings.
 
 The backend communicates with the OpenClaw Gateway via a persistent WebSocket connection for real-time chat streaming, notification delivery, and scheduled briefings.
 
@@ -24,7 +24,7 @@ flowchart TB
     subgraph OpenClaw["OpenClaw Runtime"]
         Gateway["Gateway<br/>(WebSocket + HTTP)"]
         Agent["Agent (main)"]
-        Plugin["PYR Plugin<br/>(38 tools)"]
+        Plugin["PYR Plugin<br/>(44 tools)"]
         WA["WhatsApp Channel"]
     end
 
@@ -51,7 +51,7 @@ flowchart TB
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| OpenClaw Plugin | `packages/assistant/openclaw-plugin/` | 38 tools for PYR REST API access |
+| OpenClaw Plugin | `packages/assistant/openclaw-plugin/` | 44 tools for PYR REST API access |
 | Gateway WS Client | `packages/backend/src/services/gateway/` | Persistent WebSocket to OpenClaw Gateway |
 | Assistant Routes | `packages/backend/src/modules/assistant/` | SSE proxy for dashboard chat (HTTP API) |
 | Notification Service | `packages/backend/src/modules/notifications/` | Morning briefing, alerts, delivery via gateway |
@@ -64,7 +64,7 @@ flowchart TB
 ```
 packages/assistant/
   openclaw-plugin/
-    index.ts                    # Plugin entry point -- registers all 38 tools
+    index.ts                    # Plugin entry point -- registers all 44 tools
     openclaw.plugin.json        # Plugin metadata and config schema
     lib/
       api-client.ts             # HTTP client for PYR backend REST API
@@ -75,11 +75,12 @@ packages/assistant/
       bookings.ts               # 4 tools: list, get, update, cancel
       rooms.ts                  # 3 tools: list rooms, list types, check availability
       events.ts                 # 6 tools: list, get, registrations, update, delete, register
-      conversations.ts          # 3 tools: list, get, update (direct)
+      conversations.ts          # 5 tools: list, get, update, booking analysis, booking create
       dashboard.ts              # 2 tools: stats, today schedule
       settings.ts               # 2 tools: get (safe keys), update (writable keys)
       actions.ts                # 6 tools: create booking, create event, confirm, cancel, invoice, briefing time
-      drafts.ts                 # 5 tools: list pending, show, approve, regenerate, reject
+      drafts.ts                 # 6 tools: list pending, show, generate, approve, regenerate, reject
+      payments.ts               # 2 tools: payment balance, payment history
     __tests__/
       check-availability.test.ts
 
@@ -99,7 +100,7 @@ packages/backend/src/
 openclaw/
   openclaw.json                 # Full OpenClaw workspace config (agents, hooks, channels, plugins)
   workspace/
-    SOUL.md                     # Koda persona -- system prompt (assistant + email draft modes)
+    SOUL.md                     # Ailu persona -- system prompt (assistant + email draft modes)
     AGENTS.md                   # Agent configuration
     TOOLS.md                    # Tool documentation
     skills/                     # Domain skills (availability, bookings, guests, etc.)
@@ -140,7 +141,7 @@ openclaw/
 | `list_room_types` | Room categories with pricing | No -- read-only |
 | `check_availability` | Available rooms for date range with pricing | No -- read-only |
 
-### Events (6 tools)
+### Events (7 tools)
 
 | Tool | Description | Confirmation |
 |------|-------------|-------------|
@@ -150,14 +151,17 @@ openclaw/
 | `prepare_update_event` | Prepare event update with diff | Yes |
 | `prepare_delete_event` | Prepare permanent deletion with warning | Yes |
 | `prepare_register_guest` | Search guest, check capacity, register | Yes |
+| `prepare_cancel_event_registration` | Prepare removal of one guest registration | Yes |
 
-### Conversations (3 tools)
+### Conversations (5 tools)
 
 | Tool | Description | Confirmation |
 |------|-------------|-------------|
 | `list_conversations` | Inbox with status filter | No -- read-only |
 | `get_conversation` | Full message thread | No -- read-only |
 | `update_conversation` | Change status or classification | No -- direct (reversible) |
+| `analyze_conversation_booking` | OpenClaw booking analysis for inbox thread | No -- read-only |
+| `create_conversation_booking` | Prepare booking creation from conversation | Yes |
 
 ### Dashboard (2 tools)
 
@@ -184,17 +188,25 @@ openclaw/
 | `send_invoice_reminder` | Surface overdue bookings for manual follow-up | No -- read-only |
 | `update_briefing_time` | Change morning briefing delivery time | No -- direct |
 
-### Drafts (5 tools)
+### Drafts (6 tools)
 
 | Tool | Description | Confirmation |
 |------|-------------|-------------|
 | `list_pending_drafts` | Pending AI email drafts across conversations | No -- read-only |
 | `show_draft` | Full draft content with To, Subject, Body | No -- read-only |
+| `generate_conversation_draft` | Trigger draft generation for a conversation | No -- direct |
 | `approve_draft` | Queue draft for sending | Yes |
 | `regenerate_draft` | Discard and regenerate fresh draft | No -- direct |
 | `reject_draft` | Reject draft immediately | No -- direct |
 
-**Summary:** 17 read-only + 16 action (confirmation required) + 5 draft management = 38 tools total.
+### Payments (2 tools)
+
+| Tool | Description | Confirmation |
+|------|-------------|-------------|
+| `get_payment_balance` | Payment totals and outstanding balance for booking | No -- read-only |
+| `list_booking_payments` | Payment history for a booking | No -- read-only |
+
+**Summary:** 19 read-only + 19 action (confirmation required) + 6 draft management = 44 tools total.
 
 ## Confirmation Flow
 
@@ -203,7 +215,7 @@ All destructive write operations use a two-step confirmation pattern:
 ```mermaid
 sequenceDiagram
     participant I as Ines
-    participant K as Koda (Agent)
+    participant K as Ailu (Agent)
     participant P as Plugin Tool
 
     I->>K: "Book Anna for March 15-19"
@@ -333,20 +345,25 @@ All notifications are delivered via the Gateway WebSocket `agent` RPC method. De
 {
   message: string;        // Formatted notification text
   agentId: 'main';        // Always the main agent
-  sessionKey: string;     // 'hook:briefing' | 'hook:alert' | 'hook:draft:<timestamp>'
-  deliver: boolean;       // true = send to WhatsApp, false = generate only (drafts)
+  sessionKey: string;     // 'agent:main:telegram:direct:<ownerUserId>' | 'hook:draft:<timestamp>'
+  deliver: boolean;       // true = deliver to owner Telegram DM, false = generate only (drafts)
   idempotencyKey: string; // crypto.randomUUID() for dedup
+  replyChannel?: 'telegram';
+  replyTo?: string;
 }
 ```
 
-**Hook path mapping (replicated from openclaw.json):**
-- `briefing` -> `deliver: true`, `sessionKey: 'hook:briefing'`
-- `alert` -> `deliver: true`, `sessionKey: 'hook:alert'`
-- `draft` -> `deliver: false`, `sessionKey: 'hook:draft:<timestamp>'` (unique per draft)
+**Notification routing behavior:**
+- `deliver=true` (briefing/alert style notifications):
+  - `sessionKey: 'agent:main:telegram:direct:<ownerUserId>'`
+  - `replyChannel: 'telegram'`
+  - `replyTo: <ownerUserId>`
+- `deliver=false` (draft/background generation):
+  - `sessionKey: 'hook:draft:<timestamp>'` (unique per run)
 
 ## SOUL.md Persona
 
-The assistant persona is **Koda** -- a friendly, casual business colleague for Ines. SOUL.md defines two modes:
+The assistant persona is **Ailu** -- a friendly, casual business colleague for Ines. SOUL.md defines two modes:
 
 1. **Assistant Mode:** Conversational business helper. Casual tone ("Hey!"), auto-detects language (EN/DE), uses "du" in German. Presents data with bold headers and bullet points, never dumps raw JSON. Includes dashboard links in WebChat, text-only in WhatsApp.
 
@@ -359,7 +376,7 @@ SOUL.md is loaded from `openclaw/workspace/SOUL.md` at backend startup and injec
 Configured in `openclaw.json` under `channels.whatsapp`:
 - DM policy: allowlist (only Ines's phone number)
 - Text chunk limit: 4000 characters (WhatsApp message limit)
-- Same 38 tools available as dashboard chat
+- Same 44 tools available as dashboard chat
 - Read receipts enabled
 - Notifications delivered via `agent` RPC with `deliver: true`
 
@@ -583,7 +600,7 @@ case 'update_room_status': {
 }
 ```
 
-5. **Update index.ts** tool count to 39.
+5. **Update index.ts** tool count to 44.
 
 ## Error Handling
 
@@ -602,7 +619,7 @@ case 'update_room_status': {
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
 | 07 | OpenClaw replaces Telegram/grammY as assistant runtime | Dashboard chat + WhatsApp channels. Plugin SDK for tool registration. |
-| 07 | Koda as assistant persona name | Short, friendly, works in EN/DE, evokes a puppy name |
+| 07 | Ailu as assistant persona name | Short, friendly, works in EN/DE, evokes a puppy name |
 | 07 | SAFE_KEYS allowlist in settings tool | Prevents sensitive credential exposure to the LLM |
 | 07 | Plugin mounted as Docker volume (source in packages/) | Plugin code co-located with PYR monorepo, not in openclaw/ directory |
 | 08 | In-memory Map for pending actions | Ephemeral, single-user, single-instance. Lost on restart by design. |
@@ -616,7 +633,7 @@ case 'update_room_status': {
 | 11 | 204 No Content check before JSON parsing | Prevents SyntaxError on DELETE responses from PYR API |
 | 11 | Direct execution for update_conversation, update_setting | Non-destructive, easily reversible operations skip confirmation |
 | 11 | WRITABLE_KEYS guard in update_setting | Limits assistant to 6 safe settings keys |
-| 11 | 38 tools total (17 read + 16 action + 5 draft) | Comprehensive business coverage for single-user assistant |
+| 11 | 44 tools total (19 read + 19 action + 6 draft) | Comprehensive business coverage for single-user assistant |
 
 ---
 

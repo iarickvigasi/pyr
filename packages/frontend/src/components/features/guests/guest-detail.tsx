@@ -262,7 +262,6 @@ export function GuestDetail({ id }: GuestDetailProps) {
                       value={noteText}
                       onChange={(e) => setNoteText(e.target.value)}
                       rows={3}
-                      autoFocus
                     />
                     <div className="flex gap-2">
                       <Button
@@ -303,6 +302,14 @@ export function GuestDetail({ id }: GuestDetailProps) {
                         key={booking.id}
                         className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
                         onClick={() => router.push(`/bookings/${booking.id}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            router.push(`/bookings/${booking.id}`);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="flex items-center gap-4">
                           <Calendar className="h-5 w-5 text-muted-foreground" />
@@ -349,6 +356,14 @@ export function GuestDetail({ id }: GuestDetailProps) {
                         key={c.id}
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
                         onClick={() => router.push(`/inbox?conversation=${c.id}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            router.push(`/inbox?conversation=${c.id}`);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="flex items-center gap-3">
                           <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -433,6 +448,14 @@ export function GuestDetail({ id }: GuestDetailProps) {
                         key={eventBooking.id}
                         className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
                         onClick={() => router.push(`/events/${eventBooking.event.id}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            router.push(`/events/${eventBooking.event.id}`);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
                       >
                         <p className="font-medium text-sm">{eventBooking.event.title}</p>
                         <p className="text-xs text-muted-foreground mt-1">

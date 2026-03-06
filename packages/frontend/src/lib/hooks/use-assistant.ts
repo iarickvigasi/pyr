@@ -54,6 +54,7 @@ function toolLabel(toolName: string): string {
     prepare_update_event: 'Preparing event update...',
     prepare_delete_event: 'Preparing event deletion...',
     prepare_register_guest: 'Preparing event registration...',
+    prepare_cancel_event_registration: 'Preparing registration removal...',
     list_conversations: 'Checking messages...',
     get_conversation: 'Reading conversation...',
     update_conversation: 'Updating conversation...',
@@ -205,9 +206,13 @@ export function useAssistant() {
       let accumulatedContent = '';
       const currentToolCalls: ToolCall[] = [];
 
-      while (true) {
+      let streamOpen = true;
+      while (streamOpen) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          streamOpen = false;
+          break;
+        }
         buffer += decoder.decode(value, { stream: true });
 
         const lines = buffer.split('\n');

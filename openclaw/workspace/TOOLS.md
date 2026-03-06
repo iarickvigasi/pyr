@@ -2,7 +2,7 @@
 
 ## PYR Backend API
 
-The PYR business assistant plugin connects to the PYR backend REST API to query and manage business data. The plugin is loaded automatically by the OpenClaw Gateway on startup. It provides 40 tools across 10 categories: read queries, write actions with confirmation, payment management, and draft management.
+The PYR business assistant plugin connects to the PYR backend REST API to query and manage business data. The plugin is loaded automatically by the OpenClaw Gateway on startup. It provides 44 tools across 10 categories: read queries, write actions with confirmation, payment management, and draft management.
 
 **Connection:** The plugin reads `PYR_API_URL` and `PYR_API_KEY` from environment variables. In Docker, these are injected via the Gateway container's environment config.
 
@@ -34,18 +34,21 @@ The PYR business assistant plugin connects to the PYR backend REST API to query 
 - `list_room_types` -- Room categories with pricing
 - `check_availability` -- Available rooms for a date range
 
-### Events (6 tools)
+### Events (7 tools)
 - `list_events` -- Scheduled events with capacity info
 - `get_event` -- Event details
 - `list_event_registrations` -- Guests registered for an event
 - `prepare_update_event` -- Update event fields with before/after diff (two-step confirmation)
 - `prepare_delete_event` -- Delete an event permanently with warning (two-step confirmation)
 - `prepare_register_guest` -- Register a guest for an event with capacity check (two-step confirmation)
+- `prepare_cancel_event_registration` -- Remove one guest registration from an event (two-step confirmation)
 
-### Conversations (3 tools)
+### Conversations (5 tools)
 - `list_conversations` -- Email inbox, filterable by status
 - `get_conversation` -- Full message thread
 - `update_conversation` -- Update conversation status or classification (direct execution, no confirmation)
+- `analyze_conversation_booking` -- OpenClaw booking analysis for an inbox thread
+- `create_conversation_booking` -- Prepare booking creation from an inbox thread (two-step confirmation)
 
 ### Dashboard (2 tools)
 - `get_dashboard_stats` -- Business KPIs (revenue, bookings, inquiries)
@@ -63,9 +66,10 @@ The PYR business assistant plugin connects to the PYR backend REST API to query 
 - `send_invoice_reminder` -- List overdue bookings (unpaid or partially paid) with payment status for follow-up
 - `update_briefing_time` -- Change the morning briefing delivery time (stored in settings)
 
-### Drafts (5 tools)
+### Drafts (6 tools)
 - `list_pending_drafts` -- Show AI email drafts awaiting approval across conversations
 - `show_draft` -- Display the full email draft (To, Subject, Body) for review
+- `generate_conversation_draft` -- Generate a new AI draft for an inbox conversation
 - `approve_draft` -- Queue draft for sending (goes through confirmation flow)
 - `regenerate_draft` -- Discard current draft and generate a fresh replacement (no confirmation needed)
 - `reject_draft` -- Discard a draft immediately (no confirmation needed)

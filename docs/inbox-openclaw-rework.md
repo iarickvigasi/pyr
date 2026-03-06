@@ -8,7 +8,7 @@ This document defines the new minimal/robust inbox pipeline:
 
 - Keep existing IMAP/SMTP connectivity.
 - Rebuild classification + customer-link workflow + AI draft trigger behavior.
-- Use OpenClaw as primary classifier runtime with deterministic fallback.
+- Use OpenClaw-only classifier/analyzer runtime; on failure, persist safe `other` with source `openclaw_error`.
 - Remove automatic guest creation from inbound email processing.
 - Stop OTA auto-booking side effects in inbox ingestion.
 - Add manual booking analysis + booking wizard flow from Inbox conversation view.
@@ -63,7 +63,7 @@ Implemented in `packages/backend/src/services/email/index.ts`:
 1. Poll IMAP and parse MIME.
 2. Deduplicate by `Message-ID`.
 3. Resolve thread candidate via RFC headers (`In-Reply-To`, `References`).
-4. Classify with OpenClaw (`openclaw-classifier.ts`), fallback to rules (`email-classifier.ts`).
+4. Classify with OpenClaw (`openclaw-classifier.ts`) using strict JSON validation.
 5. Match existing guest only (no create):
    - Conversation email: match sender email.
    - OTA email: match OTA-extracted email/name.
@@ -114,8 +114,9 @@ Updated/added in `packages/backend/src/modules/inbox`:
 
 Updated in `packages/frontend/src/components/features/inbox` and hooks:
 
-- Two tabs in inbox list:
-  - Conversations/OTA
+- Three tabs in inbox list:
+  - Conv
+  - OTA
   - Other
 - Customer suggestion card in conversation view:
   - Link existing guest
@@ -137,7 +138,7 @@ Updated in `packages/frontend/src/components/features/inbox` and hooks:
   - System prompt explicitly requires plain-text email output (no Markdown syntax).
   - System prompt now always injects current Cyprus date (`Europe/Nicosia`) and recent conversation history context.
   - Backend normalizes AI output by stripping Markdown-like syntax before storing drafts.
-  - Approve/send path also normalizes content before SMTP send as a safety fallback.
+  - Approve/send path also normalizes content before SMTP send as a final safety guard.
 - Conversation header links:
   - Linked customer name opens `/guests/:id`.
   - Linked booking badges open `/bookings/:id`.
@@ -161,7 +162,7 @@ Current production behavior:
 1. OTA parsing is active for inbox ingestion and customer suggestion:
    - Parser entrypoint: `packages/backend/src/services/email/ota-parsers/index.ts`
    - Ingestion usage: `packages/backend/src/services/email/index.ts`
-   - Customer suggestion usage: `packages/backend/src/modules/inbox/conversation.service.ts`
+   - Customer suggestion usage: `packages/backend/src/modules/inbox/conversation-customer.service.ts`
 2. Inbox does not auto-create bookings from email ingestion.
 3. Inbox exposes manual booking analysis and booking creation in conversation detail:
    - analyze: `POST /api/v1/conversations/:id/booking-analysis`
@@ -178,7 +179,7 @@ Implemented in `packages/backend/src/services/email/openclaw-classifier.ts`:
 - Uses strict JSON output contract.
 - Validates response with Zod.
 - Normalizes legacy category outputs.
-- Falls back to deterministic rules if gateway is unavailable or output is invalid.
+- If gateway is unavailable or output is invalid, returns safe `other` with `source=openclaw_error`.
 
 ## OpenClaw Booking Analyzer Contract
 

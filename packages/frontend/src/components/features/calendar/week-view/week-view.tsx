@@ -161,6 +161,14 @@ export function WeekView({
               key={di}
               className="border-l relative cursor-pointer"
               onClick={() => onDateClick(day)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onDateClick(day);
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               {hours.map((h) => (
                 <div key={h} className="border-b" style={{ height: HOUR_HEIGHT }} />

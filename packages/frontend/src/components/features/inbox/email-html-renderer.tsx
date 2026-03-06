@@ -15,7 +15,7 @@ function normalizeEmailHtmlNoise(input: string): string {
     .replace(/&nbsp;|&#160;|&#xA0;/gi, ' ')
     // Zero-width / invisible separators often used in hidden preheaders.
     .replace(/&#8203;|&#8204;|&#8205;|&#8288;|&#65279;/gi, '')
-    .replace(/[\u00A0\u200B\u200C\u200D\u2060\uFEFF]/g, ' ')
+    .replace(/\u00A0|\u200B|\u200C|\u200D|\u2060|\uFEFF/g, ' ')
     // Collapse very long whitespace runs injected for inbox-preview tricks.
     .replace(/[ \t\r\n]{24,}/g, ' ');
 }

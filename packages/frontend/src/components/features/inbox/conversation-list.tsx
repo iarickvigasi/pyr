@@ -41,6 +41,14 @@ export function ConversationList({
               isUnread && !isSelected && 'bg-primary/5'
             )}
             onClick={() => onSelect(conversation.id)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onSelect(conversation.id);
+              }
+            }}
+            role="button"
+            tabIndex={0}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">

@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
+import { createElement } from 'react';
 import { afterEach, vi } from 'vitest';
 
 // Cleanup after each test
@@ -26,7 +27,6 @@ vi.mock('next/navigation', () => ({
 // Mock Next.js image - use createElement to avoid JSX in .ts file
 vi.mock('next/image', () => ({
   default: ({ src, alt }: { src: string; alt: string }) => {
-    const { createElement } = require('react');
     return createElement('img', { src, alt });
   },
 }));

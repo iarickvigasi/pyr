@@ -329,18 +329,30 @@ export function InboxEventWizardDialog({
               <div className="space-y-2">
                 <Label>Apply guest field updates</Label>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
-                  <label className="flex items-center gap-2">
-                    <Checkbox checked={applyGuestName} onCheckedChange={(checked) => setApplyGuestName(checked === true)} />
-                    Name
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <Checkbox checked={applyGuestEmail} onCheckedChange={(checked) => setApplyGuestEmail(checked === true)} />
-                    Email
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <Checkbox checked={applyGuestPhone} onCheckedChange={(checked) => setApplyGuestPhone(checked === true)} />
-                    Phone
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="apply-guest-name"
+                      checked={applyGuestName}
+                      onCheckedChange={(checked) => setApplyGuestName(checked === true)}
+                    />
+                    <Label htmlFor="apply-guest-name">Name</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="apply-guest-email"
+                      checked={applyGuestEmail}
+                      onCheckedChange={(checked) => setApplyGuestEmail(checked === true)}
+                    />
+                    <Label htmlFor="apply-guest-email">Email</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="apply-guest-phone"
+                      checked={applyGuestPhone}
+                      onCheckedChange={(checked) => setApplyGuestPhone(checked === true)}
+                    />
+                    <Label htmlFor="apply-guest-phone">Phone</Label>
+                  </div>
                 </div>
               </div>
             </section>

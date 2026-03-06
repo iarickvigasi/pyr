@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { idParamSchema, QUEUE_NAMES } from '@pyr/shared';
-import type { CalendarSyncJobData } from '@pyr/shared';
+import { idParamSchema } from '@pyr/shared';
 import {
   createBookingSchema,
   updateBookingSchema,
@@ -16,29 +15,7 @@ import {
 } from './booking.service.js';
 import { syncBookingToMotopress } from './booking-sync.service.js';
 import { sendNewBookingAlert } from '../notifications/notification.service.js';
-
-/**
- * Enqueue a calendar sync job for a booking mutation.
- * Wrapped in try/catch so sync failures never block the primary operation.
- */
-async function enqueueCalendarSync(
-  app: FastifyInstance,
-  entityId: string,
-  action: CalendarSyncJobData['action'],
-): Promise<void> {
-  const calQueue = app.queues?.getQueue(QUEUE_NAMES.CALENDAR_SYNC);
-  if (calQueue) {
-    try {
-      await calQueue.add('calendar-sync', {
-        entityType: 'booking',
-        entityId,
-        action,
-      } satisfies CalendarSyncJobData);
-    } catch (err) {
-      app.log.error({ err, bookingId: entityId }, 'Failed to enqueue calendar sync job for booking');
-    }
-  }
-}
+import { enqueueCalendarSyncJob } from '../../services/caldav/calendar-sync-queue.js';
 
 export default async function bookingRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -61,7 +38,13 @@ export default async function bookingRoutes(app: FastifyInstance): Promise<void>
     schema: { tags: ['Bookings'], summary: 'Create a booking (checks availability)', body: createBookingSchema },
   }, async (request, reply) => {
     const booking = await createBooking(app.prisma, request.body, request.user?.sub);
-    await enqueueCalendarSync(app, booking.id, 'create');
+    await enqueueCalendarSyncJob({
+      app,
+      entityType: 'booking',
+      entityId: booking.id,
+      action: 'create',
+      errorLogMessage: 'Failed to enqueue calendar sync job for booking',
+    });
     // Fire-and-forget WhatsApp alert (never blocks the booking response)
     sendNewBookingAlert(app, booking.id).catch(err =>
       app.log.error({ err }, 'Failed to send new booking alert'),
@@ -73,7 +56,13 @@ export default async function bookingRoutes(app: FastifyInstance): Promise<void>
     schema: { tags: ['Bookings'], summary: 'Update booking (enforces status transitions)', params: idParamSchema, body: updateBookingSchema },
   }, async (request) => {
     const booking = await updateBooking(app.prisma, request.params.id, request.body, request.user?.sub);
-    await enqueueCalendarSync(app, booking.id, booking.status === 'cancelled' ? 'delete' : 'update');
+    await enqueueCalendarSyncJob({
+      app,
+      entityType: 'booking',
+      entityId: booking.id,
+      action: booking.status === 'cancelled' ? 'delete' : 'update',
+      errorLogMessage: 'Failed to enqueue calendar sync job for booking',
+    });
     return { data: booking };
   });
 
@@ -81,7 +70,13 @@ export default async function bookingRoutes(app: FastifyInstance): Promise<void>
     schema: { tags: ['Bookings'], summary: 'Cancel and soft-delete a booking', params: idParamSchema },
   }, async (request, reply) => {
     await cancelBooking(app.prisma, request.params.id, request.user?.sub);
-    await enqueueCalendarSync(app, request.params.id, 'delete');
+    await enqueueCalendarSyncJob({
+      app,
+      entityType: 'booking',
+      entityId: request.params.id,
+      action: 'delete',
+      errorLogMessage: 'Failed to enqueue calendar sync job for booking',
+    });
     return reply.status(204).send();
   });
 

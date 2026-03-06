@@ -1,95 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type {
+  AiDraftDto,
+  ConversationBookingAnalysisDto,
+  ConversationDto,
+  ConversationEventAnalysisDto,
+  ConversationEventApplyPayload as SharedConversationEventApplyPayload,
+  ConversationMessageAttachment,
+  ConversationMessageDto,
+  ConversationWithMessagesDto,
+  CreateConversationBookingPayload as SharedCreateConversationBookingPayload,
+  CustomerSuggestionDto,
+  LinkedBookingDto,
+  LinkedEventRegistrationDto,
+} from '@pyr/shared';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/query-client';
 
 // Types
-export interface MessageAttachment {
-  id: string;
-  filename: string;
-  contentType: string;
-  size: number;
-  contentId: string | null;
-}
-
-export interface Message {
-  id: string;
-  conversationId: string;
-  direction: 'in' | 'out';
-  content: string;
-  channel: string;
-  htmlContent: string | null;
-  fromAddress: string | null;
-  fromName: string | null;
-  subject: string | null;
-  attachments?: MessageAttachment[];
-  sentAt: string;
-  createdAt: string;
-}
-
-export interface AiDraft {
-  id: string;
-  messageId: string | null;
-  conversationId: string;
-  content: string;
-  status: 'pending' | 'approved' | 'edited' | 'rejected' | 'failed';
-  model: string;
-  tokensUsed: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-  costEur: number;
-  provider: string;
-  durationMs: number;
-  flags: string[];
-  createdAt: string;
-}
-
-export interface Conversation {
-  id: string;
-  guestId: string | null;
-  channel: string;
-  subject: string | null;
-  status: string;
-  classification: string | null;
-  isRead: boolean;
-  messagePreview: string | null;
-  lastMessageAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  guest: {
-    id: string;
-    name: string;
-    email: string | null;
-    language?: string;
-  } | null;
-}
-
-export interface LinkedBooking {
-  id: string;
-  status: string;
-  needsReview: boolean;
-}
-
-export interface LinkedEventRegistration {
-  id: string;
-  status: 'confirmed' | 'waitlisted' | 'cancelled';
-  attendeeCount: number;
-  sourceConversationId: string | null;
-  event: {
-    id: string;
-    title: string;
-    date: string;
-    time: string;
-    type: string;
-  };
-}
-
-export interface ConversationWithMessages extends Conversation {
-  messages: Message[];
-  bookings?: LinkedBooking[];
-  eventRegistrations?: LinkedEventRegistration[];
-}
+export type MessageAttachment = ConversationMessageAttachment;
+export type Message = ConversationMessageDto;
+export type AiDraft = AiDraftDto;
+export type Conversation = ConversationDto;
+export type LinkedBooking = LinkedBookingDto;
+export type LinkedEventRegistration = LinkedEventRegistrationDto;
+export type ConversationWithMessages = ConversationWithMessagesDto;
 
 export interface ConversationFilters extends Record<string, string | number | boolean | undefined> {
   status?: string;
@@ -110,155 +44,11 @@ export interface ApproveDraftData {
   content?: string; // If edited
 }
 
-export interface CustomerSuggestion {
-  status: 'linked' | 'matched_existing' | 'needs_create' | 'insufficient_data' | 'not_applicable';
-  classification: string | null;
-  reason: string;
-  matchedGuest?: {
-    id: string;
-    name: string;
-    email: string | null;
-  } | null;
-  candidate?: {
-    name: string | null;
-    email: string | null;
-    phone: string | null;
-    shouldCreate: boolean;
-  } | null;
-}
-
-export interface ConversationBookingAnalysis {
-  status: 'ready' | 'insufficient_data' | 'not_applicable' | 'error';
-  reason: string;
-  classification: string | null;
-  missingFields: Array<'checkIn' | 'checkOut'>;
-  candidate: {
-    checkIn: string | null;
-    checkOut: string | null;
-    totalPrice: number | null;
-    currency: 'EUR' | null;
-    source: string | null;
-    notes: string | null;
-    guest: {
-      name: string | null;
-      email: string | null;
-      phone: string | null;
-    };
-    confidence: number | null;
-  } | null;
-}
-
-export interface CreateConversationBookingPayload {
-  guest: {
-    mode: 'linked' | 'existing' | 'create';
-    guestId?: string;
-    name?: string;
-    email?: string;
-    phone?: string;
-    language?: 'en' | 'de';
-  };
-  booking: {
-    roomId: string;
-    checkIn: string;
-    checkOut: string;
-    totalPrice: number;
-    status?: 'inquiry' | 'confirmed';
-    source?: string | null;
-    notes?: string | null;
-  };
-}
-
-export interface ConversationEventAnalysis {
-  status: 'pending' | 'ready' | 'insufficient_data' | 'not_applicable' | 'error';
-  provider: string;
-  reason: string;
-  classification: string | null;
-  intent: 'create_or_link' | 'cancel' | 'move' | null;
-  missingFields: Array<'externalBookingId' | 'eventDate' | 'eventTime'>;
-  candidate: {
-    externalBookingId: string | null;
-    externalProductCode: string | null;
-    eventType: 'puppy_yoga' | 'beach_walk' | 'coffee_cake_cuddles' | 'retreat' | null;
-    eventTitle: string | null;
-    eventDate: string | null;
-    eventTime: string | null;
-    location: string | null;
-    attendeeCount: number | null;
-    guest: {
-      name: string | null;
-      email: string | null;
-      phone: string | null;
-    };
-    confidence: number | null;
-  } | null;
-  resolution: {
-    matchedGuestId: string | null;
-    matchedEventId: string | null;
-    matchedEventBookingId: string | null;
-    recommendedOperation: 'create_or_link' | 'cancel' | 'move' | 'none';
-    guestFieldDiffs: {
-      name: { current: string | null; proposed: string | null };
-      email: { current: string | null; proposed: string | null };
-      phone: { current: string | null; proposed: string | null };
-    };
-  } | null;
-  messageId: string | null;
-}
-
-export type ConversationEventApplyPayload =
-  | {
-      operation: 'create_or_link';
-      guest: {
-        mode: 'linked' | 'existing' | 'create';
-        guestId?: string;
-        name?: string;
-        email?: string;
-        phone?: string;
-        language?: 'en' | 'de';
-        applyUpdates?: {
-          name?: boolean;
-          email?: boolean;
-          phone?: boolean;
-        };
-      };
-      event:
-        | { mode: 'existing'; eventId: string }
-        | {
-            mode: 'create';
-            type: 'puppy_yoga' | 'beach_walk' | 'coffee_cake_cuddles' | 'retreat';
-            title: string;
-            date: string;
-            time: string;
-            capacity: number;
-            location?: string | null;
-            description?: string | null;
-          };
-      registration: {
-        externalBookingId: string;
-        externalProductCode?: string | null;
-        attendeeCount?: number;
-      };
-    }
-  | {
-      operation: 'cancel';
-      externalBookingId: string;
-    }
-  | {
-      operation: 'move';
-      externalBookingId: string;
-      targetEvent:
-        | { mode: 'existing'; eventId: string }
-        | {
-            mode: 'create';
-            type: 'puppy_yoga' | 'beach_walk' | 'coffee_cake_cuddles' | 'retreat';
-            title: string;
-            date: string;
-            time: string;
-            capacity: number;
-            location?: string | null;
-            description?: string | null;
-          };
-    };
+export type CustomerSuggestion = CustomerSuggestionDto;
+export type ConversationBookingAnalysis = ConversationBookingAnalysisDto;
+export type ConversationEventAnalysis = ConversationEventAnalysisDto;
+export type CreateConversationBookingPayload = SharedCreateConversationBookingPayload;
+export type ConversationEventApplyPayload = SharedConversationEventApplyPayload;
 
 // Hooks
 export function useConversations(filters?: ConversationFilters) {

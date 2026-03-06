@@ -5,7 +5,6 @@ import {
   idParamSchema,
   QUEUE_NAMES,
   type InboxTelegramNotifyJobData,
-  type CalendarSyncJobData,
 } from '@pyr/shared';
 import {
   createConversationSchema,
@@ -54,25 +53,7 @@ import { addMessage } from './message.service.js';
 import { writeAuditLog, getActor } from '../../lib/audit.js';
 import { NotFoundError, BadRequestError } from '../../lib/errors.js';
 import { shouldNotifyInboxTelegramForClassification } from '../notifications/notification.service.js';
-
-async function enqueueEventCalendarSync(
-  app: FastifyInstance,
-  eventId: string,
-  action: CalendarSyncJobData['action'] = 'update',
-): Promise<void> {
-  const calQueue = app.queues?.getQueue(QUEUE_NAMES.CALENDAR_SYNC);
-  if (!calQueue) return;
-
-  try {
-    await calQueue.add('calendar-sync', {
-      entityType: 'event',
-      entityId: eventId,
-      action,
-    } satisfies CalendarSyncJobData);
-  } catch (err) {
-    app.log.error({ err, eventId, action }, 'Failed to enqueue calendar sync job for inbox event action');
-  }
-}
+import { enqueueCalendarSyncJob } from '../../services/caldav/calendar-sync-queue.js';
 
 export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -280,7 +261,13 @@ export default async function inboxRoutes(app: FastifyInstance): Promise<void> {
       if (result.registration?.eventId) touchedEventIds.add(result.registration.eventId);
 
       for (const eventId of touchedEventIds) {
-        await enqueueEventCalendarSync(app, eventId, 'update');
+        await enqueueCalendarSyncJob({
+          app,
+          entityType: 'event',
+          entityId: eventId,
+          action: 'update',
+          errorLogMessage: 'Failed to enqueue calendar sync job for inbox event action',
+        });
       }
 
       return reply.code(201).send({ data: result });

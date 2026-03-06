@@ -4,7 +4,7 @@ import type { AiDraftStatus } from '../constants/ai-draft-status.js';
 
 export interface Conversation {
   id: string;
-  guestId: string;
+  guestId: string | null;
   channel: Channel;
   subject: string | null;
   status: ConversationStatus;

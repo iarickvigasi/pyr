@@ -12,3 +12,5 @@ export const idParamSchema = z.object({
 });
 
 export type IdParam = z.infer<typeof idParamSchema>;
+
+export * from './inbox.js';

@@ -134,7 +134,7 @@ export async function getBooking(
 
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
 
-  return {
+  const bookingWithRelations: BookingWithRelations = {
     ...booking,
     payments,
     paymentSummary: {
@@ -142,7 +142,9 @@ export async function getBooking(
       totalPaid,
       balanceDue: booking.totalPrice - totalPaid,
     },
-  } as BookingWithRelations;
+  };
+
+  return bookingWithRelations;
 }
 
 export async function createBooking(
@@ -200,15 +202,17 @@ export async function createBooking(
       })),
     });
 
+    const auditChanges: Record<string, unknown> = { ...data, guestIds };
+
     await writeAuditLog(tx, {
       entityType: 'booking',
       entityId: booking.id,
       action: 'create',
-      changes: { ...data, guestIds } as Record<string, unknown>,
+      changes: auditChanges,
       actor: getActor(actorId),
     });
 
-    return booking as Booking;
+    return booking;
   });
 }
 

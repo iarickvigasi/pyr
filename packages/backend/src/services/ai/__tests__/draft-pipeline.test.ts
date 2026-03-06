@@ -21,6 +21,7 @@ vi.mock('../../../lib/audit.js', () => ({
 // ---- Mock date-helpers (context-builder imports these) -----------------
 
 vi.mock('../../../lib/date-helpers.js', () => ({
+  TZ: 'Europe/Nicosia',
   nicosiaToday: () => '2026-03-15',
   utcMidnight: (dateStr: string) => new Date(`${dateStr}T00:00:00.000Z`),
 }));
@@ -419,9 +420,9 @@ describe('draft pipeline integration', () => {
     const mockApp = {
       prisma: mockPrisma,
       log: mockLog,
-    } as never;
+    };
 
-    const handler = createAiDraftFailedHandler(mockApp);
+    const handler = createAiDraftFailedHandler(mockApp as never);
 
     const mockJob = {
       id: 'job-1',
@@ -462,8 +463,8 @@ describe('draft pipeline integration', () => {
       child: vi.fn().mockReturnValue(childLogger),
     };
 
-    const mockApp = { prisma: mockPrisma, log: mockLog } as never;
-    const handler = createAiDraftFailedHandler(mockApp);
+    const mockApp = { prisma: mockPrisma, log: mockLog };
+    const handler = createAiDraftFailedHandler(mockApp as never);
 
     const mockJob = {
       id: 'job-2',

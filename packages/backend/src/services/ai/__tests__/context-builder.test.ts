@@ -405,6 +405,9 @@ describe('buildDraftContext', () => {
       event: {
         findMany: vi.fn(),
       },
+      eventBooking: {
+        groupBy: vi.fn().mockResolvedValue([]),
+      },
       faq: {
         findMany: vi.fn().mockResolvedValue([]),
       },
@@ -455,12 +458,18 @@ describe('buildDraftContext', () => {
 
     mockPrisma['event']!['findMany']!.mockResolvedValue([
       {
+        id: 'event-1',
         title: 'Puppy Yoga',
         type: 'puppy_yoga',
         date: new Date('2026-03-20'),
         time: '09:00',
         capacity: 8,
-        _count: { eventBookings: 3 },
+      },
+    ]);
+    mockPrisma['eventBooking']!['groupBy']!.mockResolvedValue([
+      {
+        eventId: 'event-1',
+        _sum: { attendeeCount: 3 },
       },
     ]);
 

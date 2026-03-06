@@ -1,8 +1,7 @@
-import crypto from 'crypto';
 import { z } from 'zod';
 import type { FastifyBaseLogger } from 'fastify';
 import type { GatewayWsClient } from '../gateway/gateway-ws-client.js';
-import type { ChatEvent } from '../gateway/types.js';
+import { collectAgentText, extractJsonBlock } from '../gateway/agent-stream.js';
 import type { ParsedEmail } from './email-parser.js';
 import type { ClassificationResult } from './email-classifier.js';
 import { INBOX_CLASSIFICATIONS, type InboxClassification } from './inbox-classification.js';
@@ -62,52 +61,6 @@ function sanitizeSuggestion(input?: {
   };
 }
 
-function extractJsonBlock(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    return trimmed;
-  }
-
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) {
-    return fenced[1].trim();
-  }
-
-  const firstBrace = trimmed.indexOf('{');
-  const lastBrace = trimmed.lastIndexOf('}');
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1);
-  }
-
-  return null;
-}
-
-function extractEventText(message: unknown): { text: string; snapshot: boolean } {
-  if (!message || typeof message !== 'object') return { text: '', snapshot: false };
-  const msg = message as Record<string, unknown>;
-  const content = msg.content;
-  const snapshot = msg.snapshot === true;
-
-  if (typeof content === 'string') {
-    return { text: content, snapshot };
-  }
-
-  if (Array.isArray(content)) {
-    const text = content
-      .map((part) => {
-        if (!part || typeof part !== 'object') return '';
-        const block = part as Record<string, unknown>;
-        return typeof block.text === 'string' ? block.text : '';
-      })
-      .join('');
-    return { text, snapshot };
-  }
-
-  return { text: '', snapshot };
-}
-
 function normalizeLegacyCategory(category: InboxClassification): InboxClassification {
   // Keep legacy values if model returns them, but prefer canonical classes.
   switch (category) {
@@ -146,88 +99,6 @@ function buildClassificationInput(
   });
 }
 
-async function collectAgentText(
-  gateway: GatewayWsClient,
-  logger: FastifyBaseLogger,
-  sessionKey: string,
-  message: string,
-): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    let settled = false;
-    let content = '';
-    const agentScopedSessionKey = `agent:main:${sessionKey}`;
-
-    const timeout = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      unsub();
-      reject(new Error(`OpenClaw classification timed out after ${CLASSIFICATION_TIMEOUT_MS}ms`));
-    }, CLASSIFICATION_TIMEOUT_MS);
-
-    const unsub = gateway.onChatEvent((event: ChatEvent) => {
-      if (event.sessionKey !== agentScopedSessionKey && event.sessionKey !== sessionKey) {
-        return;
-      }
-
-      if (event.state === 'delta' && event.message) {
-        const { text, snapshot } = extractEventText(event.message);
-        if (text) {
-          content = snapshot ? text : (content + text);
-        }
-        return;
-      }
-
-      if (event.state === 'final') {
-        if (event.message) {
-          const { text, snapshot } = extractEventText(event.message);
-          if (text) {
-            content = snapshot ? text : (content + text);
-          }
-        }
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        unsub();
-        resolve(content.trim());
-        return;
-      }
-
-      if (event.state === 'error') {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        unsub();
-        reject(new Error(event.errorMessage ?? 'OpenClaw returned classification error'));
-        return;
-      }
-
-      if (event.state === 'aborted') {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        unsub();
-        reject(new Error('OpenClaw classification aborted'));
-      }
-    });
-
-    gateway.request('agent', {
-      message,
-      agentId: 'main',
-      sessionKey,
-      deliver: false,
-      idempotencyKey: crypto.randomUUID(),
-      extraSystemPrompt: CLASSIFIER_SYSTEM_PROMPT,
-    }).catch((err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      unsub();
-      logger.warn({ err }, 'OpenClaw request failed during inbound classification');
-      reject(err);
-    });
-  });
-}
-
 export async function classifyEmailWithOpenClaw(params: {
   gateway: GatewayWsClient;
   parsed: ParsedEmail;
@@ -258,7 +129,16 @@ export async function classifyEmailWithOpenClaw(params: {
   const input = buildClassificationInput(parsed, recentMessages);
 
   try {
-    const raw = await collectAgentText(gateway, logger, sessionKey, input);
+    const raw = await collectAgentText({
+      gateway,
+      sessionKey,
+      message: input,
+      extraSystemPrompt: CLASSIFIER_SYSTEM_PROMPT,
+      timeoutMs: CLASSIFICATION_TIMEOUT_MS,
+      timeoutMessage: `OpenClaw classification timed out after ${CLASSIFICATION_TIMEOUT_MS}ms`,
+      logger,
+      requestErrorLogMessage: 'OpenClaw request failed during inbound classification',
+    });
     const json = extractJsonBlock(raw);
 
     if (!json) {

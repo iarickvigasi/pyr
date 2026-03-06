@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
+import { loadConfirmedAttendeeCountMap } from '../../lib/event-attendee-counts.js';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -335,17 +336,15 @@ export async function getUpcomingEvents(
       date: { gte: today, lt: futureDate },
     },
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
-    include: {
-      _count: {
-        select: {
-          eventBookings: { where: { status: 'confirmed' } },
-        },
-      },
-    },
   });
 
+  const attendeeCountByEventId = await loadConfirmedAttendeeCountMap(
+    prisma,
+    events.map((event) => event.id),
+  );
+
   return events.map((e) => {
-    const registeredCount = e._count.eventBookings;
+    const registeredCount = attendeeCountByEventId.get(e.id) ?? 0;
     return {
       id: e.id,
       title: e.title,

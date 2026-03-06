@@ -1,8 +1,7 @@
-import crypto from 'crypto';
 import { z } from 'zod';
 import type { FastifyBaseLogger } from 'fastify';
 import type { GatewayWsClient } from '../gateway/gateway-ws-client.js';
-import type { ChatEvent } from '../gateway/types.js';
+import { collectAgentText, extractJsonBlock } from '../gateway/agent-stream.js';
 
 const BOOKING_ANALYSIS_TIMEOUT_MS = 45_000;
 const MAX_LATEST_MESSAGE_LENGTH = 4_000;
@@ -92,52 +91,6 @@ const BOOKING_ANALYZER_SYSTEM_PROMPT = [
   '- Never call tools.',
 ].join('\n');
 
-function extractEventText(message: unknown): { text: string; snapshot: boolean } {
-  if (!message || typeof message !== 'object') return { text: '', snapshot: false };
-  const msg = message as Record<string, unknown>;
-  const content = msg.content;
-  const snapshot = msg.snapshot === true;
-
-  if (typeof content === 'string') {
-    return { text: content, snapshot };
-  }
-
-  if (Array.isArray(content)) {
-    const text = content
-      .map((part) => {
-        if (!part || typeof part !== 'object') return '';
-        const block = part as Record<string, unknown>;
-        return typeof block.text === 'string' ? block.text : '';
-      })
-      .join('');
-    return { text, snapshot };
-  }
-
-  return { text: '', snapshot };
-}
-
-function extractJsonBlock(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    return trimmed;
-  }
-
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) {
-    return fenced[1].trim();
-  }
-
-  const firstBrace = trimmed.indexOf('{');
-  const lastBrace = trimmed.lastIndexOf('}');
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1);
-  }
-
-  return null;
-}
-
 function normalizeCurrency(input: string | null | undefined): 'EUR' | null {
   if (!input) return null;
   const normalized = input.trim().toUpperCase();
@@ -217,86 +170,6 @@ function buildInput(params: AnalyzeBookingParams): string {
   });
 }
 
-async function collectAgentText(
-  gateway: GatewayWsClient,
-  sessionKey: string,
-  message: string,
-): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    let settled = false;
-    let content = '';
-    const agentScopedSessionKey = `agent:main:${sessionKey}`;
-
-    const timeout = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      unsub();
-      reject(new Error(`Booking analysis timed out after ${BOOKING_ANALYSIS_TIMEOUT_MS}ms`));
-    }, BOOKING_ANALYSIS_TIMEOUT_MS);
-
-    const unsub = gateway.onChatEvent((event: ChatEvent) => {
-      if (event.sessionKey !== agentScopedSessionKey && event.sessionKey !== sessionKey) {
-        return;
-      }
-
-      if (event.state === 'delta' && event.message) {
-        const { text, snapshot } = extractEventText(event.message);
-        if (text) {
-          content = snapshot ? text : (content + text);
-        }
-        return;
-      }
-
-      if (event.state === 'final') {
-        if (event.message) {
-          const { text, snapshot } = extractEventText(event.message);
-          if (text) {
-            content = snapshot ? text : (content + text);
-          }
-        }
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        unsub();
-        resolve(content.trim());
-        return;
-      }
-
-      if (event.state === 'error') {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        unsub();
-        reject(new Error(event.errorMessage ?? 'OpenClaw booking analysis error'));
-        return;
-      }
-
-      if (event.state === 'aborted') {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        unsub();
-        reject(new Error('OpenClaw booking analysis aborted'));
-      }
-    });
-
-    gateway.request('agent', {
-      message,
-      agentId: 'main',
-      sessionKey,
-      deliver: false,
-      idempotencyKey: crypto.randomUUID(),
-      extraSystemPrompt: BOOKING_ANALYZER_SYSTEM_PROMPT,
-    }).catch((err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      unsub();
-      reject(err instanceof Error ? err : new Error(String(err)));
-    });
-  });
-}
-
 function buildCandidate(
   candidate: z.infer<typeof extractionSchema>['candidate'],
   confidence: number | null,
@@ -339,7 +212,14 @@ export async function analyzeBookingWithOpenClaw(
   logger.info({ conversationId }, 'Starting OpenClaw booking analysis');
 
   try {
-    const raw = await collectAgentText(gateway, sessionKey, input);
+    const raw = await collectAgentText({
+      gateway,
+      sessionKey,
+      message: input,
+      extraSystemPrompt: BOOKING_ANALYZER_SYSTEM_PROMPT,
+      timeoutMs: BOOKING_ANALYSIS_TIMEOUT_MS,
+      timeoutMessage: `Booking analysis timed out after ${BOOKING_ANALYSIS_TIMEOUT_MS}ms`,
+    });
     const json = extractJsonBlock(raw);
     if (!json) {
       logger.warn({ conversationId, raw }, 'Booking analysis returned non-JSON output');

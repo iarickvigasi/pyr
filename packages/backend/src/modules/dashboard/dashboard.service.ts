@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
+import { loadConfirmedAttendeeCountMap } from '../../lib/event-attendee-counts.js';
 
 export interface DashboardStats {
   pendingInquiries: number;
@@ -92,6 +93,7 @@ export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
     prisma.booking.findMany({
       where: { checkIn: today, deletedAt: null },
       include: {
+        guest: { select: { name: true } },
         bookingGuests: { include: { guest: { select: { name: true } } } },
         room: { select: { name: true } },
       },
@@ -99,26 +101,22 @@ export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
     prisma.booking.findMany({
       where: { checkOut: today, deletedAt: null },
       include: {
+        guest: { select: { name: true } },
         bookingGuests: { include: { guest: { select: { name: true } } } },
         room: { select: { name: true } },
       },
     }),
     prisma.event.findMany({
       where: { date: today },
-      include: {
-        _count: {
-          select: {
-            eventBookings: { where: { status: 'confirmed' } },
-          },
-        },
-      },
       orderBy: { time: 'asc' },
     }),
   ]);
 
   const checkIns: TodayBooking[] = checkInBookings.map((b) => ({
     id: b.id,
-    guestNames: b.bookingGuests.map(bg => bg.guest.name),
+    guestNames: b.bookingGuests.length > 0
+      ? b.bookingGuests.map((bg) => bg.guest.name)
+      : [b.guest.name],
     roomName: b.room.name,
     checkIn: b.checkIn.toISOString().split('T')[0]!,
     checkOut: b.checkOut.toISOString().split('T')[0]!,
@@ -126,11 +124,18 @@ export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
 
   const checkOuts: TodayBooking[] = checkOutBookings.map((b) => ({
     id: b.id,
-    guestNames: b.bookingGuests.map(bg => bg.guest.name),
+    guestNames: b.bookingGuests.length > 0
+      ? b.bookingGuests.map((bg) => bg.guest.name)
+      : [b.guest.name],
     roomName: b.room.name,
     checkIn: b.checkIn.toISOString().split('T')[0]!,
     checkOut: b.checkOut.toISOString().split('T')[0]!,
   }));
+
+  const attendeeCountByEventId = await loadConfirmedAttendeeCountMap(
+    prisma,
+    todayEvents.map((event) => event.id),
+  );
 
   const events: TodayEvent[] = todayEvents.map((e) => ({
     id: e.id,
@@ -138,7 +143,7 @@ export async function getToday(prisma: PrismaClient): Promise<DashboardToday> {
     title: e.title,
     time: e.time,
     capacity: e.capacity,
-    registeredCount: e._count.eventBookings,
+    registeredCount: attendeeCountByEventId.get(e.id) ?? 0,
   }));
 
   return { checkIns, checkOuts, events };

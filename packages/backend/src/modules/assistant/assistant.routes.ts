@@ -26,7 +26,7 @@ async function loadSystemPrompt(log: FastifyInstance['log']): Promise<string> {
   } catch {
     log.warn({ path: SOUL_PATH }, 'SOUL.md not found, using minimal system prompt');
     return [
-      'You are Koda, the Puppy Yoga Retreat business assistant.',
+      'You are Ailu, the Puppy Yoga Retreat business assistant.',
       'You help Ines Brendel manage her wellness retreat in Peyia, Cyprus.',
       'Be casual and friendly. Auto-detect language (English/German).',
       'All write actions require confirmation before executing.',
@@ -132,9 +132,13 @@ export default async function assistantRoutes(app: FastifyInstance): Promise<voi
 
     const reader = gatewayResponse.body.getReader();
     try {
-      while (true) {
+      let streamOpen = true;
+      while (streamOpen) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          streamOpen = false;
+          break;
+        }
         reply.raw.write(value);
       }
     } catch (err) {

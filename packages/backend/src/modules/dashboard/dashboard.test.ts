@@ -356,7 +356,7 @@ describe('Dashboard Module', () => {
 
       const body = JSON.parse(response.body);
       expect(body.data.checkIns).toHaveLength(1);
-      expect(body.data.checkIns[0].guestName).toBe('John Doe');
+      expect(body.data.checkIns[0].guestNames).toEqual(['John Doe']);
       expect(body.data.checkIns[0].roomName).toBe('Room 101');
     });
 
@@ -388,11 +388,11 @@ describe('Dashboard Module', () => {
 
       const body = JSON.parse(response.body);
       expect(body.data.checkOuts).toHaveLength(1);
-      expect(body.data.checkOuts[0].guestName).toBe('Jane Smith');
+      expect(body.data.checkOuts[0].guestNames).toEqual(['Jane Smith']);
       expect(body.data.checkOuts[0].roomName).toBe('Room 202');
     });
 
-    it("should return today's events with registration count", async () => {
+    it("should return today's events with attendee-aware registration count", async () => {
       const guest1 = await createGuest(app.prisma);
       const guest2 = await createGuest(app.prisma);
 
@@ -412,8 +412,8 @@ describe('Dashboard Module', () => {
       // Register 2 guests
       await app.prisma.eventBooking.createMany({
         data: [
-          { eventId: event.id, guestId: guest1.id, status: 'confirmed' },
-          { eventId: event.id, guestId: guest2.id, status: 'confirmed' },
+          { eventId: event.id, guestId: guest1.id, status: 'confirmed', attendeeCount: 2 },
+          { eventId: event.id, guestId: guest2.id, status: 'confirmed', attendeeCount: 1 },
         ],
       });
 
@@ -427,7 +427,7 @@ describe('Dashboard Module', () => {
       expect(body.data.events).toHaveLength(1);
       expect(body.data.events[0].title).toBe('Morning Yoga');
       expect(body.data.events[0].capacity).toBe(8);
-      expect(body.data.events[0].registeredCount).toBe(2);
+      expect(body.data.events[0].registeredCount).toBe(3);
     });
 
     it('should order events by time', async () => {

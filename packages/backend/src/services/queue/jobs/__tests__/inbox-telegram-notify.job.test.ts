@@ -57,9 +57,9 @@ describe('inbox telegram notify job', () => {
         messageId: 'msg-1',
         classification: 'conversation',
       } satisfies InboxTelegramNotifyJobData,
-    } as Job<InboxTelegramNotifyJobData>;
+    };
 
-    await processor(job);
+    await processor(job as Job<InboxTelegramNotifyJobData>);
 
     expect((app as { gateway: { request: ReturnType<typeof vi.fn> } }).gateway.request).toHaveBeenCalledWith(
       'agent',
@@ -93,9 +93,9 @@ describe('inbox telegram notify job', () => {
         messageId: 'missing-msg',
         classification: 'ota_other',
       } satisfies InboxTelegramNotifyJobData,
-    } as Job<InboxTelegramNotifyJobData>;
+    };
 
-    await processor(job);
+    await processor(job as Job<InboxTelegramNotifyJobData>);
 
     expect((app as { gateway: { request: ReturnType<typeof vi.fn> } }).gateway.request).not.toHaveBeenCalled();
   });
@@ -119,9 +119,9 @@ describe('inbox telegram notify job', () => {
         messageId: 'msg-3',
         classification: 'conversation',
       } satisfies InboxTelegramNotifyJobData,
-    } as Job<InboxTelegramNotifyJobData>;
+    };
 
-    await processor(job);
+    await processor(job as Job<InboxTelegramNotifyJobData>);
 
     const gatewayCall = (app as { gateway: { request: ReturnType<typeof vi.fn> } }).gateway.request.mock.calls[0]!;
     const payload = gatewayCall[1] as { message: string };

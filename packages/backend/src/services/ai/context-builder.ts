@@ -12,6 +12,7 @@
 
 import type { PrismaClient } from '@prisma/client';
 import { utcMidnight, nicosiaToday } from '../../lib/date-helpers.js';
+import { loadConfirmedAttendeeCountMap } from '../../lib/event-attendee-counts.js';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -229,14 +230,12 @@ async function getUpcomingEvents(
       date: { gte: today, lt: futureDate },
     },
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
-    include: {
-      _count: {
-        select: {
-          eventBookings: { where: { status: 'confirmed' } },
-        },
-      },
-    },
   });
+
+  const attendeeCountByEventId = await loadConfirmedAttendeeCountMap(
+    prisma,
+    events.map((event) => event.id),
+  );
 
   return events.map((e) => ({
     title: e.title,
@@ -244,6 +243,6 @@ async function getUpcomingEvents(
     date: e.date,
     time: e.time,
     capacity: e.capacity,
-    registrationCount: e._count.eventBookings,
+    registrationCount: attendeeCountByEventId.get(e.id) ?? 0,
   }));
 }

@@ -58,8 +58,8 @@ describe('Assistant Module', () => {
 
       expect(response.statusCode).toBe(502);
       const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('OPENCLAW_ERROR');
-      expect(body.error.message).toContain('connection failed');
+      expect(body.error.code).toBe('GATEWAY_ERROR');
+      expect(body.error.message).toContain('Failed to connect');
 
       fetchSpy.mockRestore();
     });
@@ -78,7 +78,7 @@ describe('Assistant Module', () => {
 
       expect(response.statusCode).toBe(502);
       const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('OPENCLAW_ERROR');
+      expect(body.error.code).toBe('GATEWAY_ERROR');
       expect(body.error.message).toContain('500');
 
       fetchSpy.mockRestore();
@@ -124,19 +124,16 @@ describe('Assistant Module', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.data.sessionKey).toBeDefined();
-      expect(body.data.sessionKey).toMatch(/^dashboard:\d+$/);
+      expect(body.data.sessionKey).toBe('client-managed');
     });
 
-    it('should return unique session keys on each call', async () => {
+    it('should return the client-managed sentinel key on each call', async () => {
       const response1 = await app.inject({
         method: 'POST',
         url: '/api/v1/assistant/chat/reset',
         headers: headers(),
       });
       const body1 = JSON.parse(response1.body);
-
-      // Small delay to ensure different timestamps
-      await new Promise(resolve => setTimeout(resolve, 5));
 
       const response2 = await app.inject({
         method: 'POST',
@@ -145,7 +142,8 @@ describe('Assistant Module', () => {
       });
       const body2 = JSON.parse(response2.body);
 
-      expect(body1.data.sessionKey).not.toBe(body2.data.sessionKey);
+      expect(body1.data.sessionKey).toBe('client-managed');
+      expect(body2.data.sessionKey).toBe('client-managed');
     });
 
     it('should work with API key authentication', async () => {

@@ -1,0 +1,101 @@
+{
+  "env": {
+    "vars": {
+      "PYR_API_URL": "${PYR_API_URL}",
+      "PYR_API_KEY": "${PYR_API_KEY}"
+    }
+  },
+  "logging": {
+    "level": "info"
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "${PYR_OPENCLAW_WORKSPACE}",
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-5-20250929",
+        "fallbacks": [
+          "openai/gpt-4o"
+        ]
+      },
+      "contextTokens": 200000,
+      "timeoutSeconds": 120
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto"
+  },
+  "hooks": {
+    "enabled": true,
+    "path": "/hooks",
+    "token": "${OPENCLAW_HOOK_TOKEN}",
+    "defaultSessionKey": "hook:pyr",
+    "allowedAgentIds": [
+      "hooks",
+      "main"
+    ],
+    "maxBodyBytes": 262144,
+    "mappings": [
+      {
+        "match": {
+          "path": "draft"
+        },
+        "action": "agent",
+        "agentId": "main",
+        "sessionKey": "hook:draft:{{message}}",
+        "deliver": false
+      },
+      {
+        "match": {
+          "path": "briefing"
+        },
+        "action": "agent",
+        "agentId": "main",
+        "sessionKey": "hook:briefing",
+        "deliver": true
+      },
+      {
+        "match": {
+          "path": "alert"
+        },
+        "action": "agent",
+        "agentId": "main",
+        "sessionKey": "hook:alert",
+        "deliver": true
+      }
+    ]
+  },
+  "gateway": {
+    "auth": {
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    }
+  },
+  "skills": {
+    "load": {
+      "extraDirs": []
+    },
+    "entries": {}
+  },
+  "plugins": {
+    "load": {
+      "paths": [
+        "${PYR_OPENCLAW_PLUGIN_PATH}"
+      ]
+    },
+    "entries": {
+      "pyr-assistant": {
+        "config": {
+          "apiUrl": "${PYR_API_URL}",
+          "apiKey": "${PYR_API_KEY}"
+        }
+      }
+    }
+  }
+}

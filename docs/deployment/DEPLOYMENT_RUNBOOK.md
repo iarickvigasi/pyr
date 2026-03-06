@@ -1,565 +1,292 @@
 # PYR Production Deployment Runbook
 
-This runbook provides step-by-step instructions for deploying the Puppy Yoga Retreat platform to production.
+This runbook describes the supported production layout for PYR as it exists in this repository today.
 
-## Table of Contents
+## Production Topology
 
-1. [Prerequisites](#prerequisites)
-2. [First-Time Deployment](#first-time-deployment)
-3. [Regular Deployments](#regular-deployments)
-4. [Rollback Procedures](#rollback-procedures)
-5. [Troubleshooting](#troubleshooting)
-6. [Post-Deployment Verification](#post-deployment-verification)
+### Docker Compose stack
 
----
+- `postgres` — PostgreSQL 16
+- `redis` — Redis 7 / BullMQ backend
+- `backend` — Fastify API on internal port `3001`
+- `frontend` — Next.js dashboard on internal port `3000`
+- `caddy` — public reverse proxy / TLS termination
 
-## Prerequisites
+### Host-level service
 
-### Required Access
+- `OpenClaw Gateway` — runs on the server host, not inside Docker
 
-- SSH access to Hetzner production server
-- `sudo` privileges on the server
-- Git repository access (GitHub)
-- Access to production secrets (password manager)
+This split is intentional:
 
-### Required Tools (Local Machine)
+- OpenClaw keeps device auth, pairing state, and channel state on the host.
+- Docker Compose keeps the business app stack isolated and reproducible.
+- The backend reaches the host OpenClaw gateway through `host.docker.internal:18789`.
+- OpenClaw reaches the backend through the loopback-exposed API port `127.0.0.1:3001`.
 
-```bash
-# Verify you have these installed
-git --version          # Git 2.30+
-docker --version       # Docker 24.0+
-ssh -V                 # OpenSSH 8.0+
+## Directory Layout On Server
+
+```text
+/opt/pyr
+├── .env
+├── docker-compose.prod.yml
+├── packages/
+├── openclaw/
+│   ├── workspace/
+│   └── openclaw.production.example.json
+├── secrets/
+│   └── db_password.txt
+└── docker/
 ```
 
-### Required Tools (Production Server)
+## Required Operator Access
+
+- SSH access to the production server
+- sudo access
+- access to the repository
+- access to all production secrets
+- access to the email account credentials
+- access to the Telegram bot token
+- access to the MotoPress credentials if sync is enabled
+- access to the Apple Calendar app-specific password if CalDAV is enabled
+
+## 1. Server Bootstrap
+
+Use Ubuntu 24.04 LTS or equivalent.
 
 ```bash
-# Should be pre-installed during initial setup
-docker --version
-docker compose version
-git --version
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git curl ca-certificates
+curl -fsSL https://get.docker.com | sh
+sudo apt install -y docker-compose-plugin
+node --version || true
 ```
 
----
-
-## First-Time Deployment
-
-This is for deploying to a fresh server for the very first time.
-
-### Step 1: Server Setup
+Install Node.js 22 on the host for OpenClaw:
 
 ```bash
-# SSH into the production server
-ssh root@YOUR_SERVER_IP
-
-# Update system packages
-apt update && apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-
-# Install Docker Compose
-apt install docker-compose-plugin -y
-
-# Verify installations
-docker --version
-docker compose version
-
-# Create application user
-adduser --system --group pyr
-usermod -aG docker pyr
-
-# Create application directory
-mkdir -p /opt/pyr
-chown pyr:pyr /opt/pyr
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node --version
+npm --version
 ```
 
-### Step 2: Clone Repository
+Create a normal deploy user with a home directory. Do not use a system user for OpenClaw.
 
 ```bash
-# Switch to application user
-su - pyr
+sudo adduser pyr
+sudo usermod -aG docker pyr
+sudo mkdir -p /opt/pyr
+sudo chown pyr:pyr /opt/pyr
+```
 
-# Clone repository
+Reconnect as the deploy user:
+
+```bash
+ssh pyr@YOUR_SERVER_IP
 cd /opt/pyr
-git clone https://github.com/YOUR_ORG/PYR.git .
+```
 
-# Checkout main branch
+## 2. Clone The Repository
+
+```bash
+git clone <YOUR_GIT_REMOTE> .
 git checkout main
 ```
 
-### Step 3: Configure Secrets
+## 3. Prepare Application Secrets
+
+Create the database password file used by `docker-compose.prod.yml`:
 
 ```bash
-# Create secrets directory
-mkdir -p /opt/pyr/secrets
-
-# Generate database password
-openssl rand -base64 32 | tr -d '\n' > /opt/pyr/secrets/db_password.txt
-
-# Generate Redis password
-openssl rand -base64 32 | tr -d '\n' > /opt/pyr/secrets/redis_password.txt
-
-# Secure the files
-chmod 600 /opt/pyr/secrets/*.txt
-
-# Verify secrets were created
-ls -la /opt/pyr/secrets/
+mkdir -p secrets
+openssl rand -base64 32 | tr -d '\n' > secrets/db_password.txt
+chmod 600 secrets/db_password.txt
 ```
 
-### Step 4: Configure Environment Variables
+Create the app environment file:
 
 ```bash
-# Copy example env file
-cp .env.example .env
-
-# Edit environment variables
-nano .env
+cp .env.production.example .env
+chmod 600 .env
 ```
 
-**Critical variables to configure:**
+Edit `.env` and set the real values.
+
+Important:
+
+- the password inside `DATABASE_URL` must match `secrets/db_password.txt`
+- `REDIS_PASSWORD` and the password embedded in `REDIS_URL` must match
+
+See the full variable reference in:
+
+- `docs/deployment/ENVIRONMENT_REFERENCE.md`
+
+At minimum, set:
+
+- `DATABASE_URL`
+- `REDIS_PASSWORD`
+- `REDIS_URL`
+- `JWT_SECRET`
+- `API_KEY`
+- `OPENCLAW_GATEWAY_TOKEN`
+- `OPENCLAW_HOOK_TOKEN`
+- `NEXT_PUBLIC_API_URL`
+- email credentials if email ingestion/sending must be live immediately
+
+## 4. Build And Start The Application Stack
+
+Validate the compose file first:
 
 ```bash
-# ── App ──────────────────────────────────────────────────────
-NODE_ENV=production
-PORT=3001
-HOST=0.0.0.0
-CORS_ORIGIN=https://app.puppyyogaretreat.com
-LOG_LEVEL=info
-
-# ── Database ─────────────────────────────────────────────────
-DATABASE_URL=postgresql://pyr:$(cat /opt/pyr/secrets/db_password.txt)@postgres:5432/pyr
-REDIS_URL=redis://:$(cat /opt/pyr/secrets/redis_password.txt)@redis:6379
-
-# ── Auth ─────────────────────────────────────────────────────
-JWT_SECRET=<GENERATE_64_CHAR_SECRET>
-API_KEY=<GENERATE_32_CHAR_SECRET>
-
-# ── Email (GMX) ─────────────────────────────────────────────
-EMAIL_USER=puppyyogaretreat@gmx.de
-EMAIL_PASS=<GMX_PASSWORD>
-
-# ── AI ───────────────────────────────────────────────────────
-ANTHROPIC_API_KEY=<ANTHROPIC_KEY>
-OPENAI_API_KEY=<OPENAI_KEY>
-
-# ── Apple Calendar (CalDAV) ──────────────────────────────────
-CALDAV_URL=<ICLOUD_CALDAV_URL>
-CALDAV_USER=<APPLE_ID>
-CALDAV_PASS=<APP_SPECIFIC_PASSWORD>
-
-# ── Telegram (AI Assistant) ─────────────────────────────────
-TELEGRAM_BOT_TOKEN=<BOT_TOKEN>
-TELEGRAM_ALLOWED_USER_ID=<INES_TELEGRAM_ID>
-
-# ── Frontend ───────────────────────────────────────────────
-NEXT_PUBLIC_API_URL=https://api.puppyyogaretreat.com
+docker compose -f docker-compose.prod.yml config >/tmp/pyr-prod-compose.yml
 ```
 
-**Generate secrets:**
+Build and start:
 
 ```bash
-# JWT_SECRET (64 characters)
-openssl rand -base64 48
-
-# API_KEY (32 characters)
-openssl rand -base64 24
-```
-
-### Step 5: Initialize Database
-
-```bash
-# Start database and Redis only
-docker compose -f docker-compose.prod.yml up -d postgres redis
-
-# Wait for database to be ready (check health)
-docker compose -f docker-compose.prod.yml ps
-
-# Run initial migration
-docker compose -f docker-compose.prod.yml run --rm backend sh -c "npx prisma migrate deploy"
-
-# Create admin user (optional seed script)
-# docker compose -f docker-compose.prod.yml run --rm backend node scripts/seed-admin.js
-```
-
-### Step 6: Build and Start Services
-
-```bash
-# Build all images
 docker compose -f docker-compose.prod.yml build
-
-# Start all services
 docker compose -f docker-compose.prod.yml up -d
+```
 
-# Check service status
+The backend container now runs migrations during startup before the API process starts.
+
+Check status:
+
+```bash
 docker compose -f docker-compose.prod.yml ps
-
-# Follow logs
-docker compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs backend --tail=200
+docker compose -f docker-compose.prod.yml logs frontend --tail=100
+docker compose -f docker-compose.prod.yml logs caddy --tail=100
 ```
 
-### Step 7: Configure Reverse Proxy (Caddy)
+## 5. Install And Configure OpenClaw On The Host
 
-Caddy is included in the Docker Compose stack and handles:
-- HTTPS termination (automatic Let's Encrypt certificates)
-- Reverse proxy to backend and frontend
-- HTTP → HTTPS redirect
+Follow:
 
-**Caddyfile location:** `/opt/pyr/docker/caddy/Caddyfile`
+- `docs/deployment/OPENCLAW_SETUP.md`
 
-**Verify Caddy configuration:**
+That document covers:
+
+- installing OpenClaw from official sources
+- copying the production config template
+- wiring the repo workspace and plugin path
+- loading host-level secrets for provider keys and gateway auth
+- Telegram pairing / approval
+- health checks for the OpenClaw daemon and gateway
+
+## 6. Verify Cross-Service Networking
+
+### Backend -> OpenClaw
+
+The backend should report gateway connectivity:
 
 ```bash
-# Check if Caddy is running
-docker compose -f docker-compose.prod.yml ps caddy
+curl -s http://127.0.0.1:3001/health
+```
 
-# View Caddy logs
-docker compose -f docker-compose.prod.yml logs caddy
+Expected once OpenClaw is up:
 
-# Test SSL certificate
-curl -I https://api.puppyyogaretreat.com
+- `database: ok`
+- `redis: ok`
+- `gateway: ok`
+
+### OpenClaw -> Backend
+
+From the host shell, verify the backend is reachable on loopback:
+
+```bash
+curl -s http://127.0.0.1:3001/health
+```
+
+### Public Routes
+
+```bash
 curl -I https://app.puppyyogaretreat.com
+curl -I https://api.puppyyogaretreat.com/health
 ```
 
-### Step 8: Post-Deployment Verification
+## 7. First-Time Functional Setup
 
-See [Post-Deployment Verification](#post-deployment-verification) section below.
+After the stack is reachable:
 
----
+1. Log into the dashboard.
+2. Confirm the admin user exists.
+3. Configure email provider settings in the UI if you do not want to keep mail credentials only in `.env`.
+4. Configure CalDAV in Settings if desired.
+5. Configure notification settings.
+6. If MotoPress is enabled, verify room mappings and credentials.
 
-## Regular Deployments
+## 8. Deployment Verification Checklist
 
-For deploying updates after the initial setup.
+Run the checklist in:
 
-### Pre-Deployment Checklist
+- `docs/deployment/PRODUCTION_CHECKLIST.md`
 
-- [ ] Code reviewed and merged to `main` branch
-- [ ] All tests passing in CI/CD
-- [ ] Database migrations reviewed (if any)
-- [ ] Breaking changes documented
-- [ ] Backup created (see [BACKUP_RESTORE.md](./BACKUP_RESTORE.md))
+Minimum acceptance:
 
-### Deployment Steps
+- dashboard login works
+- backend `/health` is green
+- assistant dashboard chat streams replies
+- Telegram bot responds in direct messages
+- inbox polling works if enabled
+- SMTP send works from an approved draft
+- calendar test connection works if CalDAV is enabled
+- MotoPress test fetch works if enabled
 
-#### Option A: Using Deploy Script (Recommended)
+## 9. Regular Deployments
 
 ```bash
-# SSH into production server
-ssh pyr@YOUR_SERVER_IP
-
-# Navigate to application directory
 cd /opt/pyr
-
-# Pull latest changes
 git fetch origin
 git checkout main
-git pull origin main
-
-# Run deploy script
-./scripts/deploy.sh deploy
-
-# The script will:
-# 1. Save rollback point
-# 2. Build new images with git SHA tag
-# 3. Stop application services
-# 4. Start services with new images
-# 5. Run health checks
-# 6. Rollback automatically if health checks fail
-```
-
-#### Option B: Manual Deployment
-
-```bash
-# SSH into production server
-ssh pyr@YOUR_SERVER_IP
-cd /opt/pyr
-
-# Pull latest changes
-git pull origin main
-
-# Rebuild images
-docker compose -f docker-compose.prod.yml build
-
-# Stop services (keep DB and Redis running)
-docker compose -f docker-compose.prod.yml stop backend frontend assistant
-
-# Start services with new images
-docker compose -f docker-compose.prod.yml up -d
-
-# Check service health
-docker compose -f docker-compose.prod.yml ps
-
-# Monitor logs for errors
-docker compose -f docker-compose.prod.yml logs -f backend
-```
-
-### Database Migrations
-
-If the deployment includes database migrations:
-
-```bash
-# Migrations are run automatically by the backend entrypoint script
-# when the container starts. Check logs:
-docker compose -f docker-compose.prod.yml logs backend | grep -i migration
-
-# To run migrations manually (not recommended):
-docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
-```
-
----
-
-## Rollback Procedures
-
-### Automatic Rollback
-
-If using the deploy script, rollback happens automatically if health checks fail.
-
-### Manual Rollback
-
-If you need to manually rollback to a previous version:
-
-```bash
-# Check available image tags
-docker images | grep pyr
-
-# Rollback using deploy script
-./scripts/deploy.sh rollback
-
-# OR manually specify a previous git commit
-git log --oneline -10  # Find the commit hash
-git checkout <PREVIOUS_COMMIT_HASH>
+git pull --ff-only origin main
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-### Database Rollback
-
-**WARNING:** Database rollbacks are complex and should be avoided if possible.
+Then verify:
 
 ```bash
-# Restore from backup (see BACKUP_RESTORE.md)
-# This will restore both data and schema
-
-# If you need to rollback a specific migration:
-docker compose -f docker-compose.prod.yml exec backend npx prisma migrate resolve --rolled-back <MIGRATION_NAME>
-```
-
----
-
-## Troubleshooting
-
-### Services Not Starting
-
-```bash
-# Check service status
 docker compose -f docker-compose.prod.yml ps
-
-# Check logs for specific service
-docker compose -f docker-compose.prod.yml logs backend
-docker compose -f docker-compose.prod.yml logs frontend
-docker compose -f docker-compose.prod.yml logs postgres
-
-# Restart a specific service
-docker compose -f docker-compose.prod.yml restart backend
+curl -s http://127.0.0.1:3001/health
 ```
 
-### Database Connection Issues
+If OpenClaw config, prompts, tools, or workspace files changed, restart the host daemon too:
 
 ```bash
-# Check if PostgreSQL is running
-docker compose -f docker-compose.prod.yml ps postgres
-
-# Check database health
-docker compose -f docker-compose.prod.yml exec postgres pg_isready -U pyr
-
-# Verify DATABASE_URL is correct
-docker compose -f docker-compose.prod.yml exec backend env | grep DATABASE_URL
-
-# Test connection from backend
-docker compose -f docker-compose.prod.yml exec backend npx prisma db execute --stdin <<< "SELECT 1"
+systemctl --user restart openclaw-gateway
+openclaw gateway status --deep
 ```
 
-### Redis Connection Issues
+## 10. Rollback
+
+### Application stack only
 
 ```bash
-# Check if Redis is running
-docker compose -f docker-compose.prod.yml ps redis
-
-# Test Redis connection
-docker compose -f docker-compose.prod.yml exec redis redis-cli -a "$(cat /opt/pyr/secrets/redis_password.txt)" ping
-
-# Should return: PONG
+git checkout <PREVIOUS_GOOD_COMMIT>
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-### Frontend Not Accessible
+### OpenClaw config rollback
+
+Keep a backup of:
+
+- `~/.openclaw/openclaw.json`
+- `~/.config/systemd/user/openclaw-gateway.service.d/override.conf`
+- any environment file referenced by the override
+
+Then:
 
 ```bash
-# Check Caddy logs
-docker compose -f docker-compose.prod.yml logs caddy
-
-# Verify DNS records (see DNS_SETUP.md)
-dig app.puppyyogaretreat.com
-dig api.puppyyogaretreat.com
-
-# Test frontend health
-curl -I http://localhost:3000
-
-# Check if Caddy is forwarding requests
-curl -I https://app.puppyyogaretreat.com
+systemctl --user daemon-reload
+systemctl --user restart openclaw-gateway
 ```
 
-### SSL Certificate Issues
+## 11. Important Security Notes
 
-```bash
-# Check Caddy logs for Let's Encrypt errors
-docker compose -f docker-compose.prod.yml logs caddy | grep -i "certificate"
-
-# Verify domain resolves to server
-dig +short app.puppyyogaretreat.com
-
-# Force certificate renewal (if needed)
-docker compose -f docker-compose.prod.yml restart caddy
-```
-
-### High Memory Usage
-
-```bash
-# Check resource usage
-docker stats
-
-# Check service limits in docker-compose.prod.yml
-# Services have memory limits configured
-
-# Restart specific service to clear memory
-docker compose -f docker-compose.prod.yml restart backend
-```
-
-### Disk Space Issues
-
-```bash
-# Check disk usage
-df -h
-
-# Clean up old Docker images
-docker system prune -a
-
-# Clean up old logs
-docker compose -f docker-compose.prod.yml logs --tail=0 -f > /dev/null
-
-# Check log file sizes
-du -sh /var/lib/docker/containers/*/
-```
-
----
-
-## Post-Deployment Verification
-
-After every deployment, verify the following:
-
-### 1. Health Checks
-
-```bash
-# Check all services are healthy
-docker compose -f docker-compose.prod.yml ps
-
-# All services should show "Up" and "(healthy)"
-```
-
-### 2. API Endpoints
-
-```bash
-# Test health endpoint
-curl https://api.puppyyogaretreat.com/health
-
-# Expected response:
-# {"status":"ok","timestamp":"...","checks":{"database":"ok","redis":"ok"}}
-
-# Test authentication
-curl -X POST https://api.puppyyogaretreat.com/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@pyr.cy","password":"..."}'
-```
-
-### 3. Frontend
-
-```bash
-# Test frontend loads
-curl -I https://app.puppyyogaretreat.com
-
-# Should return: HTTP/2 200
-
-# Test login page
-open https://app.puppyyogaretreat.com/login
-```
-
-### 4. Database
-
-```bash
-# Check database migrations are up-to-date
-docker compose -f docker-compose.prod.yml exec backend npx prisma migrate status
-
-# Should show: "Database schema is up to date!"
-```
-
-### 5. Monitoring
-
-```bash
-# Check logs for errors
-docker compose -f docker-compose.prod.yml logs backend | grep -i error
-docker compose -f docker-compose.prod.yml logs frontend | grep -i error
-
-# No critical errors should be present
-```
-
-### 6. Functional Testing
-
-Manually test critical user flows:
-
-- [ ] Login to admin dashboard
-- [ ] View bookings list
-- [ ] Create a new booking
-- [ ] View events calendar
-- [ ] Update settings
-
----
-
-## Maintenance Windows
-
-For deployments that require downtime:
-
-1. **Schedule maintenance window** - Notify users via email/social media
-2. **Enable maintenance mode** - Show maintenance page on frontend
-3. **Perform deployment** - Follow regular deployment steps
-4. **Extended testing** - Verify all functionality before going live
-5. **Disable maintenance mode** - Restore normal operation
-
-**Maintenance mode (if needed):**
-
-```bash
-# Create a simple maintenance page
-docker compose -f docker-compose.prod.yml stop frontend
-# Deploy static maintenance.html via Caddy
-```
-
----
-
-## Emergency Contacts
-
-- **System Administrator:** [Your Name] - [email@example.com]
-- **Hetzner Support:** https://console.hetzner.cloud/
-- **On-Call Developer:** [Phone number]
-
----
-
-## Change Log
-
-| Date | Deployed By | Version/Commit | Notes |
-|------|-------------|----------------|-------|
-| 2026-02-16 | AVA Studio | Initial | First production deployment |
-| | | | |
-
----
-
-**Last Updated:** 2026-02-16
-**Document Version:** 1.0
+1. OpenClaw runtime state must not live inside this repository.
+2. Device keys, pairing tokens, and session state belong under `~/.openclaw` only.
+3. This repository previously contained tracked OpenClaw runtime files. They have been removed from the current tree, but if the repository was ever pushed remotely you must rotate the exposed OpenClaw device credentials/tokens.
+4. Keep `.env` and any OpenClaw environment files at `0600` permissions.
+5. Do not expose PostgreSQL, Redis, or the backend port publicly. The backend is published only on `127.0.0.1:3001` for the host-level OpenClaw daemon.

@@ -1,14 +1,15 @@
 # Puppy Yoga Retreat — Platform
 
-Business automation platform for Puppy Yoga Retreat, Peyia, Cyprus. Replaces manual Excel/copy-paste workflows with a unified CRM, inbox, calendar, AI assistant, and booking system.
+Business automation platform for Puppy Yoga Retreat, Peyia, Cyprus. It combines CRM, bookings, events, inbox, calendar sync, and an OpenClaw-powered assistant.
 
-## Quick Start (Local Development)
+## Local Development
 
 ### Prerequisites
 
 - Node.js 22+
-- pnpm 9.15+
+- pnpm 9+
 - Docker + Docker Compose
+- OpenClaw installed locally if you want the assistant/gateway flows
 
 ### 1. Install dependencies
 
@@ -16,171 +17,94 @@ Business automation platform for Puppy Yoga Retreat, Peyia, Cyprus. Replaces man
 pnpm install
 ```
 
-### 2. Start infrastructure (PostgreSQL + Redis)
+### 2. Start PostgreSQL and Redis
 
 ```bash
 docker compose up -d
 ```
 
-This starts PostgreSQL on `localhost:5432` and Redis on `localhost:6379`. The `pyr_test` database is automatically created for running tests.
-
 ### 3. Configure environment
 
 ```bash
 cp .env.example .env
-# Edit .env — at minimum set JWT_SECRET (32+ chars) and API_KEY (32+ chars)
 ```
 
-### 4. Run database migrations
+Edit `.env` and set at least:
+
+- `JWT_SECRET`
+- `API_KEY`
+
+If you want the assistant locally, also set:
+
+- `OPENCLAW_GATEWAY_TOKEN`
+- `OPENCLAW_HOOK_TOKEN`
+
+### 4. Run the backend
 
 ```bash
-cd packages/backend
-pnpm db:migrate
+pnpm --filter @pyr/backend dev
 ```
 
-### 5. Start the backend
+Backend:
+
+- API: `http://localhost:3001`
+- Swagger: `http://localhost:3001/documentation`
+
+### 5. Run the frontend
 
 ```bash
-# From packages/backend/
-pnpm dev
-# API available at http://localhost:3001
-# Swagger UI at http://localhost:3001/documentation
+pnpm --filter @pyr/frontend dev
 ```
 
-### 6. Start the frontend
+Frontend:
+
+- Dashboard: `http://localhost:3000`
+
+### 6. Run OpenClaw locally
+
+The repo includes a local OpenClaw config under `openclaw/openclaw.json` and a committed workspace under `openclaw/workspace/`.
 
 ```bash
-# From packages/frontend/
-pnpm dev
-# Dashboard at http://localhost:3000
+cd openclaw
+openclaw start
 ```
 
-### 7. Start OpenClaw (AI assistant gateway)
+Gateway:
+
+- HTTP / WS: `http://localhost:18789`
+
+## Production Deployment
+
+Production setup is documented here:
+
+- `docs/deployment/DEPLOYMENT_RUNBOOK.md`
+- `docs/deployment/OPENCLAW_SETUP.md`
+- `docs/deployment/ENVIRONMENT_REFERENCE.md`
+- `docs/deployment/PRODUCTION_CHECKLIST.md`
+- `.env.production.example`
+
+## Useful Commands
 
 ```bash
-# From project root — runs locally (not in Docker)
-cd openclaw && openclaw start
-# Gateway available at http://localhost:18789
-```
-
-### 8. Seed development data (optional)
-
-```bash
-pnpm --filter @pyr/backend db:seed
-```
-
----
-
-## Running Tests
-
-### Backend (integration tests — requires running DB + Redis)
-
-```bash
-# Run all backend tests
-pnpm --filter @pyr/backend test
-
-# Watch mode
-pnpm --filter @pyr/backend test:watch
-```
-
-### Frontend (unit tests — no DB required)
-
-```bash
-pnpm --filter @pyr/frontend test
-
-# With coverage
-pnpm --filter @pyr/frontend test:coverage
-```
-
-### All packages
-
-```bash
+pnpm lint
+pnpm type-check
 pnpm test
 ```
 
----
-
-## Project Structure
-
-```
-PYR/
-├── packages/
-│   ├── backend/          # Fastify REST API (Node.js)
-│   ├── frontend/         # Next.js 15 admin dashboard
-│   ├── assistant/        # Telegram/WhatsApp AI bot (Phase 3)
-│   ├── shared/           # Shared types & constants
-│   └── booking-widget/   # Public booking widget (Phase 2)
-├── docker/               # Docker configs (Postgres init, Caddy)
-├── docs/                 # Deployment runbooks, DNS setup
-├── scripts/              # DB seed, Excel import
-├── docker-compose.yml    # Local dev (Postgres + Redis)
-├── docker-compose.prod.yml  # Production (all services)
-├── .env.example          # Environment variable template
-├── CLAUDE.md             # AI coding assistant context
-├── PROJECT.md            # Full product specification
-└── EXECUTION_PLAN.md     # MVP task breakdown (9 epics, 55 tasks)
-```
-
----
-
-## Tech Stack
+## Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Backend | Node.js + Fastify 5 + TypeScript strict |
-| Database | PostgreSQL 16 + Prisma ORM |
-| Cache/Queue | Redis 7 + BullMQ |
-| Frontend | Next.js 15 + React 19 + Tailwind v4 + shadcn/ui |
-| AI | Anthropic Claude API (primary) + OpenAI (fallback) |
-| Auth | JWT (dashboard) + API Key (AI assistant) |
-| Testing | Vitest + Supertest |
-| Hosting | Hetzner Cloud (EU, GDPR) |
+|-------|------------|
+| Backend | Fastify + TypeScript + Prisma |
+| Frontend | Next.js 15 + React 19 |
+| Database | PostgreSQL 16 |
+| Queue / Cache | Redis 7 + BullMQ |
+| Assistant runtime | OpenClaw |
+| Calendar sync | CalDAV / iCloud |
+| OTA sync | MotoPress + Viator flows |
 
----
+## Notes
 
-## API
-
-- Base URL: `http://localhost:3001/api/v1`
-- Auth: `Authorization: Bearer <jwt>` or `X-API-Key: <key>`
-- Docs: `http://localhost:3001/documentation` (Swagger UI, dev only)
-- Response format: `{ data: T }` success, `{ error: { code, message } }` error
-
----
-
-## Key Documents
-
-| Document | Purpose |
-|----------|---------|
-| `CLAUDE.md` | Coding conventions, architecture decisions, patterns |
-| `PROJECT.md` | Full product spec, all 5 phases, integrations |
-| `EXECUTION_PLAN.md` | MVP epics, tasks, dependencies |
-| `packages/backend/ARCHITECTURE.md` | Backend request flow, module pattern |
-| `packages/backend/TESTING.md` | Test setup, how to write tests |
-| `docs/deployment/DEPLOYMENT_RUNBOOK.md` | Production deployment guide |
-
----
-
-## Development Conventions
-
-- **Branches:** `feat/<epic>-<desc>`, `fix/<desc>`, `chore/<desc>`
-- **Commits:** Conventional commits (`feat:`, `fix:`, `chore:`, `test:`)
-- **No `any`** — TypeScript strict mode throughout
-- **All mutations in DB transactions** — entity write + audit log are atomic
-- **Soft deletes** for guests and bookings (`deletedAt` timestamp)
-- **Amounts in integer cents** — never floats for money
-
----
-
-## Phase Status
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| E1 Project Setup | ✅ Complete | Monorepo, Docker, CI/CD, env validation |
-| E2 Database & API | ✅ Complete | Schema, Prisma, all CRUD endpoints (guests, bookings, rooms, events, inbox, settings, dashboard) |
-| E3 CRM & Guest Management | ✅ Complete | Guest timeline, filter bar, merge UI, rich detail page, post-audit (49 fixes) |
-| E5 Admin Dashboard | ✅ Complete | Next.js 15 dashboard: auth, bookings, events, inbox, calendar, settings pages |
-| E4 Email Ingestion | Pending | IMAP polling (GMX), email threading, unified inbox |
-| E6 AI Engine | Pending | LLM draft generation, language detection, FAQ system |
-| E7 Calendar Sync | Pending | CalDAV push to Apple Calendar |
-| E8 AI Assistant | Pending | Telegram bot, NLU agent, daily briefings |
-| E9 Testing & Launch | Pending | Excel import, UAT, go-live |
+1. OpenClaw runtime state must stay outside Git.
+2. The current production pattern is Docker for the app stack plus a host-level OpenClaw daemon.
+3. The legacy `packages/assistant` package is not part of the active production runtime. The active assistant integration lives in `packages/assistant/openclaw-plugin`.

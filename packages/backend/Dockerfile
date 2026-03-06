@@ -27,7 +27,7 @@ FROM base AS prod-deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --frozen-lockfile --prod --filter @pyr/backend --filter @pyr/shared
+RUN pnpm install --frozen-lockfile --filter @pyr/backend --filter @pyr/shared
 
 # ── Stage 5: Runner ──
 FROM node:22-alpine AS runner

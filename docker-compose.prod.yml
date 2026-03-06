@@ -63,6 +63,11 @@ services:
     env_file: .env
     environment:
       - TZ=Europe/Nicosia
+    command: ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/server.js"]
+    ports:
+      - "127.0.0.1:3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,33 +90,14 @@ services:
     build:
       context: .
       dockerfile: packages/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
     restart: always
     environment:
-      - NEXT_PUBLIC_API_URL=https://api.puppyyogaretreat.com
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
       - TZ=Europe/Nicosia
     networks:
       - frontend
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  assistant:
-    build:
-      context: .
-      dockerfile: packages/assistant/Dockerfile
-    restart: always
-    env_file: .env
-    depends_on:
-      backend:
-        condition: service_started
-    networks:
-      - backend
     deploy:
       resources:
         limits:

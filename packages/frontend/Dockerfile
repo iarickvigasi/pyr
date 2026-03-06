@@ -12,9 +12,12 @@ RUN pnpm install --frozen-lockfile --filter @pyr/frontend --filter @pyr/shared
 
 # ── Stage 3: Build ──
 FROM base AS builder
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/frontend/node_modules ./packages/frontend/node_modules
 COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY .eslintrc.json ./
 COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY packages/frontend ./packages/frontend
@@ -25,6 +28,8 @@ RUN pnpm --filter @pyr/frontend build
 FROM node:22-alpine AS runner
 RUN addgroup --system --gid 1001 pyr && adduser --system --uid 1001 pyr
 WORKDIR /app
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 COPY --from=builder /app/packages/frontend/.next/standalone ./
 COPY --from=builder /app/packages/frontend/.next/static ./packages/frontend/.next/static
